@@ -1,5 +1,7 @@
 # Universal Self-Learning Irrigation
 
+[Deutsch](README.md) · [English](README_EN.md)
+
 **Universal Self-Learning Irrigation** ist eine selbstlernende Bewässerungssteuerung für Home Assistant. Das System steuert eine gemeinsame Pumpe und bis zu vier Pflanzenventile, berechnet den Gießbedarf aus Bodenfeuchte und Bodentemperatur, teilt größere Güsse in einzelne Shots auf und verbessert seine Mengenempfehlung aus dem gemessenen Feuchteanstieg.
 
 > [!NOTE]
@@ -166,9 +168,10 @@ Die Domain der Quell-Entität ist nicht festgelegt. Möglich sind unter anderem 
 | [`plantinator_bewasserung_monitoring.yaml`](plantinator_bewasserung_monitoring.yaml) | Sensoralter, Umweltwerte, Dryback und Alarmverriegelung |
 | [`plantinator_bewasserung_startup_safety.yaml`](plantinator_bewasserung_startup_safety.yaml) | Sicherer Zustand nach Home-Assistant-Start |
 | [`plantinator_bewasserung_debug_logger.yaml`](plantinator_bewasserung_debug_logger.yaml) | Optionaler Diagnose-Logger |
-| [`dashboard.yaml`](dashboard.yaml) | Vollständiges Lovelace-Dashboard |
+| [`dashboard.yaml`](dashboard.yaml) | Vollständiges deutsches Lovelace-Dashboard |
+| [`dashboard_en.yaml`](dashboard_en.yaml) | Vollständiges englisches Lovelace-Dashboard mit identischer Logik |
 
-Alle `plantinator*.yaml`-Dateien sind voneinander abhängig und sollten gemeinsam installiert werden. `dashboard.yaml` ist keine Package-Datei und darf nicht in den Package-Ordner kopiert werden.
+Alle `plantinator*.yaml`-Dateien sind voneinander abhängig und sollten gemeinsam installiert werden. Die beiden Dashboard-Dateien sind keine Package-Dateien und dürfen nicht in den Package-Ordner kopiert werden.
 
 ## Installation
 
@@ -219,11 +222,13 @@ Existiert bereits ein `homeassistant:`-Block, ergänze darin nur die Zeile `pack
 
 ### 3. Dashboard installieren
 
-Kopiere `dashboard.yaml` direkt nach:
+Wähle die gewünschte Sprache:
 
-```text
-/config/dashboard.yaml
-```
+- `dashboard.yaml` für Deutsch
+- `dashboard_en.yaml` für Englisch
+
+Kopiere die gewählte Datei direkt nach `/config`. Das folgende Beispiel
+verwendet das deutsche Dashboard:
 
 Ergänze `configuration.yaml`:
 
@@ -240,6 +245,25 @@ lovelace:
 ```
 
 Der Schlüssel `universal-irrigation` muss einen Bindestrich enthalten. `require_admin: true` ist für ein Dashboard, das reale Aktoren schaltet, ausdrücklich empfohlen. Details enthält die Home-Assistant-Dokumentation zu [mehreren YAML-Dashboards](https://www.home-assistant.io/dashboards/dashboards/).
+
+Für das englische Dashboard verwendest du `dashboard_en.yaml` und einen
+eigenen Dashboard-Schlüssel:
+
+```yaml
+lovelace:
+  dashboards:
+    universal-irrigation-en:
+      mode: yaml
+      filename: dashboard_en.yaml
+      title: Universal Self-Learning Irrigation
+      icon: mdi:water-pump
+      show_in_sidebar: true
+      require_admin: true
+```
+
+Du kannst auch beide Blöcke mit unterschiedlichen Schlüsseln eintragen. Beide
+Dashboards greifen auf dieselben Entitäten zu; ändere daher Parameter immer
+nur bewusst, unabhängig davon, in welcher Sprachansicht du sie bearbeitest.
 
 ### 4. Optionalen Debug-Logger vorbereiten
 
