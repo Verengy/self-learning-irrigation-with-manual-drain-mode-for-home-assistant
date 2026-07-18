@@ -1,8 +1,8 @@
-# Universal Self-Learning Irrigation
+# Universelle selbstlernende Bewässerungssteuerung für Home Assistant
 
 [Deutsch](README.md) · [English](README_EN.md)
 
-**Universal Self-Learning Irrigation** ist eine selbstlernende Bewässerungssteuerung für Home Assistant. Das System steuert eine gemeinsame Pumpe und bis zu vier Pflanzenventile, berechnet den Gießbedarf aus Bodenfeuchte und Bodentemperatur, teilt größere Güsse in einzelne Shots auf und verbessert seine Mengenempfehlung aus dem gemessenen Feuchteanstieg.
+**Universelle selbstlernende Bewässerungssteuerung für Home Assistant** steuert eine gemeinsame Pumpe und bis zu vier Pflanzenventile, berechnet den Gießbedarf aus Bodenfeuchte und Bodentemperatur, teilt größere Güsse in einzelne Shots auf und verbessert ihre Mengenempfehlung aus dem gemessenen Feuchteanstieg.
 
 > [!NOTE]
 > Die vorhandenen Dateinamen und Home-Assistant-Entitäts-IDs behalten aus Kompatibilitätsgründen den technischen Präfix `plantinator_bewasserung_`. Der öffentliche Projektname und der GitHub-Repositoryname verwenden „Plantinator“ nicht.
@@ -238,7 +238,7 @@ lovelace:
     universal-irrigation:
       mode: yaml
       filename: dashboard.yaml
-      title: Universal Self-Learning Irrigation
+      title: Universelle selbstlernende Bewässerungssteuerung für Home Assistant
       icon: mdi:water-pump
       show_in_sidebar: true
       require_admin: true
@@ -255,7 +255,7 @@ lovelace:
     universal-irrigation-en:
       mode: yaml
       filename: dashboard_en.yaml
-      title: Universal Self-Learning Irrigation
+      title: Universal Self-Learning Irrigation for Home Assistant
       icon: mdi:water-pump
       show_in_sidebar: true
       require_admin: true
@@ -1100,7 +1100,7 @@ Beispiel für einen ersten Commit:
 ```bash
 git init
 git add README.md dashboard.yaml plantinator*.yaml
-git commit -m "Initial release: Universal Self-Learning Irrigation"
+git commit -m "Initial release: Selbstlernende Bewässerung für Home Assistant"
 ```
 
 Danach kann ein zuvor auf GitHub angelegtes Repository als Remote verbunden und gepusht werden.

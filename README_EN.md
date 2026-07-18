@@ -1,9 +1,9 @@
-# Universal Self-Learning Irrigation
+# Universal Self-Learning Irrigation for Home Assistant
 
 [Deutsch](README.md) · [English](README_EN.md)
 
-**Universal Self-Learning Irrigation** is a self-learning irrigation controller
-for Home Assistant. It controls one shared pump and up to four plant valves,
+**Universal Self-Learning Irrigation for Home Assistant** is a self-learning
+irrigation controller for Home Assistant. It controls one shared pump and up to four plant valves,
 determines irrigation demand from substrate moisture and temperature, divides
 larger irrigation events into individual shots, and improves its volume
 recommendations from the measured moisture response.
@@ -266,7 +266,7 @@ lovelace:
     universal-irrigation-en:
       mode: yaml
       filename: dashboard_en.yaml
-      title: Universal Self-Learning Irrigation
+      title: Universal Self-Learning Irrigation for Home Assistant
       icon: mdi:water-pump
       show_in_sidebar: true
       require_admin: true
