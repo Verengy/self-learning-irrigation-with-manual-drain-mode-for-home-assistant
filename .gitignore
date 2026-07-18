@@ -1,0 +1,28 @@
+# Home Assistant: niemals lokale Laufzeit- oder Zugangsdaten veröffentlichen
+secrets.yaml
+.storage/
+.cloud/
+deps/
+tts/
+www/community/
+
+# Datenbanken und Protokolle
+*.db
+*.db-shm
+*.db-wal
+home-assistant.log*
+*.log
+
+# Editor- und Betriebssystemdateien
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Temporäre Dateien
+.venv/
+__pycache__/
+*.py[cod]
+*.tmp
+*.bak
+*~

@@ -1,0 +1,239 @@
+############################################################
+# PLANTINATOR BEWASSERUNG - STARTUP SAFETY V2 (Fixed)
+# Datei: plantinator_bewasserung_startup_safety_v2.yaml
+#
+# Änderungen gegenüber Original:
+# - Pumpe und Ventile werden über das Mapping ermittelt
+#   statt hardcoded switch.pumpe_wasser / switch.ventil_pflanze_X
+# - Bei Mapping-Änderung bleibt Startup Safety automatisch korrekt
+# - Robuster gegen leere/unknown Mapping-Werte
+# - exec_abort wird beim Start zurückgesetzt
+#
+# Zweck:
+# - Sicherheitsnetz für Home-Assistant Neustart während Bewässerung
+# - Nach HA-Start: Pumpe aus, alle Ventile zu
+# - Lauf-Flags zurücksetzen
+# - Status eindeutig auf Startup-Sicherheitsstop setzen
+#
+# Wichtig:
+# - Keine normale Steuerlogik.
+# - Kein automatisches Fortsetzen angefangener Güsse.
+# - Nach einem Neustart während eines Gusses wird bewusst sicher gestoppt.
+############################################################
+
+script:
+  plantinator_bewasserung_startup_sicher_stop:
+    alias: Plantinator Bewasserung Startup sicher Stop
+    icon: mdi:shield-alert
+    mode: restart
+    sequence:
+      - service: counter.increment
+        target:
+          entity_id: counter.plantinator_bewasserung_stop_generation
+
+      - service: input_boolean.turn_on
+        target:
+          entity_id:
+            - input_boolean.plantinator_bewasserung_exec_abort
+            - input_boolean.plantinator_bewasserung_shot_exec_stop_anforderung
+            - input_boolean.plantinator_bewasserung_mess_drain_stop_anforderung
+            - input_boolean.plantinator_bewasserung_tank_umwalzung_stop_anforderung
+
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_exec_status
+        data:
+          value: startup_sicher_stop_start
+
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_shot_exec_status
+        data:
+          value: startup_sicher_stop_start
+
+      # Pumpe über Mapping ermitteln und ausschalten
+      - variables:
+          pumpe: "{{ states('input_text.plantinator_bewasserung_pumpe_entity') | trim }}"
+          umwalzung: "{{ states('input_text.plantinator_bewasserung_tank_umwalzung_entity') | trim }}"
+          ventile:
+            - "{{ states('input_text.plantinator_bewasserung_hauptventil_entity') | trim }}"
+            - "{{ states('input_text.plantinator_bewasserung_p1_ventil_entity') | trim }}"
+            - "{{ states('input_text.plantinator_bewasserung_p2_ventil_entity') | trim }}"
+            - "{{ states('input_text.plantinator_bewasserung_p3_ventil_entity') | trim }}"
+            - "{{ states('input_text.plantinator_bewasserung_p4_ventil_entity') | trim }}"
+
+      # Pumpe IMMER zuerst aus (wenn gemappt)
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ pumpe.startswith('switch.') and has_value(pumpe) }}"
+            sequence:
+              - service: switch.turn_off
+                continue_on_error: true
+                target:
+                  entity_id: "{{ pumpe }}"
+
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ umwalzung.startswith('switch.') and has_value(umwalzung) }}"
+            sequence:
+              - service: switch.turn_off
+                continue_on_error: true
+                target:
+                  entity_id: "{{ umwalzung }}"
+
+      - delay:
+          seconds: 2
+
+      # Alle Ventile schließen (nur gemappte)
+      - repeat:
+          for_each: "{{ ventile }}"
+          sequence:
+            - choose:
+                - conditions:
+                    - condition: template
+                      value_template: "{{ repeat.item.startswith('switch.') and has_value(repeat.item) }}"
+                  sequence:
+                    - service: switch.turn_off
+                      continue_on_error: true
+                      target:
+                        entity_id: "{{ repeat.item }}"
+
+      # Rückmeldungen kurz aktualisieren lassen und den tatsächlichen
+      # Ausschaltzustand aller gemappten Aktoren prüfen.
+      - delay:
+          seconds: 2
+
+      - variables:
+          hardware_sicher_aus: >
+            {% set ns = namespace(ok=true) %}
+            {% set leer = ['', 'unknown', 'unavailable', 'none'] %}
+            {% set anzahl = states('input_number.plantinator_bewasserung_anzahl_pflanzen') | int(4) %}
+            {% set aktoren = [
+              {'entity': pumpe, 'erforderlich': true},
+              {'entity': umwalzung,
+               'erforderlich': is_state('input_boolean.plantinator_bewasserung_tank_umwalzung_verwenden', 'on')},
+              {'entity': ventile[0], 'erforderlich': false},
+              {'entity': ventile[1],
+               'erforderlich': anzahl >= 1 and is_state('input_boolean.plantinator_bewasserung_p1_aktiv', 'on')},
+              {'entity': ventile[2],
+               'erforderlich': anzahl >= 2 and is_state('input_boolean.plantinator_bewasserung_p2_aktiv', 'on')},
+              {'entity': ventile[3],
+               'erforderlich': anzahl >= 3 and is_state('input_boolean.plantinator_bewasserung_p3_aktiv', 'on')},
+              {'entity': ventile[4],
+               'erforderlich': anzahl >= 4 and is_state('input_boolean.plantinator_bewasserung_p4_aktiv', 'on')}
+            ] %}
+            {% for aktor in aktoren %}
+              {% set entity = aktor.entity | trim %}
+              {% if aktor.erforderlich or entity not in leer %}
+                {% if not entity.startswith('switch.')
+                      or not has_value(entity)
+                      or not is_state(entity, 'off') %}
+                  {% set ns.ok = false %}
+                {% endif %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.ok }}
+
+      - variables:
+          startup_status: >
+            {{ 'bereit'
+               if hardware_sicher_aus | bool
+               else 'startup_hardware_unsicher' }}
+
+      # Lauf-Flags und Abort-Flag zurücksetzen
+      - service: input_boolean.turn_off
+        target:
+          entity_id:
+            - input_boolean.plantinator_bewasserung_exec_laeuft
+            - input_boolean.plantinator_bewasserung_mess_drain_laeuft
+            - input_boolean.plantinator_bewasserung_shot_exec_laeuft
+            - input_boolean.plantinator_bewasserung_shot_exec_reserviert
+            - input_boolean.plantinator_bewasserung_tank_umwalzung_laeuft
+            - input_boolean.plantinator_bewasserung_shot_exec_stop_anforderung
+            - input_boolean.plantinator_bewasserung_mess_drain_stop_anforderung
+            - input_boolean.plantinator_bewasserung_mess_drain_drain_bestaetigt
+            - input_boolean.plantinator_bewasserung_tank_umwalzung_stop_anforderung
+            - input_boolean.plantinator_bewasserung_exec_abort
+            - input_boolean.plantinator_bewasserung_p1_feedback_ausstehend
+            - input_boolean.plantinator_bewasserung_p2_feedback_ausstehend
+            - input_boolean.plantinator_bewasserung_p3_feedback_ausstehend
+            - input_boolean.plantinator_bewasserung_p4_feedback_ausstehend
+
+      - service: input_number.set_value
+        target:
+          entity_id:
+            - input_number.plantinator_bewasserung_mess_drain_aktive_pflanze
+            - input_number.plantinator_bewasserung_mess_drain_abgegeben_ml
+        data:
+          value: 0
+
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_exec_status
+        data:
+          value: "{{ startup_status }}"
+
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_mess_drain_lauf_status
+        data:
+          value: "{{ startup_status }}"
+
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_shot_exec_status
+        data:
+          value: "{{ startup_status }}"
+
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_auto_status
+        data:
+          value: "{{ startup_status }}"
+
+      - service: input_datetime.set_datetime
+        target:
+          entity_id:
+            - input_datetime.plantinator_bewasserung_exec_letztes_ende
+            - input_datetime.plantinator_bewasserung_shot_exec_letztes_ende
+        data:
+          datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+
+automation:
+  - id: plantinator_bewasserung_startup_sicher_stop
+    alias: Plantinator Bewasserung Startup sicher Stop
+    mode: single
+    trigger:
+      - platform: homeassistant
+        event: start
+    action:
+      # Kurz warten, bis Entitäten wieder geladen sind.
+      - delay:
+          seconds: 20
+
+      - service: script.plantinator_bewasserung_startup_sicher_stop
+
+  - id: plantinator_bewasserung_startup_auto_check_verzoegert
+    alias: Plantinator Bewasserung Startup Auto Check verzoegert
+    mode: single
+    trigger:
+      - platform: homeassistant
+        event: start
+    condition:
+      - condition: template
+        value_template: >
+          {{
+            is_state('input_boolean.plantinator_bewasserung_aktiv', 'on')
+            and is_state('input_boolean.plantinator_bewasserung_automatik', 'on')
+            and is_state('input_boolean.plantinator_bewasserung_auto_controller_aktiv', 'on')
+            and is_state('input_boolean.plantinator_bewasserung_sperre', 'off')
+          }}
+    action:
+      # Startup-Sicher-Stop läuft nach 20 s.
+      # Danach Sensoren/Template-Sensoren stabilisieren lassen.
+      - delay:
+          minutes: 2
+
+      - service: script.plantinator_bewasserung_auto_check

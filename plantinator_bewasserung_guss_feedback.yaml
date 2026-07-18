@@ -1,0 +1,835 @@
+############################################################
+# PLANTINATOR BEWASSERUNG - GUSS FEEDBACK / LERNWERT V1
+# Datei: plantinator_bewasserung_guss_feedback_v1.yaml
+#
+# Zweck:
+# - Beobachtet normale EXEC-Güsse
+# - Speichert Bodenfeuchte vor dem Guss
+# - Wartet eine einstellbare Stabilisierungszeit
+# - Speichert Bodenfeuchte nach dem Guss
+# - Berechnet ml pro 1 % Bodenfeuchteanstieg
+# - Aktualisiert pro Pflanze einen geglätteten Lernwert
+#
+# Wichtig:
+# - Diese Datei steuert keine Pumpe und keine Ventile
+# - Mess-Drain-Güsse werden NICHT als normaler Lernwert übernommen
+# - Der globale Startwert bleibt nur Fallback, bis echte Lernwerte vorhanden sind
+############################################################
+
+input_boolean:
+  plantinator_bewasserung_p1_lernwert_gueltig:
+    name: Plantinator Bewasserung P1 Lernwert gültig
+    icon: mdi:brain-check
+  plantinator_bewasserung_p2_lernwert_gueltig:
+    name: Plantinator Bewasserung P2 Lernwert gültig
+    icon: mdi:brain-check
+  plantinator_bewasserung_p3_lernwert_gueltig:
+    name: Plantinator Bewasserung P3 Lernwert gültig
+    icon: mdi:brain-check
+  plantinator_bewasserung_p4_lernwert_gueltig:
+    name: Plantinator Bewasserung P4 Lernwert gültig
+    icon: mdi:brain-check
+
+  plantinator_bewasserung_p1_feedback_ausstehend:
+    name: Plantinator Bewasserung P1 Feedback ausstehend
+    icon: mdi:timer-sand
+  plantinator_bewasserung_p2_feedback_ausstehend:
+    name: Plantinator Bewasserung P2 Feedback ausstehend
+    icon: mdi:timer-sand
+  plantinator_bewasserung_p3_feedback_ausstehend:
+    name: Plantinator Bewasserung P3 Feedback ausstehend
+    icon: mdi:timer-sand
+  plantinator_bewasserung_p4_feedback_ausstehend:
+    name: Plantinator Bewasserung P4 Feedback ausstehend
+    icon: mdi:timer-sand
+
+input_number:
+  plantinator_bewasserung_feedback_wartezeit_minuten:
+    name: Plantinator Bewasserung Feedback Wartezeit Minuten
+    icon: mdi:timer-sand
+    min: 1
+    max: 60
+    step: 1
+    mode: box
+    unit_of_measurement: "min"
+
+  plantinator_bewasserung_feedback_lernrate_prozent:
+    name: Plantinator Bewasserung Feedback Lernrate Prozent
+    icon: mdi:tune-variant
+    min: 5
+    max: 100
+    step: 5
+    mode: box
+    unit_of_measurement: "%"
+
+  plantinator_bewasserung_feedback_min_anstieg_prozent:
+    name: Plantinator Bewasserung Feedback Mindestanstieg Prozent
+    icon: mdi:water-percent-alert
+    min: 0.5
+    max: 10
+    step: 0.5
+    mode: box
+    unit_of_measurement: "%"
+
+  plantinator_bewasserung_feedback_min_ml_pro_prozent:
+    name: Plantinator Bewasserung Feedback Min ml pro Prozent
+    icon: mdi:calculator-variant
+    min: 5
+    max: 200
+    step: 5
+    mode: box
+    unit_of_measurement: "ml/%"
+
+  plantinator_bewasserung_feedback_max_ml_pro_prozent:
+    name: Plantinator Bewasserung Feedback Max ml pro Prozent
+    icon: mdi:calculator-variant
+    min: 50
+    max: 500
+    step: 10
+    mode: box
+    unit_of_measurement: "ml/%"
+
+  plantinator_bewasserung_p1_gelernt_ml_pro_prozent:
+    name: Plantinator Bewasserung P1 gelernt ml pro Prozent
+    icon: mdi:brain
+    min: 10
+    max: 500
+    step: 1
+    mode: box
+    unit_of_measurement: "ml/%"
+
+  plantinator_bewasserung_p2_gelernt_ml_pro_prozent:
+    name: Plantinator Bewasserung P2 gelernt ml pro Prozent
+    icon: mdi:brain
+    min: 10
+    max: 500
+    step: 1
+    mode: box
+    unit_of_measurement: "ml/%"
+
+  plantinator_bewasserung_p3_gelernt_ml_pro_prozent:
+    name: Plantinator Bewasserung P3 gelernt ml pro Prozent
+    icon: mdi:brain
+    min: 10
+    max: 500
+    step: 1
+    mode: box
+    unit_of_measurement: "ml/%"
+
+  plantinator_bewasserung_p4_gelernt_ml_pro_prozent:
+    name: Plantinator Bewasserung P4 gelernt ml pro Prozent
+    icon: mdi:brain
+    min: 10
+    max: 500
+    step: 1
+    mode: box
+    unit_of_measurement: "ml/%"
+
+  plantinator_bewasserung_p1_letzter_normalguss_ml:
+    name: Plantinator Bewasserung P1 letzter Normalguss ml
+    icon: mdi:cup-water
+    min: 0
+    max: 5000
+    step: 1
+    mode: box
+    unit_of_measurement: "ml"
+
+  plantinator_bewasserung_p2_letzter_normalguss_ml:
+    name: Plantinator Bewasserung P2 letzter Normalguss ml
+    icon: mdi:cup-water
+    min: 0
+    max: 5000
+    step: 1
+    mode: box
+    unit_of_measurement: "ml"
+
+  plantinator_bewasserung_p3_letzter_normalguss_ml:
+    name: Plantinator Bewasserung P3 letzter Normalguss ml
+    icon: mdi:cup-water
+    min: 0
+    max: 5000
+    step: 1
+    mode: box
+    unit_of_measurement: "ml"
+
+  plantinator_bewasserung_p4_letzter_normalguss_ml:
+    name: Plantinator Bewasserung P4 letzter Normalguss ml
+    icon: mdi:cup-water
+    min: 0
+    max: 5000
+    step: 1
+    mode: box
+    unit_of_measurement: "ml"
+
+  plantinator_bewasserung_p1_feuchte_vor_guss:
+    name: Plantinator Bewasserung P1 Feuchte vor Guss
+    icon: mdi:water-percent
+    min: 0
+    max: 100
+    step: 0.1
+    mode: box
+    unit_of_measurement: "%"
+
+  plantinator_bewasserung_p2_feuchte_vor_guss:
+    name: Plantinator Bewasserung P2 Feuchte vor Guss
+    icon: mdi:water-percent
+    min: 0
+    max: 100
+    step: 0.1
+    mode: box
+    unit_of_measurement: "%"
+
+  plantinator_bewasserung_p3_feuchte_vor_guss:
+    name: Plantinator Bewasserung P3 Feuchte vor Guss
+    icon: mdi:water-percent
+    min: 0
+    max: 100
+    step: 0.1
+    mode: box
+    unit_of_measurement: "%"
+
+  plantinator_bewasserung_p4_feuchte_vor_guss:
+    name: Plantinator Bewasserung P4 Feuchte vor Guss
+    icon: mdi:water-percent
+    min: 0
+    max: 100
+    step: 0.1
+    mode: box
+    unit_of_measurement: "%"
+
+  plantinator_bewasserung_p1_feuchte_nach_guss:
+    name: Plantinator Bewasserung P1 Feuchte nach Guss
+    icon: mdi:water-percent
+    min: 0
+    max: 100
+    step: 0.1
+    mode: box
+    unit_of_measurement: "%"
+
+  plantinator_bewasserung_p2_feuchte_nach_guss:
+    name: Plantinator Bewasserung P2 Feuchte nach Guss
+    icon: mdi:water-percent
+    min: 0
+    max: 100
+    step: 0.1
+    mode: box
+    unit_of_measurement: "%"
+
+  plantinator_bewasserung_p3_feuchte_nach_guss:
+    name: Plantinator Bewasserung P3 Feuchte nach Guss
+    icon: mdi:water-percent
+    min: 0
+    max: 100
+    step: 0.1
+    mode: box
+    unit_of_measurement: "%"
+
+  plantinator_bewasserung_p4_feuchte_nach_guss:
+    name: Plantinator Bewasserung P4 Feuchte nach Guss
+    icon: mdi:water-percent
+    min: 0
+    max: 100
+    step: 0.1
+    mode: box
+    unit_of_measurement: "%"
+
+input_datetime:
+  plantinator_bewasserung_p1_letzter_feedback_zeitpunkt:
+    name: Plantinator Bewasserung P1 letzter Feedback Zeitpunkt
+    has_date: true
+    has_time: true
+
+  plantinator_bewasserung_p2_letzter_feedback_zeitpunkt:
+    name: Plantinator Bewasserung P2 letzter Feedback Zeitpunkt
+    has_date: true
+    has_time: true
+
+  plantinator_bewasserung_p3_letzter_feedback_zeitpunkt:
+    name: Plantinator Bewasserung P3 letzter Feedback Zeitpunkt
+    has_date: true
+    has_time: true
+
+  plantinator_bewasserung_p4_letzter_feedback_zeitpunkt:
+    name: Plantinator Bewasserung P4 letzter Feedback Zeitpunkt
+    has_date: true
+    has_time: true
+
+input_text:
+  plantinator_bewasserung_feedback_status:
+    name: Plantinator Bewasserung Feedback Status
+    icon: mdi:information-outline
+    max: 255
+
+template:
+  - sensor:
+      - name: Plantinator Bewasserung P1 Feuchteanstieg letzter Guss
+        unique_id: plantinator_bewasserung_p1_feuchteanstieg_letzter_guss
+        icon: mdi:chart-line
+        unit_of_measurement: "%"
+        state: >
+          {% set vor = states('input_number.plantinator_bewasserung_p1_feuchte_vor_guss') | float(0) %}
+          {% set nach = states('input_number.plantinator_bewasserung_p1_feuchte_nach_guss') | float(0) %}
+          {{ (nach - vor) | round(1) }}
+
+      - name: Plantinator Bewasserung P2 Feuchteanstieg letzter Guss
+        unique_id: plantinator_bewasserung_p2_feuchteanstieg_letzter_guss
+        icon: mdi:chart-line
+        unit_of_measurement: "%"
+        state: >
+          {% set vor = states('input_number.plantinator_bewasserung_p2_feuchte_vor_guss') | float(0) %}
+          {% set nach = states('input_number.plantinator_bewasserung_p2_feuchte_nach_guss') | float(0) %}
+          {{ (nach - vor) | round(1) }}
+
+      - name: Plantinator Bewasserung P3 Feuchteanstieg letzter Guss
+        unique_id: plantinator_bewasserung_p3_feuchteanstieg_letzter_guss
+        icon: mdi:chart-line
+        unit_of_measurement: "%"
+        state: >
+          {% set vor = states('input_number.plantinator_bewasserung_p3_feuchte_vor_guss') | float(0) %}
+          {% set nach = states('input_number.plantinator_bewasserung_p3_feuchte_nach_guss') | float(0) %}
+          {{ (nach - vor) | round(1) }}
+
+      - name: Plantinator Bewasserung P4 Feuchteanstieg letzter Guss
+        unique_id: plantinator_bewasserung_p4_feuchteanstieg_letzter_guss
+        icon: mdi:chart-line
+        unit_of_measurement: "%"
+        state: >
+          {% set vor = states('input_number.plantinator_bewasserung_p4_feuchte_vor_guss') | float(0) %}
+          {% set nach = states('input_number.plantinator_bewasserung_p4_feuchte_nach_guss') | float(0) %}
+          {{ (nach - vor) | round(1) }}
+
+      - name: Plantinator Bewasserung P1 berechnet ml pro Prozent letzter Guss
+        unique_id: plantinator_bewasserung_p1_berechnet_ml_pro_prozent_letzter_guss
+        icon: mdi:calculator-variant
+        unit_of_measurement: "ml/%"
+        state: >
+          {% set ml = states('input_number.plantinator_bewasserung_p1_letzter_normalguss_ml') | float(0) %}
+          {% set anstieg = states('sensor.plantinator_bewasserung_p1_feuchteanstieg_letzter_guss') | float(0) %}
+          {% if ml > 0 and anstieg > 0 %}
+            {{ (ml / anstieg) | round(1) }}
+          {% else %}
+            0
+          {% endif %}
+
+      - name: Plantinator Bewasserung P2 berechnet ml pro Prozent letzter Guss
+        unique_id: plantinator_bewasserung_p2_berechnet_ml_pro_prozent_letzter_guss
+        icon: mdi:calculator-variant
+        unit_of_measurement: "ml/%"
+        state: >
+          {% set ml = states('input_number.plantinator_bewasserung_p2_letzter_normalguss_ml') | float(0) %}
+          {% set anstieg = states('sensor.plantinator_bewasserung_p2_feuchteanstieg_letzter_guss') | float(0) %}
+          {% if ml > 0 and anstieg > 0 %}
+            {{ (ml / anstieg) | round(1) }}
+          {% else %}
+            0
+          {% endif %}
+
+      - name: Plantinator Bewasserung P3 berechnet ml pro Prozent letzter Guss
+        unique_id: plantinator_bewasserung_p3_berechnet_ml_pro_prozent_letzter_guss
+        icon: mdi:calculator-variant
+        unit_of_measurement: "ml/%"
+        state: >
+          {% set ml = states('input_number.plantinator_bewasserung_p3_letzter_normalguss_ml') | float(0) %}
+          {% set anstieg = states('sensor.plantinator_bewasserung_p3_feuchteanstieg_letzter_guss') | float(0) %}
+          {% if ml > 0 and anstieg > 0 %}
+            {{ (ml / anstieg) | round(1) }}
+          {% else %}
+            0
+          {% endif %}
+
+      - name: Plantinator Bewasserung P4 berechnet ml pro Prozent letzter Guss
+        unique_id: plantinator_bewasserung_p4_berechnet_ml_pro_prozent_letzter_guss
+        icon: mdi:calculator-variant
+        unit_of_measurement: "ml/%"
+        state: >
+          {% set ml = states('input_number.plantinator_bewasserung_p4_letzter_normalguss_ml') | float(0) %}
+          {% set anstieg = states('sensor.plantinator_bewasserung_p4_feuchteanstieg_letzter_guss') | float(0) %}
+          {% if ml > 0 and anstieg > 0 %}
+            {{ (ml / anstieg) | round(1) }}
+          {% else %}
+            0
+          {% endif %}
+
+      - name: Plantinator Bewasserung Feedback Status
+        unique_id: plantinator_bewasserung_feedback_status_sensor
+        icon: mdi:brain
+        state: "{{ states('input_text.plantinator_bewasserung_feedback_status') }}"
+        attributes:
+          p1_gelernt_ml_pro_prozent: "{{ states('input_number.plantinator_bewasserung_p1_gelernt_ml_pro_prozent') }}"
+          p2_gelernt_ml_pro_prozent: "{{ states('input_number.plantinator_bewasserung_p2_gelernt_ml_pro_prozent') }}"
+          p3_gelernt_ml_pro_prozent: "{{ states('input_number.plantinator_bewasserung_p3_gelernt_ml_pro_prozent') }}"
+          p4_gelernt_ml_pro_prozent: "{{ states('input_number.plantinator_bewasserung_p4_gelernt_ml_pro_prozent') }}"
+          p1_lernwert_gueltig: "{{ states('input_boolean.plantinator_bewasserung_p1_lernwert_gueltig') }}"
+          p2_lernwert_gueltig: "{{ states('input_boolean.plantinator_bewasserung_p2_lernwert_gueltig') }}"
+          p3_lernwert_gueltig: "{{ states('input_boolean.plantinator_bewasserung_p3_lernwert_gueltig') }}"
+          p4_lernwert_gueltig: "{{ states('input_boolean.plantinator_bewasserung_p4_lernwert_gueltig') }}"
+
+script:
+  plantinator_bewasserung_feedback_standardwerte_setzen:
+    alias: Plantinator Bewasserung Feedback Standardwerte setzen
+    icon: mdi:database-import
+    mode: single
+    sequence:
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_feedback_wartezeit_minuten
+        data:
+          value: 4
+
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_feedback_lernrate_prozent
+        data:
+          value: 30
+
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_feedback_min_anstieg_prozent
+        data:
+          value: 2
+
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_feedback_min_ml_pro_prozent
+        data:
+          value: 20
+
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_feedback_max_ml_pro_prozent
+        data:
+          value: 250
+
+      - service: input_number.set_value
+        target:
+          entity_id:
+            - input_number.plantinator_bewasserung_p1_gelernt_ml_pro_prozent
+            - input_number.plantinator_bewasserung_p2_gelernt_ml_pro_prozent
+            - input_number.plantinator_bewasserung_p3_gelernt_ml_pro_prozent
+            - input_number.plantinator_bewasserung_p4_gelernt_ml_pro_prozent
+        data:
+          value: 100
+
+      - service: input_boolean.turn_off
+        target:
+          entity_id:
+            - input_boolean.plantinator_bewasserung_p1_lernwert_gueltig
+            - input_boolean.plantinator_bewasserung_p2_lernwert_gueltig
+            - input_boolean.plantinator_bewasserung_p3_lernwert_gueltig
+            - input_boolean.plantinator_bewasserung_p4_lernwert_gueltig
+            - input_boolean.plantinator_bewasserung_p1_feedback_ausstehend
+            - input_boolean.plantinator_bewasserung_p2_feedback_ausstehend
+            - input_boolean.plantinator_bewasserung_p3_feedback_ausstehend
+            - input_boolean.plantinator_bewasserung_p4_feedback_ausstehend
+
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_feedback_status
+        data:
+          value: bereit
+
+  plantinator_bewasserung_feedback_vor_guss_speichern:
+    alias: Plantinator Bewasserung Feedback vor Guss speichern
+    icon: mdi:content-save
+    mode: queued
+    fields:
+      pflanze:
+        name: Pflanze
+        required: true
+        selector:
+          number:
+            min: 1
+            max: 4
+            step: 1
+      menge_ml:
+        name: Menge ml
+        required: true
+        selector:
+          number:
+            min: 0
+            max: 5000
+            step: 1
+    sequence:
+      - variables:
+          p: "{{ pflanze | int }}"
+          ml: "{{ menge_ml | float(0) }}"
+          feuchte_ent: "sensor.plantinator_bewasserung_p{{ pflanze | int }}_bodenfeuchte_wert"
+          feuchte_raw: "{{ states('sensor.plantinator_bewasserung_p' ~ (pflanze | int) ~ '_bodenfeuchte_wert') }}"
+          feuchte: "{{ states('sensor.plantinator_bewasserung_p' ~ (pflanze | int) ~ '_bodenfeuchte_wert') | float(0) }}"
+          feuchte_gueltig: >
+            {% set raw = states('sensor.plantinator_bewasserung_p' ~ (pflanze | int) ~ '_bodenfeuchte_wert') %}
+            {{ is_number(raw) and (raw | float(0)) >= 0 and (raw | float(0)) <= 100 }}
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ not feuchte_gueltig or ml <= 0 }}"
+            sequence:
+              - service: input_boolean.turn_off
+                target:
+                  entity_id: "input_boolean.plantinator_bewasserung_p{{ p }}_feedback_ausstehend"
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.plantinator_bewasserung_feedback_status
+                data:
+                  value: "vor_guss_ungueltig_p{{ p }}_sensor_{{ feuchte_raw }}"
+              - stop: "Bodenfeuchte oder Gussmenge für Feedback ungültig."
+
+      - service: input_boolean.turn_on
+        target:
+          entity_id: "input_boolean.plantinator_bewasserung_p{{ p }}_feedback_ausstehend"
+
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ p == 1 }}"
+            sequence:
+              - service: input_number.set_value
+                target:
+                  entity_id: input_number.plantinator_bewasserung_p1_feuchte_vor_guss
+                data:
+                  value: "{{ feuchte }}"
+              - service: input_number.set_value
+                target:
+                  entity_id: input_number.plantinator_bewasserung_p1_letzter_normalguss_ml
+                data:
+                  value: "{{ ml }}"
+          - conditions:
+              - condition: template
+                value_template: "{{ p == 2 }}"
+            sequence:
+              - service: input_number.set_value
+                target:
+                  entity_id: input_number.plantinator_bewasserung_p2_feuchte_vor_guss
+                data:
+                  value: "{{ feuchte }}"
+              - service: input_number.set_value
+                target:
+                  entity_id: input_number.plantinator_bewasserung_p2_letzter_normalguss_ml
+                data:
+                  value: "{{ ml }}"
+          - conditions:
+              - condition: template
+                value_template: "{{ p == 3 }}"
+            sequence:
+              - service: input_number.set_value
+                target:
+                  entity_id: input_number.plantinator_bewasserung_p3_feuchte_vor_guss
+                data:
+                  value: "{{ feuchte }}"
+              - service: input_number.set_value
+                target:
+                  entity_id: input_number.plantinator_bewasserung_p3_letzter_normalguss_ml
+                data:
+                  value: "{{ ml }}"
+          - conditions:
+              - condition: template
+                value_template: "{{ p == 4 }}"
+            sequence:
+              - service: input_number.set_value
+                target:
+                  entity_id: input_number.plantinator_bewasserung_p4_feuchte_vor_guss
+                data:
+                  value: "{{ feuchte }}"
+              - service: input_number.set_value
+                target:
+                  entity_id: input_number.plantinator_bewasserung_p4_letzter_normalguss_ml
+                data:
+                  value: "{{ ml }}"
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_feedback_status
+        data:
+          value: "vor_guss_p{{ p }}_{{ ml | round(0) | int }}ml_{{ feuchte | round(1) }}prozent"
+
+  plantinator_bewasserung_feedback_nach_guss_auswerten:
+    alias: Plantinator Bewasserung Feedback nach Guss auswerten
+    icon: mdi:brain
+    mode: queued
+    fields:
+      pflanze:
+        name: Pflanze
+        required: true
+        selector:
+          number:
+            min: 1
+            max: 4
+            step: 1
+    sequence:
+      - variables:
+          p: "{{ pflanze | int }}"
+          feuchte_raw: "{{ states('sensor.plantinator_bewasserung_p' ~ (pflanze | int) ~ '_bodenfeuchte_wert') }}"
+          feuchte: "{{ states('sensor.plantinator_bewasserung_p' ~ (pflanze | int) ~ '_bodenfeuchte_wert') | float(0) }}"
+          feuchte_gueltig: >
+            {% set raw = states('sensor.plantinator_bewasserung_p' ~ (pflanze | int) ~ '_bodenfeuchte_wert') %}
+            {{ is_number(raw) and (raw | float(0)) >= 0 and (raw | float(0)) <= 100 }}
+          lernrate: "{{ (states('input_number.plantinator_bewasserung_feedback_lernrate_prozent') | float(30)) / 100 }}"
+          min_anstieg: "{{ states('input_number.plantinator_bewasserung_feedback_min_anstieg_prozent') | float(2) }}"
+          min_mlp: "{{ states('input_number.plantinator_bewasserung_feedback_min_ml_pro_prozent') | float(20) }}"
+          max_mlp: "{{ states('input_number.plantinator_bewasserung_feedback_max_ml_pro_prozent') | float(250) }}"
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ not is_state('input_boolean.plantinator_bewasserung_p' ~ p ~ '_feedback_ausstehend', 'on')
+                     or not feuchte_gueltig
+                     or min_mlp > max_mlp
+                     or lernrate <= 0
+                     or lernrate > 1 }}
+            sequence:
+              - service: input_boolean.turn_off
+                target:
+                  entity_id: "input_boolean.plantinator_bewasserung_p{{ p }}_feedback_ausstehend"
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.plantinator_bewasserung_feedback_status
+                data:
+                  value: >
+                    {{ 'feedback_parameter_ungueltig'
+                       if min_mlp > max_mlp or lernrate <= 0 or lernrate > 1
+                       else 'feedback_transaktion_fehlt_p' ~ p
+                       if not is_state('input_boolean.plantinator_bewasserung_p' ~ p ~ '_feedback_ausstehend', 'on')
+                       else 'nach_guss_ungueltig_p' ~ p ~ '_sensor_' ~ feuchte_raw }}
+              - stop: "Feedback-Transaktion oder Bodenfeuchte ungültig."
+
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ p == 1 }}"
+            sequence:
+              - variables:
+                  vor: "{{ states('input_number.plantinator_bewasserung_p1_feuchte_vor_guss') | float(0) }}"
+                  ml: "{{ states('input_number.plantinator_bewasserung_p1_letzter_normalguss_ml') | float(0) }}"
+                  alt: >
+                    {{ states('input_number.plantinator_bewasserung_p1_gelernt_ml_pro_prozent') | float(100)
+                       if is_state('input_boolean.plantinator_bewasserung_p1_lernwert_gueltig', 'on')
+                       else states('input_number.plantinator_bewasserung_startwert_ml_pro_prozent') | float(35) }}
+                  anstieg: "{{ feuchte - (states('input_number.plantinator_bewasserung_p1_feuchte_vor_guss') | float(0)) }}"
+                  berechnet: >
+                    {% set a = feuchte - (states('input_number.plantinator_bewasserung_p1_feuchte_vor_guss') | float(0)) %}
+                    {% set ml = states('input_number.plantinator_bewasserung_p1_letzter_normalguss_ml') | float(0) %}
+                    {% if a > 0 and ml > 0 %}{{ ml / a }}{% else %}0{% endif %}
+                  begrenzt: "{{ [[berechnet | float(0), min_mlp | float(20)] | max, max_mlp | float(250)] | min }}"
+                  neu: "{{ ((alt | float(100)) * (1 - (lernrate | float(0.3))) + (begrenzt | float(100)) * (lernrate | float(0.3))) | round(1) }}"
+              - service: input_number.set_value
+                target:
+                  entity_id: input_number.plantinator_bewasserung_p1_feuchte_nach_guss
+                data:
+                  value: "{{ feuchte }}"
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ anstieg | float(0) >= min_anstieg | float(2) and ml | float(0) > 0 }}"
+                    sequence:
+                      - service: input_number.set_value
+                        target:
+                          entity_id: input_number.plantinator_bewasserung_p1_gelernt_ml_pro_prozent
+                        data:
+                          value: "{{ neu }}"
+                      - service: input_boolean.turn_on
+                        target:
+                          entity_id: input_boolean.plantinator_bewasserung_p1_lernwert_gueltig
+                      - service: input_text.set_value
+                        target:
+                          entity_id: input_text.plantinator_bewasserung_feedback_status
+                        data:
+                          value: "p1_gelernt_{{ neu }}ml_prozent_anstieg{{ anstieg | float(0) | round(1) }}"
+                default:
+                  - service: input_text.set_value
+                    target:
+                      entity_id: input_text.plantinator_bewasserung_feedback_status
+                    data:
+                      value: "p1_nicht_gelernt_anstieg_zu_klein_{{ anstieg | float(0) | round(1) }}"
+              - service: input_datetime.set_datetime
+                target:
+                  entity_id: input_datetime.plantinator_bewasserung_p1_letzter_feedback_zeitpunkt
+                data:
+                  datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+
+          - conditions:
+              - condition: template
+                value_template: "{{ p == 2 }}"
+            sequence:
+              - variables:
+                  vor: "{{ states('input_number.plantinator_bewasserung_p2_feuchte_vor_guss') | float(0) }}"
+                  ml: "{{ states('input_number.plantinator_bewasserung_p2_letzter_normalguss_ml') | float(0) }}"
+                  alt: >
+                    {{ states('input_number.plantinator_bewasserung_p2_gelernt_ml_pro_prozent') | float(100)
+                       if is_state('input_boolean.plantinator_bewasserung_p2_lernwert_gueltig', 'on')
+                       else states('input_number.plantinator_bewasserung_startwert_ml_pro_prozent') | float(35) }}
+                  anstieg: "{{ feuchte - (states('input_number.plantinator_bewasserung_p2_feuchte_vor_guss') | float(0)) }}"
+                  berechnet: >
+                    {% set a = feuchte - (states('input_number.plantinator_bewasserung_p2_feuchte_vor_guss') | float(0)) %}
+                    {% set ml = states('input_number.plantinator_bewasserung_p2_letzter_normalguss_ml') | float(0) %}
+                    {% if a > 0 and ml > 0 %}{{ ml / a }}{% else %}0{% endif %}
+                  begrenzt: "{{ [[berechnet | float(0), min_mlp | float(20)] | max, max_mlp | float(250)] | min }}"
+                  neu: "{{ ((alt | float(100)) * (1 - (lernrate | float(0.3))) + (begrenzt | float(100)) * (lernrate | float(0.3))) | round(1) }}"
+              - service: input_number.set_value
+                target:
+                  entity_id: input_number.plantinator_bewasserung_p2_feuchte_nach_guss
+                data:
+                  value: "{{ feuchte }}"
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ anstieg | float(0) >= min_anstieg | float(2) and ml | float(0) > 0 }}"
+                    sequence:
+                      - service: input_number.set_value
+                        target:
+                          entity_id: input_number.plantinator_bewasserung_p2_gelernt_ml_pro_prozent
+                        data:
+                          value: "{{ neu }}"
+                      - service: input_boolean.turn_on
+                        target:
+                          entity_id: input_boolean.plantinator_bewasserung_p2_lernwert_gueltig
+                      - service: input_text.set_value
+                        target:
+                          entity_id: input_text.plantinator_bewasserung_feedback_status
+                        data:
+                          value: "p2_gelernt_{{ neu }}ml_prozent_anstieg{{ anstieg | float(0) | round(1) }}"
+                default:
+                  - service: input_text.set_value
+                    target:
+                      entity_id: input_text.plantinator_bewasserung_feedback_status
+                    data:
+                      value: "p2_nicht_gelernt_anstieg_zu_klein_{{ anstieg | float(0) | round(1) }}"
+              - service: input_datetime.set_datetime
+                target:
+                  entity_id: input_datetime.plantinator_bewasserung_p2_letzter_feedback_zeitpunkt
+                data:
+                  datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+
+          - conditions:
+              - condition: template
+                value_template: "{{ p == 3 }}"
+            sequence:
+              - variables:
+                  vor: "{{ states('input_number.plantinator_bewasserung_p3_feuchte_vor_guss') | float(0) }}"
+                  ml: "{{ states('input_number.plantinator_bewasserung_p3_letzter_normalguss_ml') | float(0) }}"
+                  alt: >
+                    {{ states('input_number.plantinator_bewasserung_p3_gelernt_ml_pro_prozent') | float(100)
+                       if is_state('input_boolean.plantinator_bewasserung_p3_lernwert_gueltig', 'on')
+                       else states('input_number.plantinator_bewasserung_startwert_ml_pro_prozent') | float(35) }}
+                  anstieg: "{{ feuchte - (states('input_number.plantinator_bewasserung_p3_feuchte_vor_guss') | float(0)) }}"
+                  berechnet: >
+                    {% set a = feuchte - (states('input_number.plantinator_bewasserung_p3_feuchte_vor_guss') | float(0)) %}
+                    {% set ml = states('input_number.plantinator_bewasserung_p3_letzter_normalguss_ml') | float(0) %}
+                    {% if a > 0 and ml > 0 %}{{ ml / a }}{% else %}0{% endif %}
+                  begrenzt: "{{ [[berechnet | float(0), min_mlp | float(20)] | max, max_mlp | float(250)] | min }}"
+                  neu: "{{ ((alt | float(100)) * (1 - (lernrate | float(0.3))) + (begrenzt | float(100)) * (lernrate | float(0.3))) | round(1) }}"
+              - service: input_number.set_value
+                target:
+                  entity_id: input_number.plantinator_bewasserung_p3_feuchte_nach_guss
+                data:
+                  value: "{{ feuchte }}"
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ anstieg | float(0) >= min_anstieg | float(2) and ml | float(0) > 0 }}"
+                    sequence:
+                      - service: input_number.set_value
+                        target:
+                          entity_id: input_number.plantinator_bewasserung_p3_gelernt_ml_pro_prozent
+                        data:
+                          value: "{{ neu }}"
+                      - service: input_boolean.turn_on
+                        target:
+                          entity_id: input_boolean.plantinator_bewasserung_p3_lernwert_gueltig
+                      - service: input_text.set_value
+                        target:
+                          entity_id: input_text.plantinator_bewasserung_feedback_status
+                        data:
+                          value: "p3_gelernt_{{ neu }}ml_prozent_anstieg{{ anstieg | float(0) | round(1) }}"
+                default:
+                  - service: input_text.set_value
+                    target:
+                      entity_id: input_text.plantinator_bewasserung_feedback_status
+                    data:
+                      value: "p3_nicht_gelernt_anstieg_zu_klein_{{ anstieg | float(0) | round(1) }}"
+              - service: input_datetime.set_datetime
+                target:
+                  entity_id: input_datetime.plantinator_bewasserung_p3_letzter_feedback_zeitpunkt
+                data:
+                  datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+
+          - conditions:
+              - condition: template
+                value_template: "{{ p == 4 }}"
+            sequence:
+              - variables:
+                  vor: "{{ states('input_number.plantinator_bewasserung_p4_feuchte_vor_guss') | float(0) }}"
+                  ml: "{{ states('input_number.plantinator_bewasserung_p4_letzter_normalguss_ml') | float(0) }}"
+                  alt: >
+                    {{ states('input_number.plantinator_bewasserung_p4_gelernt_ml_pro_prozent') | float(100)
+                       if is_state('input_boolean.plantinator_bewasserung_p4_lernwert_gueltig', 'on')
+                       else states('input_number.plantinator_bewasserung_startwert_ml_pro_prozent') | float(35) }}
+                  anstieg: "{{ feuchte - (states('input_number.plantinator_bewasserung_p4_feuchte_vor_guss') | float(0)) }}"
+                  berechnet: >
+                    {% set a = feuchte - (states('input_number.plantinator_bewasserung_p4_feuchte_vor_guss') | float(0)) %}
+                    {% set ml = states('input_number.plantinator_bewasserung_p4_letzter_normalguss_ml') | float(0) %}
+                    {% if a > 0 and ml > 0 %}{{ ml / a }}{% else %}0{% endif %}
+                  begrenzt: "{{ [[berechnet | float(0), min_mlp | float(20)] | max, max_mlp | float(250)] | min }}"
+                  neu: "{{ ((alt | float(100)) * (1 - (lernrate | float(0.3))) + (begrenzt | float(100)) * (lernrate | float(0.3))) | round(1) }}"
+              - service: input_number.set_value
+                target:
+                  entity_id: input_number.plantinator_bewasserung_p4_feuchte_nach_guss
+                data:
+                  value: "{{ feuchte }}"
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ anstieg | float(0) >= min_anstieg | float(2) and ml | float(0) > 0 }}"
+                    sequence:
+                      - service: input_number.set_value
+                        target:
+                          entity_id: input_number.plantinator_bewasserung_p4_gelernt_ml_pro_prozent
+                        data:
+                          value: "{{ neu }}"
+                      - service: input_boolean.turn_on
+                        target:
+                          entity_id: input_boolean.plantinator_bewasserung_p4_lernwert_gueltig
+                      - service: input_text.set_value
+                        target:
+                          entity_id: input_text.plantinator_bewasserung_feedback_status
+                        data:
+                          value: "p4_gelernt_{{ neu }}ml_prozent_anstieg{{ anstieg | float(0) | round(1) }}"
+                default:
+                  - service: input_text.set_value
+                    target:
+                      entity_id: input_text.plantinator_bewasserung_feedback_status
+                    data:
+                      value: "p4_nicht_gelernt_anstieg_zu_klein_{{ anstieg | float(0) | round(1) }}"
+              - service: input_datetime.set_datetime
+                target:
+                  entity_id: input_datetime.plantinator_bewasserung_p4_letzter_feedback_zeitpunkt
+                data:
+                  datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+
+      - service: input_boolean.turn_off
+        target:
+          entity_id: "input_boolean.plantinator_bewasserung_p{{ p }}_feedback_ausstehend"
+
+automation:
+  - id: plantinator_bewasserung_feedback_normalguss_fertig_auswerten
+    alias: Plantinator Bewasserung Feedback - Normalguss fertig auswerten
+    mode: queued
+    trigger:
+      - platform: state
+        entity_id: sensor.plantinator_bewasserung_exec_status
+    condition:
+      - condition: template
+        value_template: "{{ trigger.to_state.state is match('^normalguss_fertig_p[1-4]_[0-9]+ml_[0-9]+$') }}"
+    action:
+      - variables:
+          status: "{{ trigger.to_state.state }}"
+          p: "{{ status.split('_p')[1].split('_')[0] | int }}"
+          warte_min: "{{ states('input_number.plantinator_bewasserung_feedback_wartezeit_minuten') | int(4) }}"
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_feedback_status
+        data:
+          value: "warte_auf_stabilisierung_p{{ p }}_{{ warte_min }}min"
+      - delay:
+          minutes: "{{ warte_min }}"
+      - service: script.plantinator_bewasserung_feedback_nach_guss_auswerten
+        data:
+          pflanze: "{{ p }}"

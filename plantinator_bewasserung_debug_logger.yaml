@@ -1,0 +1,427 @@
+############################################################
+# PLANTINATOR BEWASSERUNG - DEBUG LOGGER V7
+# Datei: plantinator_bewasserung_debug_logger_v7.yaml
+#
+# Zweck:
+# - Schreibt Bewässerungs-Debug-Snapshots in die bestehende
+#   File-Notify-Entität notify.plantinator_status.
+# - Leert die Ziel-Datei NUR beim Einschalten des Debug-Logger-Schalters.
+# - Danach werden Snapshots normal angehängt.
+# - Keine Steuerlogik.
+# - Keine Pumpe/Ventile.
+#
+# Wichtig:
+# - Home Assistant meldete:
+#   "unbekannte Aktion: notify.plantinator_status"
+# - Deshalb nutzt diese Version:
+#   service: notify.send_message
+#   target:
+#     entity_id: notify.plantinator_status
+#
+# Ziel-Datei laut Nutzer:
+# - /config/plantinator_diag/plantinator_v3_snapshot.txt
+#
+# Hinweis:
+# - Alte Debug-Logger V1 bis V6 deaktivieren oder löschen.
+# - Nur diese V7 aktiv lassen.
+# - V7 protokolliert zusätzlich Alarm, Sensoralter, Umweltwerte
+#   und die bewusst begrenzten Umweltfaktoren.
+############################################################
+
+shell_command:
+  plantinator_bewasserung_debug_logdatei_leeren: "mkdir -p /config/plantinator_diag && truncate -s 0 /config/plantinator_diag/plantinator_v3_snapshot.txt"
+
+input_boolean:
+  plantinator_bewasserung_debug_logger_aktiv:
+    name: Plantinator Bewasserung Debug Logger aktiv
+    icon: mdi:file-document-edit-outline
+
+input_number:
+  plantinator_bewasserung_debug_logger_intervall_sekunden:
+    name: Plantinator Bewasserung Debug Logger Intervall Sekunden
+    icon: mdi:timer-outline
+    min: 5
+    max: 300
+    step: 5
+    mode: box
+    unit_of_measurement: "s"
+
+input_text:
+  plantinator_bewasserung_debug_logger_status:
+    name: Plantinator Bewasserung Debug Logger Status
+    icon: mdi:information-outline
+    max: 255
+
+  plantinator_bewasserung_debug_logger_letzte_meldung:
+    name: Plantinator Bewasserung Debug Logger letzte Meldung
+    icon: mdi:history
+    max: 255
+
+input_button:
+  plantinator_bewasserung_debug_log_test:
+    name: Plantinator Bewasserung Debug Test schreiben
+    icon: mdi:file-check-outline
+
+  plantinator_bewasserung_debug_log_einmal:
+    name: Plantinator Bewasserung Debug Snapshot schreiben
+    icon: mdi:file-export-outline
+
+  plantinator_bewasserung_debug_logdatei_leeren:
+    name: Plantinator Bewasserung Debug Logdatei leeren
+    icon: mdi:file-remove-outline
+
+template:
+  - sensor:
+      - name: Plantinator Bewasserung Debug Logger Status
+        unique_id: plantinator_bewasserung_debug_logger_status_sensor
+        icon: mdi:file-document-edit-outline
+        state: "{{ states('input_text.plantinator_bewasserung_debug_logger_status') }}"
+        attributes:
+          aktiv: "{{ states('input_boolean.plantinator_bewasserung_debug_logger_aktiv') }}"
+          intervall_sekunden: "{{ states('input_number.plantinator_bewasserung_debug_logger_intervall_sekunden') }}"
+          notify_entity: "notify.plantinator_status"
+          zielpfad: "/config/plantinator_diag/plantinator_v3_snapshot.txt"
+          letzte_meldung: "{{ states('input_text.plantinator_bewasserung_debug_logger_letzte_meldung') }}"
+
+      - name: Plantinator Bewasserung Debug Kernstatus
+        unique_id: plantinator_bewasserung_debug_kernstatus
+        icon: mdi:bug-check-outline
+        state: >
+          {% set grund = states('sensor.plantinator_bewasserung_auto_grundfreigabe') %}
+          {% set nextp = states('sensor.plantinator_bewasserung_auto_naechste_pflanze') | int(0) %}
+          {% set auto = states('sensor.plantinator_bewasserung_auto_status') %}
+          {% if grund == 'frei' and nextp in [1,2,3,4] and auto == 'kein_guss_faellig' %}
+            widerspruch_auto_check
+          {% elif grund != 'frei' %}
+            blockiert_{{ grund }}
+          {% elif nextp in [1,2,3,4] %}
+            bereit_p{{ nextp }}
+          {% else %}
+            kein_guss
+          {% endif %}
+        attributes:
+          auto_status: "{{ states('sensor.plantinator_bewasserung_auto_status') }}"
+          auto_grundfreigabe: "{{ states('sensor.plantinator_bewasserung_auto_grundfreigabe') }}"
+          auto_crop_freigabe: "{{ states('sensor.plantinator_bewasserung_auto_crop_freigabe') }}"
+          auto_naechste_pflanze_raw: "{{ states('sensor.plantinator_bewasserung_auto_naechste_pflanze') }}"
+          auto_naechste_pflanze_int: "{{ states('sensor.plantinator_bewasserung_auto_naechste_pflanze') | int(0) }}"
+          gesamt_gussbedarf: "{{ states('sensor.plantinator_bewasserung_gesamt_gussbedarf') }}"
+          exec_freigabe: "{{ states('sensor.plantinator_bewasserung_exec_freigabe') }}"
+          shot_exec_freigabe: "{{ states('sensor.plantinator_bewasserung_shot_exec_freigabe') }}"
+          alarm_status: "{{ states('sensor.plantinator_bewasserung_alarm_status') }}"
+          kritischer_systemstatus: "{{ states('sensor.plantinator_bewasserung_kritischer_systemstatus') }}"
+          sensoralter_status: "{{ states('sensor.plantinator_bewasserung_sensoralter_status') }}"
+          umwelt_faktor: "{{ states('sensor.plantinator_bewasserung_umwelt_faktor') }}"
+          p1_auto_freigabe: "{{ states('sensor.plantinator_bewasserung_auto_p1_freigabe') }}"
+          p2_auto_freigabe: "{{ states('sensor.plantinator_bewasserung_auto_p2_freigabe') }}"
+          p3_auto_freigabe: "{{ states('sensor.plantinator_bewasserung_auto_p3_freigabe') }}"
+          p4_auto_freigabe: "{{ states('sensor.plantinator_bewasserung_auto_p4_freigabe') }}"
+
+script:
+  plantinator_bewasserung_debug_logger_standardwerte_setzen:
+    alias: Plantinator Bewasserung Debug Logger Standardwerte setzen
+    icon: mdi:database-import
+    mode: single
+    sequence:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.plantinator_bewasserung_debug_logger_aktiv
+
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_debug_logger_intervall_sekunden
+        data:
+          value: 60
+
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_debug_logger_status
+        data:
+          value: bereit_datei_wird_beim_einschalten_geleert
+
+  plantinator_bewasserung_debug_logdatei_leeren:
+    alias: Plantinator Bewasserung Debug Logdatei leeren
+    icon: mdi:file-remove-outline
+    mode: single
+    sequence:
+      - service: shell_command.plantinator_bewasserung_debug_logdatei_leeren
+
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_debug_logger_status
+        data:
+          value: "logdatei_geleert_{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+
+  plantinator_bewasserung_debug_log_test_schreiben:
+    alias: Plantinator Bewasserung Debug Test schreiben
+    icon: mdi:file-check-outline
+    mode: single
+    sequence:
+      - variables:
+          timestamp: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+
+      - service: notify.send_message
+        target:
+          entity_id: notify.plantinator_status
+        data:
+          message: >
+            PLANTINATOR BEWASSERUNG DEBUG TEST
+            Zeit={{ now().strftime('%Y-%m-%d %H:%M:%S') }}
+            Testeintrag. Die Datei wird nur beim Einschalten des Debug-Logger-Schalters geleert.
+
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_debug_logger_status
+        data:
+          value: "test_geschrieben_{{ timestamp }}"
+
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_debug_logger_letzte_meldung
+        data:
+          value: "test_notify_{{ timestamp }}"
+
+  plantinator_bewasserung_debug_log_schreiben:
+    alias: Plantinator Bewasserung Debug Log schreiben
+    icon: mdi:file-export-outline
+    mode: queued
+    max: 50
+    sequence:
+      - variables:
+          timestamp: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+          nextp_raw: "{{ states('sensor.plantinator_bewasserung_auto_naechste_pflanze') }}"
+          nextp_int: "{{ states('sensor.plantinator_bewasserung_auto_naechste_pflanze') | int(0) }}"
+          grund: "{{ states('sensor.plantinator_bewasserung_auto_grundfreigabe') }}"
+
+      - service: notify.send_message
+        target:
+          entity_id: notify.plantinator_status
+        data:
+          message: >
+            ############################################################
+            PLANTINATOR BEWASSERUNG DEBUG SNAPSHOT
+            Zeit={{ now().strftime('%Y-%m-%d %H:%M:%S') }}
+            ############################################################
+
+            SYSTEM
+            debug_logger_aktiv={{ states('input_boolean.plantinator_bewasserung_debug_logger_aktiv') }}
+            hauptschalter={{ states('input_boolean.plantinator_bewasserung_aktiv') }}
+            automatik={{ states('input_boolean.plantinator_bewasserung_automatik') }}
+            auto_controller_aktiv={{ states('input_boolean.plantinator_bewasserung_auto_controller_aktiv') }}
+            sperre={{ states('input_boolean.plantinator_bewasserung_sperre') }}
+            wasserstand_verwenden={{ states('input_boolean.plantinator_bewasserung_wasserstand_verwenden') }}
+            wasserstand_status={{ states('sensor.plantinator_bewasserung_wasserstand_status_gemappt') }}
+
+            BASIS
+            mapping_status={{ states('sensor.plantinator_bewasserung_mapping_status') }}
+            profil_status={{ states('sensor.plantinator_bewasserung_profil_status') }}
+            debug_kernstatus={{ states('sensor.plantinator_bewasserung_debug_kernstatus') }}
+
+            SICHERHEIT
+            alarm_status={{ states('sensor.plantinator_bewasserung_alarm_status') }}
+            alarm_verriegelt={{ states('input_boolean.plantinator_bewasserung_alarm_verriegelt') }}
+            alarm_grund={{ states('input_text.plantinator_bewasserung_alarm_grund') }}
+            kritischer_systemstatus={{ states('sensor.plantinator_bewasserung_kritischer_systemstatus') }}
+            sensoralter_status={{ states('sensor.plantinator_bewasserung_sensoralter_status') }}
+            sensor_max_alter_min={{ states('input_number.plantinator_bewasserung_sensor_max_alter_minuten') }}
+
+            AUTO
+            auto_status_sensor={{ states('sensor.plantinator_bewasserung_auto_status') }}
+            auto_status_input={{ states('input_text.plantinator_bewasserung_auto_status') }}
+            auto_grundfreigabe={{ states('sensor.plantinator_bewasserung_auto_grundfreigabe') }}
+            auto_crop_freigabe={{ states('sensor.plantinator_bewasserung_auto_crop_freigabe') }}
+            auto_naechste_pflanze_raw={{ states('sensor.plantinator_bewasserung_auto_naechste_pflanze') }}
+            auto_naechste_pflanze_int={{ states('sensor.plantinator_bewasserung_auto_naechste_pflanze') | int(0) }}
+            auto_next_is_1={{ (states('sensor.plantinator_bewasserung_auto_naechste_pflanze') | int(0)) == 1 }}
+            auto_next_is_2={{ (states('sensor.plantinator_bewasserung_auto_naechste_pflanze') | int(0)) == 2 }}
+            auto_next_is_3={{ (states('sensor.plantinator_bewasserung_auto_naechste_pflanze') | int(0)) == 3 }}
+            auto_next_is_4={{ (states('sensor.plantinator_bewasserung_auto_naechste_pflanze') | int(0)) == 4 }}
+            gesamt_gussbedarf={{ states('sensor.plantinator_bewasserung_gesamt_gussbedarf') }}
+            letzte_auto_pflanze={{ states('input_text.plantinator_bewasserung_auto_letzte_pflanze') }}
+            letzter_gezaehlter_status={{ states('input_text.plantinator_bewasserung_auto_letzter_gezaehlter_status') }}
+            auto_intervall_min={{ states('input_number.plantinator_bewasserung_auto_check_intervall_minuten') }}
+            auto_mindestpause_min={{ states('input_number.plantinator_bewasserung_auto_mindestpause_pflanze_minuten') }}
+            auto_letzter_check={{ states('input_datetime.plantinator_bewasserung_auto_letzter_check') }}
+            tageszaehler_datum={{ states('input_text.plantinator_bewasserung_auto_tageszaehler_datum') }}
+
+            EXEC
+            exec_freigabe={{ states('sensor.plantinator_bewasserung_exec_freigabe') }}
+            exec_status_sensor={{ states('sensor.plantinator_bewasserung_exec_status') }}
+            exec_status_input={{ states('input_text.plantinator_bewasserung_exec_status') }}
+            exec_laeuft={{ states('input_boolean.plantinator_bewasserung_exec_laeuft') }}
+            exec_abort={{ states('input_boolean.plantinator_bewasserung_exec_abort') }}
+            stop_generation={{ states('counter.plantinator_bewasserung_stop_generation') }}
+
+            MESS_DRAIN
+            status={{ states('sensor.plantinator_bewasserung_mess_drain_status') }}
+            laufstatus={{ states('input_text.plantinator_bewasserung_mess_drain_lauf_status') }}
+            laeuft={{ states('input_boolean.plantinator_bewasserung_mess_drain_laeuft') }}
+            stop_anforderung={{ states('input_boolean.plantinator_bewasserung_mess_drain_stop_anforderung') }}
+            drain_bestaetigt={{ states('input_boolean.plantinator_bewasserung_mess_drain_drain_bestaetigt') }}
+            aktive_pflanze={{ states('input_number.plantinator_bewasserung_mess_drain_aktive_pflanze') }}
+            abgegeben_ml={{ states('input_number.plantinator_bewasserung_mess_drain_abgegeben_ml') }}
+
+            SHOT_EXEC
+            shot_exec_freigabe={{ states('sensor.plantinator_bewasserung_shot_exec_freigabe') }}
+            shot_exec_status_sensor={{ states('sensor.plantinator_bewasserung_shot_exec_status') }}
+            shot_exec_status_input={{ states('input_text.plantinator_bewasserung_shot_exec_status') }}
+            shot_exec_laeuft={{ states('input_boolean.plantinator_bewasserung_shot_exec_laeuft') }}
+            shot_exec_reserviert={{ states('input_boolean.plantinator_bewasserung_shot_exec_reserviert') }}
+            shot_exec_stop_anforderung={{ states('input_boolean.plantinator_bewasserung_shot_exec_stop_anforderung') }}
+
+            CROP
+            crop_stage={{ states('sensor.plantinator_bewasserung_crop_stage') }}
+            crop_modus={{ states('sensor.plantinator_bewasserung_crop_steering_modus') }}
+            crop_faktor={{ states('sensor.plantinator_bewasserung_crop_steering_faktor') }}
+            crop_tagesphase={{ states('sensor.plantinator_bewasserung_crop_tagesphase') }}
+            crop_normalguss_erlaubnis={{ states('sensor.plantinator_bewasserung_crop_normalguss_erlaubnis') }}
+
+            UMWELT_MONITORING
+            beobachtung_mapping={{ states('sensor.plantinator_bewasserung_beobachtung_mapping_status') }}
+            klima_sensorstatus={{ states('sensor.plantinator_bewasserung_klima_sensorstatus') }}
+            licht_sensorstatus={{ states('sensor.plantinator_bewasserung_licht_sensorstatus') }}
+            zulauf_sensorstatus={{ states('sensor.plantinator_bewasserung_zulauf_sensorstatus') }}
+            lufttemperatur_c={{ states('sensor.plantinator_bewasserung_lufttemperatur') }}
+            luftfeuchtigkeit_prozent={{ states('sensor.plantinator_bewasserung_luftfeuchtigkeit') }}
+            vpd_kpa={{ states('sensor.plantinator_bewasserung_vpd') }}
+            ppfd={{ states('sensor.plantinator_bewasserung_ppfd') }}
+            dli_aktuell={{ states('sensor.plantinator_bewasserung_dli') }}
+            dli_letzter_lichttag={{ states('input_number.plantinator_bewasserung_letzte_dli') }}
+            zulauf_ec={{ states('sensor.plantinator_bewasserung_zulauf_ec') }}
+            zulauf_ph={{ states('sensor.plantinator_bewasserung_zulauf_ph') }}
+            zulauf_temperatur_c={{ states('sensor.plantinator_bewasserung_zulauf_temperatur') }}
+            klima_faktor_roh={{ states('sensor.plantinator_bewasserung_klima_faktor_roh') }}
+            klima_einfluss_prozent={{ states('input_number.plantinator_bewasserung_klima_einfluss_prozent') }}
+            licht_faktor_roh={{ states('sensor.plantinator_bewasserung_licht_faktor_roh') }}
+            licht_einfluss_prozent={{ states('input_number.plantinator_bewasserung_licht_einfluss_prozent') }}
+            zulauf_faktor_roh={{ states('sensor.plantinator_bewasserung_zulauf_faktor_roh') }}
+            zulauf_einfluss_prozent={{ states('input_number.plantinator_bewasserung_zulauf_einfluss_prozent') }}
+            umwelt_faktor={{ states('sensor.plantinator_bewasserung_umwelt_faktor') }}
+            umwelt_faktor_status={{ states('sensor.plantinator_bewasserung_umwelt_faktor_status') }}
+            umwelt_max_korrektur_prozent={{ states('input_number.plantinator_bewasserung_umwelt_max_korrektur_prozent') }}
+
+            PFLANZEN
+            {% for p in [1,2,3,4] %}
+            P{{ p }}
+            aktiv={{ states('input_boolean.plantinator_bewasserung_p' ~ p ~ '_aktiv') }}
+            ventil={{ states('input_text.plantinator_bewasserung_p' ~ p ~ '_ventil_entity') }}
+            ventil_status={{ states('sensor.plantinator_bewasserung_p' ~ p ~ '_ventil_status_gemappt') }}
+            bodenfeuchte={{ states('sensor.plantinator_bewasserung_p' ~ p ~ '_bodenfeuchte_wert') }}
+            bodentemp={{ states('sensor.plantinator_bewasserung_p' ~ p ~ '_bodentemperatur_wert') }}
+            sensoralter_min={{ states('sensor.plantinator_bewasserung_p' ~ p ~ '_sensoralter') }}
+            dryback_1h={{ states('sensor.plantinator_bewasserung_p' ~ p ~ '_dryback_1h') }}
+            nacht_dryback={{ states('sensor.plantinator_bewasserung_p' ~ p ~ '_nacht_dryback') }}
+            feuchtezustand={{ states('sensor.plantinator_bewasserung_p' ~ p ~ '_feuchtezustand') }}
+            gussbedarf={{ states('sensor.plantinator_bewasserung_p' ~ p ~ '_gussbedarf') }}
+            empfehlung_ml={{ states('sensor.plantinator_bewasserung_p' ~ p ~ '_empfehlung_normalguss_ml') }}
+            auto_freigabe={{ states('sensor.plantinator_bewasserung_auto_p' ~ p ~ '_freigabe') }}
+            heute_ml={{ states('input_number.plantinator_bewasserung_p' ~ p ~ '_heute_ml') }}
+            feedback_ausstehend={{ states('input_boolean.plantinator_bewasserung_p' ~ p ~ '_feedback_ausstehend') }}
+            lernwert_gueltig={{ states('input_boolean.plantinator_bewasserung_p' ~ p ~ '_lernwert_gueltig') }}
+            shot_plan={{ states('sensor.plantinator_bewasserung_p' ~ p ~ '_shot_plan') }}
+            shot_anzahl={{ state_attr('sensor.plantinator_bewasserung_p' ~ p ~ '_shot_plan', 'shot_anzahl') }}
+            shot_sequence_ml={{ state_attr('sensor.plantinator_bewasserung_p' ~ p ~ '_shot_plan', 'shot_sequence_ml') }}
+            geplante_gesamtmenge_ml={{ state_attr('sensor.plantinator_bewasserung_p' ~ p ~ '_shot_plan', 'geplante_gesamtmenge_ml') }}
+            {% endfor %}
+
+            ############################################################
+            END SNAPSHOT
+            ############################################################
+
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_debug_logger_status
+        data:
+          value: "snapshot_geschrieben_{{ timestamp }}"
+
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_debug_logger_letzte_meldung
+        data:
+          value: "snapshot_nextp{{ nextp_raw }}_int{{ nextp_int }}_grund{{ grund }}_{{ timestamp }}"
+
+automation:
+  - id: plantinator_bewasserung_debug_logger_einschalten_datei_leeren
+    alias: Plantinator Bewasserung Debug - beim Einschalten Datei leeren
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_boolean.plantinator_bewasserung_debug_logger_aktiv
+        from: "off"
+        to: "on"
+    action:
+      - service: shell_command.plantinator_bewasserung_debug_logdatei_leeren
+
+      - delay:
+          seconds: 1
+
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_debug_logger_status
+        data:
+          value: "logdatei_beim_einschalten_geleert_{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+
+      - service: script.plantinator_bewasserung_debug_log_schreiben
+
+  - id: plantinator_bewasserung_debug_logdatei_leeren_button
+    alias: Plantinator Bewasserung Debug - Logdatei leeren Button
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_button.plantinator_bewasserung_debug_logdatei_leeren
+    action:
+      - service: script.plantinator_bewasserung_debug_logdatei_leeren
+
+  - id: plantinator_bewasserung_debug_periodisch_loggen
+    alias: Plantinator Bewasserung Debug - periodisch loggen
+    mode: single
+    trigger:
+      - platform: time_pattern
+        seconds: "/5"
+    condition:
+      - condition: template
+        value_template: "{{ is_state('input_boolean.plantinator_bewasserung_debug_logger_aktiv', 'on') }}"
+      - condition: template
+        value_template: >
+          {% set intervall = states('input_number.plantinator_bewasserung_debug_logger_intervall_sekunden') | int(60) %}
+          {% set intervall = 60 if intervall < 5 else intervall %}
+          {{ ((as_timestamp(now()) | int) % intervall) < 5 }}
+    action:
+      - service: script.plantinator_bewasserung_debug_log_schreiben
+
+  - id: plantinator_bewasserung_debug_button_test_loggen
+    alias: Plantinator Bewasserung Debug - Button Test loggen
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_button.plantinator_bewasserung_debug_log_test
+    action:
+      - service: script.plantinator_bewasserung_debug_log_test_schreiben
+
+  - id: plantinator_bewasserung_debug_button_snapshot_loggen
+    alias: Plantinator Bewasserung Debug - Button Snapshot loggen
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_button.plantinator_bewasserung_debug_log_einmal
+    action:
+      - service: script.plantinator_bewasserung_debug_log_schreiben
+
+  - id: plantinator_bewasserung_debug_auto_statuswechsel_loggen
+    alias: Plantinator Bewasserung Debug - Auto Statuswechsel loggen
+    mode: queued
+    trigger:
+      - platform: state
+        entity_id:
+          - input_text.plantinator_bewasserung_auto_status
+          - sensor.plantinator_bewasserung_auto_naechste_pflanze
+          - sensor.plantinator_bewasserung_auto_grundfreigabe
+          - sensor.plantinator_bewasserung_exec_freigabe
+          - sensor.plantinator_bewasserung_shot_exec_freigabe
+          - sensor.plantinator_bewasserung_shot_exec_status
+          - sensor.plantinator_bewasserung_exec_status
+    condition:
+      - condition: template
+        value_template: "{{ is_state('input_boolean.plantinator_bewasserung_debug_logger_aktiv', 'on') }}"
+    action:
+      - service: script.plantinator_bewasserung_debug_log_schreiben

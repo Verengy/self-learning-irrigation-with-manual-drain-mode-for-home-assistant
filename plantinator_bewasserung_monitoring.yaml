@@ -1,0 +1,1234 @@
+############################################################
+# PLANTINATOR BEWASSERUNG - MONITORING UND ALARM V1
+#
+# Zweck:
+# - Quittierbare, persistente Alarmverriegelung
+# - Altersprüfung der Pflichtsensoren Bodenfeuchte/Bodentemperatur
+# - Protokollierung von Zulauf EC/pH/Temperatur
+# - Protokollierung von VPD, PPFD, DLI und Dryback
+# - Optionaler, gewichteter Umweltfaktor für Normalguss
+#
+# Wichtig:
+# - Dryback greift noch NICHT in die Steuerung ein.
+# - Klima, Licht und Zulauf wirken erst bei Einfluss > 0 %.
+# - Fehlende Beobachtungswerte bleiben neutral.
+# - Max-Guss und Tageslimit bleiben harte Grenzen.
+# - Ein kritischer Fehler verriegelt alle Pumpenabläufe bis
+#   die Ursache behoben und der Alarm bewusst quittiert wurde.
+############################################################
+
+input_boolean:
+  plantinator_bewasserung_alarm_verriegelt:
+    name: Plantinator Bewasserung Alarm verriegelt
+    icon: mdi:alarm-light
+
+input_number:
+  plantinator_bewasserung_sensor_max_alter_minuten:
+    name: Plantinator Bewasserung Sensor maximaler Wertalter
+    icon: mdi:timer-alert-outline
+    min: 15
+    max: 240
+    step: 5
+    mode: box
+    unit_of_measurement: "min"
+
+  plantinator_bewasserung_klima_einfluss_prozent:
+    name: Plantinator Bewasserung Klima Einfluss
+    icon: mdi:cloud-percent
+    min: 0
+    max: 100
+    step: 5
+    mode: box
+    unit_of_measurement: "%"
+  plantinator_bewasserung_licht_einfluss_prozent:
+    name: Plantinator Bewasserung Licht Einfluss
+    icon: mdi:white-balance-sunny
+    min: 0
+    max: 100
+    step: 5
+    mode: box
+    unit_of_measurement: "%"
+  plantinator_bewasserung_zulauf_einfluss_prozent:
+    name: Plantinator Bewasserung Zulauf Einfluss
+    icon: mdi:water-thermometer
+    min: 0
+    max: 100
+    step: 5
+    mode: box
+    unit_of_measurement: "%"
+  plantinator_bewasserung_umwelt_max_korrektur_prozent:
+    name: Plantinator Bewasserung Umwelt maximale Korrektur
+    icon: mdi:tune-vertical
+    min: 0
+    max: 30
+    step: 1
+    mode: box
+    unit_of_measurement: "%"
+
+  plantinator_bewasserung_vpd_referenz:
+    name: Plantinator Bewasserung VPD Referenz
+    icon: mdi:cloud-percent
+    min: 0.2
+    max: 3
+    step: 0.05
+    mode: box
+    unit_of_measurement: "kPa"
+  plantinator_bewasserung_ppfd_referenz:
+    name: Plantinator Bewasserung PPFD Referenz
+    icon: mdi:white-balance-sunny
+    min: 50
+    max: 1500
+    step: 25
+    mode: box
+    unit_of_measurement: "µmol/m²/s"
+  plantinator_bewasserung_dli_referenz:
+    name: Plantinator Bewasserung DLI Referenz
+    icon: mdi:weather-sunny
+    min: 1
+    max: 80
+    step: 1
+    mode: box
+    unit_of_measurement: "mol/m²/d"
+  plantinator_bewasserung_zulauf_ec_referenz:
+    name: Plantinator Bewasserung Zulauf EC Referenz
+    icon: mdi:flash
+    min: 0.1
+    max: 5
+    step: 0.05
+    mode: box
+    unit_of_measurement: "mS/cm"
+  plantinator_bewasserung_zulauf_ph_referenz:
+    name: Plantinator Bewasserung Zulauf pH Referenz
+    icon: mdi:ph
+    min: 4
+    max: 8
+    step: 0.05
+    mode: box
+  plantinator_bewasserung_zulauf_temperatur_referenz:
+    name: Plantinator Bewasserung Zulauf Temperatur Referenz
+    icon: mdi:thermometer-water
+    min: 5
+    max: 30
+    step: 0.5
+    mode: box
+    unit_of_measurement: "°C"
+
+  plantinator_bewasserung_ppfd_integral_lichtstart:
+    name: Plantinator Bewasserung PPFD Integral bei Lichtstart
+    icon: mdi:counter
+    min: 0
+    max: 100000000
+    step: 0.1
+    mode: box
+  plantinator_bewasserung_letzte_dli:
+    name: Plantinator Bewasserung letzte abgeschlossene DLI
+    icon: mdi:weather-sunset
+    min: 0
+    max: 150
+    step: 0.01
+    mode: box
+    unit_of_measurement: "mol/m²/d"
+
+  plantinator_bewasserung_p1_nacht_dryback_start:
+    name: Plantinator Bewasserung P1 Nacht-Dryback Start
+    icon: mdi:moon-waning-crescent
+    min: 0
+    max: 100
+    step: 0.1
+    mode: box
+    unit_of_measurement: "%"
+  plantinator_bewasserung_p2_nacht_dryback_start:
+    name: Plantinator Bewasserung P2 Nacht-Dryback Start
+    icon: mdi:moon-waning-crescent
+    min: 0
+    max: 100
+    step: 0.1
+    mode: box
+    unit_of_measurement: "%"
+  plantinator_bewasserung_p3_nacht_dryback_start:
+    name: Plantinator Bewasserung P3 Nacht-Dryback Start
+    icon: mdi:moon-waning-crescent
+    min: 0
+    max: 100
+    step: 0.1
+    mode: box
+    unit_of_measurement: "%"
+  plantinator_bewasserung_p4_nacht_dryback_start:
+    name: Plantinator Bewasserung P4 Nacht-Dryback Start
+    icon: mdi:moon-waning-crescent
+    min: 0
+    max: 100
+    step: 0.1
+    mode: box
+    unit_of_measurement: "%"
+
+  plantinator_bewasserung_p1_letzter_nacht_dryback:
+    name: Plantinator Bewasserung P1 letzter Nacht-Dryback
+    icon: mdi:chart-line-variant
+    min: 0
+    max: 100
+    step: 0.1
+    mode: box
+    unit_of_measurement: "%"
+  plantinator_bewasserung_p2_letzter_nacht_dryback:
+    name: Plantinator Bewasserung P2 letzter Nacht-Dryback
+    icon: mdi:chart-line-variant
+    min: 0
+    max: 100
+    step: 0.1
+    mode: box
+    unit_of_measurement: "%"
+  plantinator_bewasserung_p3_letzter_nacht_dryback:
+    name: Plantinator Bewasserung P3 letzter Nacht-Dryback
+    icon: mdi:chart-line-variant
+    min: 0
+    max: 100
+    step: 0.1
+    mode: box
+    unit_of_measurement: "%"
+  plantinator_bewasserung_p4_letzter_nacht_dryback:
+    name: Plantinator Bewasserung P4 letzter Nacht-Dryback
+    icon: mdi:chart-line-variant
+    min: 0
+    max: 100
+    step: 0.1
+    mode: box
+    unit_of_measurement: "%"
+
+input_text:
+  plantinator_bewasserung_alarm_grund:
+    name: Plantinator Bewasserung Alarm Grund
+    icon: mdi:alert-circle
+    max: 255
+
+input_datetime:
+  plantinator_bewasserung_alarm_zeit:
+    name: Plantinator Bewasserung Alarm Zeit
+    has_date: true
+    has_time: true
+
+input_button:
+  plantinator_bewasserung_alarm_quittieren:
+    name: Plantinator Bewasserung Alarm quittieren
+    icon: mdi:check-decagram
+
+sensor:
+  # PPFD [µmol/m²/s] wird zunächst in PPFD-Stunden integriert.
+  # Das Tagesdelta wird unten mit 0,0036 in mol/m²/Tag umgerechnet.
+  - platform: integration
+    source: sensor.plantinator_bewasserung_ppfd_fuer_integration
+    name: Plantinator Bewasserung PPFD Stundenintegral
+    unique_id: plantinator_bewasserung_ppfd_stundenintegral
+    unit_time: h
+    method: left
+    round: 4
+    max_sub_interval:
+      minutes: 5
+
+  - platform: statistics
+    name: Plantinator Bewasserung P1 Feuchte Aenderung 1h
+    unique_id: plantinator_bewasserung_p1_feuchte_aenderung_1h
+    entity_id: sensor.plantinator_bewasserung_p1_bodenfeuchte_wert
+    state_characteristic: change
+    max_age:
+      hours: 1
+    sampling_size: 500
+    precision: 2
+
+  - platform: statistics
+    name: Plantinator Bewasserung P2 Feuchte Aenderung 1h
+    unique_id: plantinator_bewasserung_p2_feuchte_aenderung_1h
+    entity_id: sensor.plantinator_bewasserung_p2_bodenfeuchte_wert
+    state_characteristic: change
+    max_age:
+      hours: 1
+    sampling_size: 500
+    precision: 2
+
+  - platform: statistics
+    name: Plantinator Bewasserung P3 Feuchte Aenderung 1h
+    unique_id: plantinator_bewasserung_p3_feuchte_aenderung_1h
+    entity_id: sensor.plantinator_bewasserung_p3_bodenfeuchte_wert
+    state_characteristic: change
+    max_age:
+      hours: 1
+    sampling_size: 500
+    precision: 2
+
+  - platform: statistics
+    name: Plantinator Bewasserung P4 Feuchte Aenderung 1h
+    unique_id: plantinator_bewasserung_p4_feuchte_aenderung_1h
+    entity_id: sensor.plantinator_bewasserung_p4_bodenfeuchte_wert
+    state_characteristic: change
+    max_age:
+      hours: 1
+    sampling_size: 500
+    precision: 2
+
+template:
+  - sensor:
+      - name: Plantinator Bewasserung Klima Sensorstatus
+        unique_id: plantinator_bewasserung_klima_sensorstatus
+        icon: mdi:cloud-alert
+        state: >
+          {% set t = states('input_text.plantinator_bewasserung_lufttemperatur_entity') | trim %}
+          {% set h = states('input_text.plantinator_bewasserung_luftfeuchtigkeit_entity') | trim %}
+          {% set grenze = states('input_number.plantinator_bewasserung_sensor_max_alter_minuten') | float(15) %}
+          {% if t == '' or h == '' %}
+            nicht_konfiguriert
+          {% elif not t.startswith('sensor.') or not h.startswith('sensor.')
+                or not has_value(t) or not has_value(h)
+                or not is_number(states(t)) or not is_number(states(h)) %}
+            ungueltig
+          {% else %}
+            {% set tzeit = states[t].last_reported if states[t].last_reported is defined else states[t].last_updated %}
+            {% set hzeit = states[h].last_reported if states[h].last_reported is defined else states[h].last_updated %}
+            {% set talter = [0, (as_timestamp(now()) - as_timestamp(tzeit)) / 60] | max %}
+            {% set halter = [0, (as_timestamp(now()) - as_timestamp(hzeit)) / 60] | max %}
+            {{ 'veraltet' if talter > grenze or halter > grenze else 'ok' }}
+          {% endif %}
+        attributes:
+          max_alter_minuten: "{{ states('input_number.plantinator_bewasserung_sensor_max_alter_minuten') }}"
+          lufttemperatur_entity: "{{ states('input_text.plantinator_bewasserung_lufttemperatur_entity') | trim }}"
+          luftfeuchtigkeit_entity: "{{ states('input_text.plantinator_bewasserung_luftfeuchtigkeit_entity') | trim }}"
+
+      - name: Plantinator Bewasserung Licht Sensorstatus
+        unique_id: plantinator_bewasserung_licht_sensorstatus
+        icon: mdi:white-balance-sunny
+        state: >
+          {% set ent = states('input_text.plantinator_bewasserung_ppfd_entity') | trim %}
+          {% set grenze = states('input_number.plantinator_bewasserung_sensor_max_alter_minuten') | float(15) %}
+          {% if ent == '' %}
+            nicht_konfiguriert
+          {% elif not ent.startswith('sensor.') or not has_value(ent) or not is_number(states(ent)) %}
+            ungueltig
+          {% else %}
+            {% set zeit = states[ent].last_reported if states[ent].last_reported is defined else states[ent].last_updated %}
+            {% set alter = [0, (as_timestamp(now()) - as_timestamp(zeit)) / 60] | max %}
+            {{ 'veraltet' if alter > grenze else 'ok' }}
+          {% endif %}
+        attributes:
+          max_alter_minuten: "{{ states('input_number.plantinator_bewasserung_sensor_max_alter_minuten') }}"
+          ppfd_entity: "{{ states('input_text.plantinator_bewasserung_ppfd_entity') | trim }}"
+
+      - name: Plantinator Bewasserung Zulauf Sensorstatus
+        unique_id: plantinator_bewasserung_zulauf_sensorstatus
+        icon: mdi:water-alert
+        state: >
+          {% set grenze = states('input_number.plantinator_bewasserung_sensor_max_alter_minuten') | float(15) %}
+          {% set ents = [
+            states('input_text.plantinator_bewasserung_zulauf_ec_entity') | trim,
+            states('input_text.plantinator_bewasserung_zulauf_ph_entity') | trim,
+            states('input_text.plantinator_bewasserung_zulauf_temperatur_entity') | trim
+          ] %}
+          {% set ns = namespace(status='ok') %}
+          {% if '' in ents %}
+            nicht_konfiguriert
+          {% else %}
+            {% for ent in ents %}
+              {% if ns.status == 'ok' %}
+                {% if not ent.startswith('sensor.') or not has_value(ent) or not is_number(states(ent)) %}
+                  {% set ns.status = 'ungueltig' %}
+                {% else %}
+                  {% set zeit = states[ent].last_reported if states[ent].last_reported is defined else states[ent].last_updated %}
+                  {% set alter = [0, (as_timestamp(now()) - as_timestamp(zeit)) / 60] | max %}
+                  {% if alter > grenze %}
+                    {% set ns.status = 'veraltet' %}
+                  {% endif %}
+                {% endif %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.status }}
+          {% endif %}
+        attributes:
+          max_alter_minuten: "{{ states('input_number.plantinator_bewasserung_sensor_max_alter_minuten') }}"
+          ec_entity: "{{ states('input_text.plantinator_bewasserung_zulauf_ec_entity') | trim }}"
+          ph_entity: "{{ states('input_text.plantinator_bewasserung_zulauf_ph_entity') | trim }}"
+          temperatur_entity: "{{ states('input_text.plantinator_bewasserung_zulauf_temperatur_entity') | trim }}"
+
+      - name: Plantinator Bewasserung PPFD fuer Integration
+        unique_id: plantinator_bewasserung_ppfd_fuer_integration
+        icon: mdi:white-balance-sunny
+        unit_of_measurement: "µmol/m²/s"
+        state_class: measurement
+        state: >
+          {% if is_state('sensor.plantinator_bewasserung_lichtstatus', 'tag')
+                and is_state('sensor.plantinator_bewasserung_licht_sensorstatus', 'ok')
+                and is_number(states('sensor.plantinator_bewasserung_ppfd')) %}
+            {{ states('sensor.plantinator_bewasserung_ppfd') | float(0) }}
+          {% else %}
+            0
+          {% endif %}
+        attributes:
+          quelle: sensor.plantinator_bewasserung_ppfd
+          sicherheitsverhalten: Nur am Lichttag; bei fehlendem oder veraltetem PPFD wird 0 integriert.
+
+      - name: Plantinator Bewasserung P1 Sensoralter
+        unique_id: plantinator_bewasserung_p1_sensoralter
+        icon: mdi:timer-sand
+        unit_of_measurement: "min"
+        state_class: measurement
+        state: >
+          {% set f = states('input_text.plantinator_bewasserung_p1_bodenfeuchte_entity') | trim %}
+          {% set t = states('input_text.plantinator_bewasserung_p1_bodentemperatur_entity') | trim %}
+          {% if f.startswith('sensor.') and t.startswith('sensor.') and has_value(f) and has_value(t)
+                and is_number(states(f)) and is_number(states(t)) %}
+            {% set fzeit = states[f].last_reported if states[f].last_reported is defined else states[f].last_updated %}
+            {% set tzeit = states[t].last_reported if states[t].last_reported is defined else states[t].last_updated %}
+            {% set fa = [0, (as_timestamp(now()) - as_timestamp(fzeit)) / 60] | max %}
+            {% set ta = [0, (as_timestamp(now()) - as_timestamp(tzeit)) / 60] | max %}
+            {{ [fa, ta] | max | round(1) }}
+          {% else %}
+            unknown
+          {% endif %}
+        attributes:
+          bodenfeuchte_alter_minuten: >
+            {% set ent = states('input_text.plantinator_bewasserung_p1_bodenfeuchte_entity') | trim %}
+            {% if ent.startswith('sensor.') and has_value(ent) and is_number(states(ent)) %}
+              {% set zeit = states[ent].last_reported if states[ent].last_reported is defined else states[ent].last_updated %}
+              {{ [0, (as_timestamp(now()) - as_timestamp(zeit)) / 60] | max | round(1) }}
+            {% else %}
+              unknown
+            {% endif %}
+          bodentemperatur_alter_minuten: >
+            {% set ent = states('input_text.plantinator_bewasserung_p1_bodentemperatur_entity') | trim %}
+            {% if ent.startswith('sensor.') and has_value(ent) and is_number(states(ent)) %}
+              {% set zeit = states[ent].last_reported if states[ent].last_reported is defined else states[ent].last_updated %}
+              {{ [0, (as_timestamp(now()) - as_timestamp(zeit)) / 60] | max | round(1) }}
+            {% else %}
+              unknown
+            {% endif %}
+
+      - name: Plantinator Bewasserung P2 Sensoralter
+        unique_id: plantinator_bewasserung_p2_sensoralter
+        icon: mdi:timer-sand
+        unit_of_measurement: "min"
+        state_class: measurement
+        state: >
+          {% set f = states('input_text.plantinator_bewasserung_p2_bodenfeuchte_entity') | trim %}
+          {% set t = states('input_text.plantinator_bewasserung_p2_bodentemperatur_entity') | trim %}
+          {% if f.startswith('sensor.') and t.startswith('sensor.') and has_value(f) and has_value(t)
+                and is_number(states(f)) and is_number(states(t)) %}
+            {% set fzeit = states[f].last_reported if states[f].last_reported is defined else states[f].last_updated %}
+            {% set tzeit = states[t].last_reported if states[t].last_reported is defined else states[t].last_updated %}
+            {% set fa = [0, (as_timestamp(now()) - as_timestamp(fzeit)) / 60] | max %}
+            {% set ta = [0, (as_timestamp(now()) - as_timestamp(tzeit)) / 60] | max %}
+            {{ [fa, ta] | max | round(1) }}
+          {% else %}
+            unknown
+          {% endif %}
+        attributes:
+          bodenfeuchte_alter_minuten: >
+            {% set ent = states('input_text.plantinator_bewasserung_p2_bodenfeuchte_entity') | trim %}
+            {% if ent.startswith('sensor.') and has_value(ent) and is_number(states(ent)) %}
+              {% set zeit = states[ent].last_reported if states[ent].last_reported is defined else states[ent].last_updated %}
+              {{ [0, (as_timestamp(now()) - as_timestamp(zeit)) / 60] | max | round(1) }}
+            {% else %}
+              unknown
+            {% endif %}
+          bodentemperatur_alter_minuten: >
+            {% set ent = states('input_text.plantinator_bewasserung_p2_bodentemperatur_entity') | trim %}
+            {% if ent.startswith('sensor.') and has_value(ent) and is_number(states(ent)) %}
+              {% set zeit = states[ent].last_reported if states[ent].last_reported is defined else states[ent].last_updated %}
+              {{ [0, (as_timestamp(now()) - as_timestamp(zeit)) / 60] | max | round(1) }}
+            {% else %}
+              unknown
+            {% endif %}
+
+      - name: Plantinator Bewasserung P3 Sensoralter
+        unique_id: plantinator_bewasserung_p3_sensoralter
+        icon: mdi:timer-sand
+        unit_of_measurement: "min"
+        state_class: measurement
+        state: >
+          {% set f = states('input_text.plantinator_bewasserung_p3_bodenfeuchte_entity') | trim %}
+          {% set t = states('input_text.plantinator_bewasserung_p3_bodentemperatur_entity') | trim %}
+          {% if f.startswith('sensor.') and t.startswith('sensor.') and has_value(f) and has_value(t)
+                and is_number(states(f)) and is_number(states(t)) %}
+            {% set fzeit = states[f].last_reported if states[f].last_reported is defined else states[f].last_updated %}
+            {% set tzeit = states[t].last_reported if states[t].last_reported is defined else states[t].last_updated %}
+            {% set fa = [0, (as_timestamp(now()) - as_timestamp(fzeit)) / 60] | max %}
+            {% set ta = [0, (as_timestamp(now()) - as_timestamp(tzeit)) / 60] | max %}
+            {{ [fa, ta] | max | round(1) }}
+          {% else %}
+            unknown
+          {% endif %}
+        attributes:
+          bodenfeuchte_alter_minuten: >
+            {% set ent = states('input_text.plantinator_bewasserung_p3_bodenfeuchte_entity') | trim %}
+            {% if ent.startswith('sensor.') and has_value(ent) and is_number(states(ent)) %}
+              {% set zeit = states[ent].last_reported if states[ent].last_reported is defined else states[ent].last_updated %}
+              {{ [0, (as_timestamp(now()) - as_timestamp(zeit)) / 60] | max | round(1) }}
+            {% else %}
+              unknown
+            {% endif %}
+          bodentemperatur_alter_minuten: >
+            {% set ent = states('input_text.plantinator_bewasserung_p3_bodentemperatur_entity') | trim %}
+            {% if ent.startswith('sensor.') and has_value(ent) and is_number(states(ent)) %}
+              {% set zeit = states[ent].last_reported if states[ent].last_reported is defined else states[ent].last_updated %}
+              {{ [0, (as_timestamp(now()) - as_timestamp(zeit)) / 60] | max | round(1) }}
+            {% else %}
+              unknown
+            {% endif %}
+
+      - name: Plantinator Bewasserung P4 Sensoralter
+        unique_id: plantinator_bewasserung_p4_sensoralter
+        icon: mdi:timer-sand
+        unit_of_measurement: "min"
+        state_class: measurement
+        state: >
+          {% set f = states('input_text.plantinator_bewasserung_p4_bodenfeuchte_entity') | trim %}
+          {% set t = states('input_text.plantinator_bewasserung_p4_bodentemperatur_entity') | trim %}
+          {% if f.startswith('sensor.') and t.startswith('sensor.') and has_value(f) and has_value(t)
+                and is_number(states(f)) and is_number(states(t)) %}
+            {% set fzeit = states[f].last_reported if states[f].last_reported is defined else states[f].last_updated %}
+            {% set tzeit = states[t].last_reported if states[t].last_reported is defined else states[t].last_updated %}
+            {% set fa = [0, (as_timestamp(now()) - as_timestamp(fzeit)) / 60] | max %}
+            {% set ta = [0, (as_timestamp(now()) - as_timestamp(tzeit)) / 60] | max %}
+            {{ [fa, ta] | max | round(1) }}
+          {% else %}
+            unknown
+          {% endif %}
+        attributes:
+          bodenfeuchte_alter_minuten: >
+            {% set ent = states('input_text.plantinator_bewasserung_p4_bodenfeuchte_entity') | trim %}
+            {% if ent.startswith('sensor.') and has_value(ent) and is_number(states(ent)) %}
+              {% set zeit = states[ent].last_reported if states[ent].last_reported is defined else states[ent].last_updated %}
+              {{ [0, (as_timestamp(now()) - as_timestamp(zeit)) / 60] | max | round(1) }}
+            {% else %}
+              unknown
+            {% endif %}
+          bodentemperatur_alter_minuten: >
+            {% set ent = states('input_text.plantinator_bewasserung_p4_bodentemperatur_entity') | trim %}
+            {% if ent.startswith('sensor.') and has_value(ent) and is_number(states(ent)) %}
+              {% set zeit = states[ent].last_reported if states[ent].last_reported is defined else states[ent].last_updated %}
+              {{ [0, (as_timestamp(now()) - as_timestamp(zeit)) / 60] | max | round(1) }}
+            {% else %}
+              unknown
+            {% endif %}
+
+      - name: Plantinator Bewasserung Sensoralter Status
+        unique_id: plantinator_bewasserung_sensoralter_status
+        icon: mdi:timer-alert-outline
+        state: >
+          {% set grenze = states('input_number.plantinator_bewasserung_sensor_max_alter_minuten') | float(15) %}
+          {% set anzahl = states('input_number.plantinator_bewasserung_anzahl_pflanzen') | int(4) %}
+          {% set ns = namespace(status='ok') %}
+          {% for i in range(1, anzahl + 1) %}
+            {% if ns.status == 'ok' and is_state('input_boolean.plantinator_bewasserung_p' ~ i ~ '_aktiv', 'on') %}
+              {% set f = states('input_text.plantinator_bewasserung_p' ~ i ~ '_bodenfeuchte_entity') | trim %}
+              {% set t = states('input_text.plantinator_bewasserung_p' ~ i ~ '_bodentemperatur_entity') | trim %}
+              {% if not f.startswith('sensor.') or not has_value(f) or not is_number(states(f)) %}
+                {% set ns.status = 'p' ~ i ~ '_bodenfeuchte_ungueltig' %}
+              {% elif not t.startswith('sensor.') or not has_value(t) or not is_number(states(t)) %}
+                {% set ns.status = 'p' ~ i ~ '_bodentemperatur_ungueltig' %}
+              {% else %}
+                {% set fzeit = states[f].last_reported if states[f].last_reported is defined else states[f].last_updated %}
+                {% set tzeit = states[t].last_reported if states[t].last_reported is defined else states[t].last_updated %}
+                {% set fa = [0, (as_timestamp(now()) - as_timestamp(fzeit)) / 60] | max %}
+                {% set ta = [0, (as_timestamp(now()) - as_timestamp(tzeit)) / 60] | max %}
+                {% if fa > grenze %}
+                  {% set ns.status = 'p' ~ i ~ '_bodenfeuchte_veraltet' %}
+                {% elif ta > grenze %}
+                  {% set ns.status = 'p' ~ i ~ '_bodentemperatur_veraltet' %}
+                {% endif %}
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.status }}
+        attributes:
+          max_alter_minuten: "{{ states('input_number.plantinator_bewasserung_sensor_max_alter_minuten') }}"
+          p1_alter_minuten: "{{ states('sensor.plantinator_bewasserung_p1_sensoralter') }}"
+          p2_alter_minuten: "{{ states('sensor.plantinator_bewasserung_p2_sensoralter') }}"
+          p3_alter_minuten: "{{ states('sensor.plantinator_bewasserung_p3_sensoralter') }}"
+          p4_alter_minuten: "{{ states('sensor.plantinator_bewasserung_p4_sensoralter') }}"
+
+      - name: Plantinator Bewasserung VPD
+        unique_id: plantinator_bewasserung_vpd
+        icon: mdi:cloud-percent
+        unit_of_measurement: "kPa"
+        state_class: measurement
+        state: >
+          {% set traw = states('sensor.plantinator_bewasserung_lufttemperatur') %}
+          {% set hraw = states('sensor.plantinator_bewasserung_luftfeuchtigkeit') %}
+          {% if is_number(traw) and is_number(hraw) %}
+            {% set t = traw | float %}
+            {% set rh = hraw | float %}
+            {% if -20 <= t <= 60 and 0 <= rh <= 100 %}
+              {% set svp = 0.61078 * (e ** ((17.2694 * t) / (t + 237.3))) %}
+              {{ (svp * (1 - rh / 100)) | round(2) }}
+            {% else %}
+              unknown
+            {% endif %}
+          {% else %}
+            unknown
+          {% endif %}
+        attributes:
+          lufttemperatur: "{{ states('sensor.plantinator_bewasserung_lufttemperatur') }}"
+          luftfeuchtigkeit: "{{ states('sensor.plantinator_bewasserung_luftfeuchtigkeit') }}"
+          verwendung: protokollierung_und_optional_umweltfaktor
+
+      - name: Plantinator Bewasserung DLI
+        unique_id: plantinator_bewasserung_dli
+        icon: mdi:weather-sunny
+        unit_of_measurement: "mol/m²/d"
+        state_class: measurement
+        state: >
+          {% set integral = states('sensor.plantinator_bewasserung_ppfd_stundenintegral') %}
+          {% set start = states('input_number.plantinator_bewasserung_ppfd_integral_lichtstart') %}
+          {% if is_number(integral) and is_number(start) %}
+            {% set differenz = [0, (integral | float) - (start | float)] | max %}
+            {{ (differenz * 0.0036) | round(2) }}
+          {% else %}
+            unknown
+          {% endif %}
+        attributes:
+          ppfd_aktuell: "{{ states('sensor.plantinator_bewasserung_ppfd') }}"
+          ppfd_stundenintegral: "{{ states('sensor.plantinator_bewasserung_ppfd_stundenintegral') }}"
+          ppfd_integral_lichtstart: "{{ states('input_number.plantinator_bewasserung_ppfd_integral_lichtstart') }}"
+          letzte_abgeschlossene_dli: "{{ states('input_number.plantinator_bewasserung_letzte_dli') }}"
+          umrechnung: Differenz_PPFD_Stunden_seit_Lichtstart_x_0.0036
+          verwendung: protokollierung_und_optional_umweltfaktor
+
+      - name: Plantinator Bewasserung Klima Faktor Roh
+        unique_id: plantinator_bewasserung_klima_faktor_roh
+        icon: mdi:cloud-percent
+        state_class: measurement
+        state: >
+          {% set vpd = states('sensor.plantinator_bewasserung_vpd') %}
+          {% set ref = states('input_number.plantinator_bewasserung_vpd_referenz') | float(0) %}
+          {% if is_state('sensor.plantinator_bewasserung_klima_sensorstatus', 'ok')
+                and is_number(vpd) and ref > 0 %}
+            {{ [[(vpd | float) / ref, 0.70] | max, 1.30] | min | round(3) }}
+          {% else %}
+            1
+          {% endif %}
+        attributes:
+          vpd: "{{ states('sensor.plantinator_bewasserung_vpd') }}"
+          referenz: "{{ states('input_number.plantinator_bewasserung_vpd_referenz') }}"
+          rohbereich: "0.70 bis 1.30"
+
+      - name: Plantinator Bewasserung Licht Faktor Roh
+        unique_id: plantinator_bewasserung_licht_faktor_roh
+        icon: mdi:white-balance-sunny
+        state_class: measurement
+        state: >
+          {% set ppfd = states('sensor.plantinator_bewasserung_ppfd') %}
+          {% set ppfd_ref = states('input_number.plantinator_bewasserung_ppfd_referenz') | float(0) %}
+          {% set dli = states('sensor.plantinator_bewasserung_dli') %}
+          {% set dli_ref = states('input_number.plantinator_bewasserung_dli_referenz') | float(0) %}
+          {% set seit = states('sensor.plantinator_bewasserung_minuten_seit_licht_an') | int(-1) %}
+          {% set on_raw = states('sensor.plantinator_bewasserung_licht_an_roh') %}
+          {% set off_raw = states('sensor.plantinator_bewasserung_licht_aus_roh') %}
+          {% set ns = namespace(ppfd_f=-1, dli_f=-1) %}
+          {% if is_state('sensor.plantinator_bewasserung_licht_sensorstatus', 'ok')
+                and is_number(ppfd) and ppfd_ref > 0 %}
+            {% set ns.ppfd_f = [[(ppfd | float) / ppfd_ref, 0.70] | max, 1.30] | min %}
+          {% endif %}
+          {% if is_state('sensor.plantinator_bewasserung_licht_sensorstatus', 'ok')
+                and is_number(dli) and dli_ref > 0 and seit >= 60
+                and on_raw not in ['unknown', 'unavailable', 'none', '']
+                and off_raw not in ['unknown', 'unavailable', 'none', ''] %}
+            {% set onp = on_raw.split(':') %}
+            {% set offp = off_raw.split(':') %}
+            {% set onm = (onp[0] | int(0)) * 60 + (onp[1] | int(0)) %}
+            {% set offm = (offp[0] | int(0)) * 60 + (offp[1] | int(0)) %}
+            {% set dauer = offm - onm if offm > onm else offm + 1440 - onm %}
+            {% if dauer > 0 %}
+              {% set verstrichen = [seit, dauer] | min %}
+              {% set projektion = (dli | float) * dauer / verstrichen %}
+              {% set ns.dli_f = [[projektion / dli_ref, 0.70] | max, 1.30] | min %}
+            {% endif %}
+          {% endif %}
+          {% if ns.ppfd_f > 0 and ns.dli_f > 0 %}
+            {{ ((ns.ppfd_f + ns.dli_f) / 2) | round(3) }}
+          {% elif ns.ppfd_f > 0 %}
+            {{ ns.ppfd_f | round(3) }}
+          {% elif ns.dli_f > 0 %}
+            {{ ns.dli_f | round(3) }}
+          {% else %}
+            1
+          {% endif %}
+        attributes:
+          ppfd: "{{ states('sensor.plantinator_bewasserung_ppfd') }}"
+          ppfd_referenz: "{{ states('input_number.plantinator_bewasserung_ppfd_referenz') }}"
+          dli_aktuell: "{{ states('sensor.plantinator_bewasserung_dli') }}"
+          dli_referenz: "{{ states('input_number.plantinator_bewasserung_dli_referenz') }}"
+          hinweis: DLI wird nach mindestens 60 Minuten Licht auf den Lichttag hochgerechnet.
+          rohbereich: "0.70 bis 1.30"
+
+      - name: Plantinator Bewasserung Zulauf Faktor Roh
+        unique_id: plantinator_bewasserung_zulauf_faktor_roh
+        icon: mdi:water-thermometer
+        state_class: measurement
+        state: >
+          {% set ec = states('sensor.plantinator_bewasserung_zulauf_ec') %}
+          {% set ph = states('sensor.plantinator_bewasserung_zulauf_ph') %}
+          {% set temp = states('sensor.plantinator_bewasserung_zulauf_temperatur') %}
+          {% set ec_ref = states('input_number.plantinator_bewasserung_zulauf_ec_referenz') | float(0) %}
+          {% set ph_ref = states('input_number.plantinator_bewasserung_zulauf_ph_referenz') | float(0) %}
+          {% set temp_ref = states('input_number.plantinator_bewasserung_zulauf_temperatur_referenz') | float(0) %}
+          {% if is_state('sensor.plantinator_bewasserung_zulauf_sensorstatus', 'ok')
+                and is_number(ec) and is_number(ph) and is_number(temp)
+                and ec_ref > 0 and ph_ref > 0 and temp_ref > 0 %}
+            {% set ec_korr = [[(((ec | float) - ec_ref) / ec_ref) * 0.20, -0.10] | max, 0.10] | min %}
+            {% set ph_diff = ((ph | float) - ph_ref) | abs %}
+            {% set temp_diff = ((temp | float) - temp_ref) | abs %}
+            {% set ph_abzug = [[ph_diff * 0.03, 0] | max, 0.08] | min %}
+            {% set temp_abzug = [[(temp_diff / 10) * 0.03, 0] | max, 0.06] | min %}
+            {{ [[1 + ec_korr - ph_abzug - temp_abzug, 0.85] | max, 1.10] | min | round(3) }}
+          {% else %}
+            1
+          {% endif %}
+        attributes:
+          ec: "{{ states('sensor.plantinator_bewasserung_zulauf_ec') }}"
+          ec_referenz: "{{ states('input_number.plantinator_bewasserung_zulauf_ec_referenz') }}"
+          ph: "{{ states('sensor.plantinator_bewasserung_zulauf_ph') }}"
+          ph_referenz: "{{ states('input_number.plantinator_bewasserung_zulauf_ph_referenz') }}"
+          temperatur: "{{ states('sensor.plantinator_bewasserung_zulauf_temperatur') }}"
+          temperatur_referenz: "{{ states('input_number.plantinator_bewasserung_zulauf_temperatur_referenz') }}"
+          hinweis: >
+            Höhere EC erhöht den Rohfaktor nur leicht; pH- und
+            Temperaturabweichungen senken ihn konservativ.
+          rohbereich: "0.85 bis 1.10"
+
+      - name: Plantinator Bewasserung Umwelt Faktor
+        unique_id: plantinator_bewasserung_umwelt_faktor
+        icon: mdi:function-variant
+        state_class: measurement
+        state: >
+          {% set k = states('sensor.plantinator_bewasserung_klima_faktor_roh') | float(1) %}
+          {% set l = states('sensor.plantinator_bewasserung_licht_faktor_roh') | float(1) %}
+          {% set z = states('sensor.plantinator_bewasserung_zulauf_faktor_roh') | float(1) %}
+          {% set kw = (states('input_number.plantinator_bewasserung_klima_einfluss_prozent') | float(0)) / 100 %}
+          {% set lw = (states('input_number.plantinator_bewasserung_licht_einfluss_prozent') | float(0)) / 100 %}
+          {% set zw = (states('input_number.plantinator_bewasserung_zulauf_einfluss_prozent') | float(0)) / 100 %}
+          {% set maxk = (states('input_number.plantinator_bewasserung_umwelt_max_korrektur_prozent') | float(0)) / 100 %}
+          {% set klima_eff = 1 + (k - 1) * kw %}
+          {% set licht_eff = 1 + (l - 1) * lw %}
+          {% set zulauf_eff = 1 + (z - 1) * zw %}
+          {% set roh = klima_eff * licht_eff * zulauf_eff %}
+          {{ [[roh, 1 - maxk] | max, 1 + maxk] | min | round(3) }}
+        attributes:
+          formel: >
+            Produkt aus 1 + (Rohfaktor - 1) * Einfluss,
+            danach harte Begrenzung durch maximale Umweltkorrektur.
+          klima_roh: "{{ states('sensor.plantinator_bewasserung_klima_faktor_roh') }}"
+          klima_einfluss_prozent: "{{ states('input_number.plantinator_bewasserung_klima_einfluss_prozent') }}"
+          licht_roh: "{{ states('sensor.plantinator_bewasserung_licht_faktor_roh') }}"
+          licht_einfluss_prozent: "{{ states('input_number.plantinator_bewasserung_licht_einfluss_prozent') }}"
+          zulauf_roh: "{{ states('sensor.plantinator_bewasserung_zulauf_faktor_roh') }}"
+          zulauf_einfluss_prozent: "{{ states('input_number.plantinator_bewasserung_zulauf_einfluss_prozent') }}"
+          max_korrektur_prozent: "{{ states('input_number.plantinator_bewasserung_umwelt_max_korrektur_prozent') }}"
+          minimum: >
+            {{ (1 - (states('input_number.plantinator_bewasserung_umwelt_max_korrektur_prozent') | float(0) / 100)) | round(2) }}
+          maximum: >
+            {{ (1 + (states('input_number.plantinator_bewasserung_umwelt_max_korrektur_prozent') | float(0) / 100)) | round(2) }}
+
+      - name: Plantinator Bewasserung Umwelt Faktor Status
+        unique_id: plantinator_bewasserung_umwelt_faktor_status
+        icon: mdi:list-status
+        state: >
+          {% set kw = states('input_number.plantinator_bewasserung_klima_einfluss_prozent') | float(0) %}
+          {% set lw = states('input_number.plantinator_bewasserung_licht_einfluss_prozent') | float(0) %}
+          {% set zw = states('input_number.plantinator_bewasserung_zulauf_einfluss_prozent') | float(0) %}
+          {% set maxk = states('input_number.plantinator_bewasserung_umwelt_max_korrektur_prozent') | float(0) %}
+          {% if maxk <= 0 or (kw <= 0 and lw <= 0 and zw <= 0) %}
+            neutral_protokollierung
+          {% elif kw > 0 and not is_state('sensor.plantinator_bewasserung_klima_sensorstatus', 'ok') %}
+            teilweise_neutral_klima_{{ states('sensor.plantinator_bewasserung_klima_sensorstatus') }}
+          {% elif lw > 0 and not is_state('sensor.plantinator_bewasserung_licht_sensorstatus', 'ok') %}
+            teilweise_neutral_licht_{{ states('sensor.plantinator_bewasserung_licht_sensorstatus') }}
+          {% elif zw > 0 and not is_state('sensor.plantinator_bewasserung_zulauf_sensorstatus', 'ok') %}
+            teilweise_neutral_zulauf_{{ states('sensor.plantinator_bewasserung_zulauf_sensorstatus') }}
+          {% else %}
+            aktiv_begrenzt
+          {% endif %}
+        attributes:
+          faktor: "{{ states('sensor.plantinator_bewasserung_umwelt_faktor') }}"
+          steuerwirkung: >
+            Der Faktor wird in der Normalguss-Empfehlung nach Lernwert
+            und Crop-Faktor angewendet. Max-Guss und Tageslimit bleiben hart.
+
+      - name: Plantinator Bewasserung P1 Dryback 1h
+        unique_id: plantinator_bewasserung_p1_dryback_1h
+        icon: mdi:chart-line-variant
+        unit_of_measurement: "%"
+        state_class: measurement
+        state: >
+          {% set raw = states('sensor.plantinator_bewasserung_p1_feuchte_aenderung_1h') %}
+          {{ ([0, -(raw | float)] | max | round(2)) if is_number(raw) else 'unknown' }}
+        attributes:
+          feuchte_aenderung_1h: "{{ states('sensor.plantinator_bewasserung_p1_feuchte_aenderung_1h') }}"
+          verwendung: nur_protokollierung
+
+      - name: Plantinator Bewasserung P2 Dryback 1h
+        unique_id: plantinator_bewasserung_p2_dryback_1h
+        icon: mdi:chart-line-variant
+        unit_of_measurement: "%"
+        state_class: measurement
+        state: >
+          {% set raw = states('sensor.plantinator_bewasserung_p2_feuchte_aenderung_1h') %}
+          {{ ([0, -(raw | float)] | max | round(2)) if is_number(raw) else 'unknown' }}
+        attributes:
+          feuchte_aenderung_1h: "{{ states('sensor.plantinator_bewasserung_p2_feuchte_aenderung_1h') }}"
+          verwendung: nur_protokollierung
+
+      - name: Plantinator Bewasserung P3 Dryback 1h
+        unique_id: plantinator_bewasserung_p3_dryback_1h
+        icon: mdi:chart-line-variant
+        unit_of_measurement: "%"
+        state_class: measurement
+        state: >
+          {% set raw = states('sensor.plantinator_bewasserung_p3_feuchte_aenderung_1h') %}
+          {{ ([0, -(raw | float)] | max | round(2)) if is_number(raw) else 'unknown' }}
+        attributes:
+          feuchte_aenderung_1h: "{{ states('sensor.plantinator_bewasserung_p3_feuchte_aenderung_1h') }}"
+          verwendung: nur_protokollierung
+
+      - name: Plantinator Bewasserung P4 Dryback 1h
+        unique_id: plantinator_bewasserung_p4_dryback_1h
+        icon: mdi:chart-line-variant
+        unit_of_measurement: "%"
+        state_class: measurement
+        state: >
+          {% set raw = states('sensor.plantinator_bewasserung_p4_feuchte_aenderung_1h') %}
+          {{ ([0, -(raw | float)] | max | round(2)) if is_number(raw) else 'unknown' }}
+        attributes:
+          feuchte_aenderung_1h: "{{ states('sensor.plantinator_bewasserung_p4_feuchte_aenderung_1h') }}"
+          verwendung: nur_protokollierung
+
+      - name: Plantinator Bewasserung P1 Nacht-Dryback
+        unique_id: plantinator_bewasserung_p1_nacht_dryback
+        icon: mdi:moon-waning-crescent
+        unit_of_measurement: "%"
+        state_class: measurement
+        state: >
+          {% set start = states('input_number.plantinator_bewasserung_p1_nacht_dryback_start') | float(0) %}
+          {% set aktuell = states('sensor.plantinator_bewasserung_p1_bodenfeuchte_wert') %}
+          {% if is_state('sensor.plantinator_bewasserung_lichtstatus', 'nacht') and start > 0 and is_number(aktuell) %}
+            {{ [0, start - (aktuell | float)] | max | round(1) }}
+          {% else %}
+            {{ states('input_number.plantinator_bewasserung_p1_letzter_nacht_dryback') }}
+          {% endif %}
+        attributes:
+          status: "{{ 'laufend' if is_state('sensor.plantinator_bewasserung_lichtstatus', 'nacht') else 'letzte_nacht' }}"
+          start_feuchte: "{{ states('input_number.plantinator_bewasserung_p1_nacht_dryback_start') }}"
+          verwendung: nur_protokollierung
+
+      - name: Plantinator Bewasserung P2 Nacht-Dryback
+        unique_id: plantinator_bewasserung_p2_nacht_dryback
+        icon: mdi:moon-waning-crescent
+        unit_of_measurement: "%"
+        state_class: measurement
+        state: >
+          {% set start = states('input_number.plantinator_bewasserung_p2_nacht_dryback_start') | float(0) %}
+          {% set aktuell = states('sensor.plantinator_bewasserung_p2_bodenfeuchte_wert') %}
+          {% if is_state('sensor.plantinator_bewasserung_lichtstatus', 'nacht') and start > 0 and is_number(aktuell) %}
+            {{ [0, start - (aktuell | float)] | max | round(1) }}
+          {% else %}
+            {{ states('input_number.plantinator_bewasserung_p2_letzter_nacht_dryback') }}
+          {% endif %}
+        attributes:
+          status: "{{ 'laufend' if is_state('sensor.plantinator_bewasserung_lichtstatus', 'nacht') else 'letzte_nacht' }}"
+          start_feuchte: "{{ states('input_number.plantinator_bewasserung_p2_nacht_dryback_start') }}"
+          verwendung: nur_protokollierung
+
+      - name: Plantinator Bewasserung P3 Nacht-Dryback
+        unique_id: plantinator_bewasserung_p3_nacht_dryback
+        icon: mdi:moon-waning-crescent
+        unit_of_measurement: "%"
+        state_class: measurement
+        state: >
+          {% set start = states('input_number.plantinator_bewasserung_p3_nacht_dryback_start') | float(0) %}
+          {% set aktuell = states('sensor.plantinator_bewasserung_p3_bodenfeuchte_wert') %}
+          {% if is_state('sensor.plantinator_bewasserung_lichtstatus', 'nacht') and start > 0 and is_number(aktuell) %}
+            {{ [0, start - (aktuell | float)] | max | round(1) }}
+          {% else %}
+            {{ states('input_number.plantinator_bewasserung_p3_letzter_nacht_dryback') }}
+          {% endif %}
+        attributes:
+          status: "{{ 'laufend' if is_state('sensor.plantinator_bewasserung_lichtstatus', 'nacht') else 'letzte_nacht' }}"
+          start_feuchte: "{{ states('input_number.plantinator_bewasserung_p3_nacht_dryback_start') }}"
+          verwendung: nur_protokollierung
+
+      - name: Plantinator Bewasserung P4 Nacht-Dryback
+        unique_id: plantinator_bewasserung_p4_nacht_dryback
+        icon: mdi:moon-waning-crescent
+        unit_of_measurement: "%"
+        state_class: measurement
+        state: >
+          {% set start = states('input_number.plantinator_bewasserung_p4_nacht_dryback_start') | float(0) %}
+          {% set aktuell = states('sensor.plantinator_bewasserung_p4_bodenfeuchte_wert') %}
+          {% if is_state('sensor.plantinator_bewasserung_lichtstatus', 'nacht') and start > 0 and is_number(aktuell) %}
+            {{ [0, start - (aktuell | float)] | max | round(1) }}
+          {% else %}
+            {{ states('input_number.plantinator_bewasserung_p4_letzter_nacht_dryback') }}
+          {% endif %}
+        attributes:
+          status: "{{ 'laufend' if is_state('sensor.plantinator_bewasserung_lichtstatus', 'nacht') else 'letzte_nacht' }}"
+          start_feuchte: "{{ states('input_number.plantinator_bewasserung_p4_nacht_dryback_start') }}"
+          verwendung: nur_protokollierung
+
+      - name: Plantinator Bewasserung Kritischer Systemstatus
+        unique_id: plantinator_bewasserung_kritischer_systemstatus
+        icon: mdi:shield-alert
+        state: >
+          {% set went = states('input_text.plantinator_bewasserung_wasserstand_entity') | trim %}
+          {% set wsicher = states('input_select.plantinator_bewasserung_wasserstand_sicherer_zustand') %}
+          {% if states('sensor.plantinator_bewasserung_mapping_status') != 'ok' %}
+            mapping_fehler
+          {% elif states('sensor.plantinator_bewasserung_profil_status') != 'ok' %}
+            profil_fehler
+          {% elif states('sensor.plantinator_bewasserung_sensoralter_status') != 'ok' %}
+            sensoralter_{{ states('sensor.plantinator_bewasserung_sensoralter_status') }}
+          {% elif is_state('input_boolean.plantinator_bewasserung_wasserstand_verwenden', 'on')
+                and (not (went.startswith('binary_sensor.') or went.startswith('input_boolean.'))
+                     or not has_value(went)) %}
+            wasserstand_ungueltig
+          {% elif is_state('input_boolean.plantinator_bewasserung_wasserstand_verwenden', 'on')
+                and states(went) != wsicher %}
+            wasserstand_nicht_sicher
+          {% else %}
+            ok
+          {% endif %}
+        attributes:
+          mapping_status: "{{ states('sensor.plantinator_bewasserung_mapping_status') }}"
+          profil_status: "{{ states('sensor.plantinator_bewasserung_profil_status') }}"
+          sensoralter_status: "{{ states('sensor.plantinator_bewasserung_sensoralter_status') }}"
+          wasserstand_status: "{{ states('sensor.plantinator_bewasserung_wasserstand_status_gemappt') }}"
+
+      - name: Plantinator Bewasserung Alarm Status
+        unique_id: plantinator_bewasserung_alarm_status
+        icon: mdi:alarm-light
+        state: >
+          {% if is_state('input_boolean.plantinator_bewasserung_alarm_verriegelt', 'on') %}
+            verriegelt
+          {% elif states('sensor.plantinator_bewasserung_kritischer_systemstatus') != 'ok' %}
+            fehler_nicht_quittierbar
+          {% else %}
+            bereit
+          {% endif %}
+        attributes:
+          verriegelt: "{{ states('input_boolean.plantinator_bewasserung_alarm_verriegelt') }}"
+          alarm_grund: "{{ states('input_text.plantinator_bewasserung_alarm_grund') }}"
+          alarm_zeit: "{{ states('input_datetime.plantinator_bewasserung_alarm_zeit') }}"
+          aktueller_systemstatus: "{{ states('sensor.plantinator_bewasserung_kritischer_systemstatus') }}"
+          quittierbar: >
+            {{ is_state('input_boolean.plantinator_bewasserung_alarm_verriegelt', 'on')
+               and is_state('sensor.plantinator_bewasserung_kritischer_systemstatus', 'ok') }}
+
+script:
+  plantinator_bewasserung_monitoring_standardwerte_setzen:
+    alias: Plantinator Bewasserung Monitoring Standardwerte setzen
+    icon: mdi:tune-variant
+    mode: single
+    sequence:
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_sensor_max_alter_minuten
+        data:
+          value: 30
+
+      # Einfluss beginnt bewusst bei 0 %. Erst nach Beobachtung erhöhen.
+      - service: input_number.set_value
+        target:
+          entity_id:
+            - input_number.plantinator_bewasserung_klima_einfluss_prozent
+            - input_number.plantinator_bewasserung_licht_einfluss_prozent
+            - input_number.plantinator_bewasserung_zulauf_einfluss_prozent
+        data:
+          value: 0
+
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_umwelt_max_korrektur_prozent
+        data:
+          value: 10
+
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_vpd_referenz
+        data:
+          value: 1.2
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_ppfd_referenz
+        data:
+          value: 600
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_dli_referenz
+        data:
+          value: 35
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_zulauf_ec_referenz
+        data:
+          value: 2
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_zulauf_ph_referenz
+        data:
+          value: 5.8
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_zulauf_temperatur_referenz
+        data:
+          value: 20
+
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ is_number(states('sensor.plantinator_bewasserung_ppfd_stundenintegral')) }}"
+            sequence:
+              - service: input_number.set_value
+                target:
+                  entity_id: input_number.plantinator_bewasserung_ppfd_integral_lichtstart
+                data:
+                  value: "{{ states('sensor.plantinator_bewasserung_ppfd_stundenintegral') | float(0) }}"
+
+  plantinator_bewasserung_alarm_ausloesen:
+    alias: Plantinator Bewasserung Alarm auslösen
+    icon: mdi:alarm-light
+    mode: single
+    fields:
+      grund:
+        name: Alarmgrund
+        required: true
+        selector:
+          text:
+    sequence:
+      - variables:
+          alarmgrund: "{{ grund | default(states('sensor.plantinator_bewasserung_kritischer_systemstatus')) | string }}"
+
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_alarm_grund
+        data:
+          value: "{{ alarmgrund[:255] }}"
+
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.plantinator_bewasserung_alarm_zeit
+        data:
+          datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+
+      - service: persistent_notification.create
+        data:
+          notification_id: plantinator_bewasserung_alarm
+          title: Plantinator Bewässerung verriegelt
+          message: >
+            Kritischer Fehler: {{ alarmgrund }}.
+            Alle Pumpenabläufe wurden sicher gestoppt.
+            Erst Ursache beheben, danach im Dashboard quittieren.
+
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.plantinator_bewasserung_alarm_verriegelt
+
+  plantinator_bewasserung_alarm_quittieren:
+    alias: Plantinator Bewasserung Alarm quittieren
+    icon: mdi:check-decagram
+    mode: single
+    sequence:
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ states('sensor.plantinator_bewasserung_kritischer_systemstatus') == 'ok' }}"
+            sequence:
+              - service: input_boolean.turn_off
+                target:
+                  entity_id: input_boolean.plantinator_bewasserung_alarm_verriegelt
+
+              - service: persistent_notification.dismiss
+                data:
+                  notification_id: plantinator_bewasserung_alarm
+        default:
+          - service: persistent_notification.create
+            data:
+              notification_id: plantinator_bewasserung_alarm
+              title: Plantinator Alarm bleibt verriegelt
+              message: >
+                Quittierung abgelehnt. Aktueller Fehler:
+                {{ states('sensor.plantinator_bewasserung_kritischer_systemstatus') }}.
+
+automation:
+  - id: plantinator_bewasserung_dli_lichtstart_nullpunkt
+    alias: Plantinator Bewasserung - DLI Nullpunkt bei Lichtstart
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: sensor.plantinator_bewasserung_lichtstatus
+        to: "tag"
+    condition:
+      - condition: template
+        value_template: "{{ is_number(states('sensor.plantinator_bewasserung_ppfd_stundenintegral')) }}"
+    action:
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_ppfd_integral_lichtstart
+        data:
+          value: "{{ states('sensor.plantinator_bewasserung_ppfd_stundenintegral') | float(0) }}"
+
+  - id: plantinator_bewasserung_dli_lichttag_abschliessen
+    alias: Plantinator Bewasserung - DLI Lichttag abschließen
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: sensor.plantinator_bewasserung_lichtstatus
+        to: "nacht"
+    action:
+      - delay:
+          seconds: 10
+      - condition: template
+        value_template: "{{ is_number(states('sensor.plantinator_bewasserung_dli')) }}"
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_letzte_dli
+        data:
+          value: "{{ [[states('sensor.plantinator_bewasserung_dli') | float(0), 0] | max, 150] | min | round(2) }}"
+
+  - id: plantinator_bewasserung_dli_erster_start_nullpunkt
+    alias: Plantinator Bewasserung - DLI erster Start Nullpunkt
+    mode: single
+    trigger:
+      - platform: homeassistant
+        event: start
+    action:
+      - delay:
+          seconds: 45
+      - condition: template
+        value_template: >
+          {{ (states('input_number.plantinator_bewasserung_ppfd_integral_lichtstart') | float(0)) <= 0
+             and is_number(states('sensor.plantinator_bewasserung_ppfd_stundenintegral')) }}
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_ppfd_integral_lichtstart
+        data:
+          value: "{{ states('sensor.plantinator_bewasserung_ppfd_stundenintegral') | float(0) }}"
+
+  - id: plantinator_bewasserung_kritischer_fehler_verriegeln
+    alias: Plantinator Bewasserung - kritischen Fehler verriegeln
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: sensor.plantinator_bewasserung_kritischer_systemstatus
+        for: "00:02:00"
+      - platform: time_pattern
+        minutes: "/5"
+    condition:
+      - condition: template
+        value_template: >
+          {% set status = states('sensor.plantinator_bewasserung_kritischer_systemstatus') %}
+          {% set alter = as_timestamp(now()) -
+              as_timestamp(states.sensor.plantinator_bewasserung_kritischer_systemstatus.last_changed) %}
+          {{ status not in ['ok', 'unknown', 'unavailable', 'none', '']
+             and alter >= 120 }}
+      - condition: state
+        entity_id: input_boolean.plantinator_bewasserung_alarm_verriegelt
+        state: "off"
+    action:
+      - service: script.plantinator_bewasserung_alarm_ausloesen
+        data:
+          grund: "{{ states('sensor.plantinator_bewasserung_kritischer_systemstatus') }}"
+
+  - id: plantinator_bewasserung_wasserstand_lauf_sofort_verriegeln
+    alias: Plantinator Bewasserung - unsicherer Wasserstand im Lauf
+    mode: single
+    trigger:
+      - platform: template
+        value_template: >
+          {% set ent = states('input_text.plantinator_bewasserung_wasserstand_entity') | trim %}
+          {% set sicher = states('input_select.plantinator_bewasserung_wasserstand_sicherer_zustand') %}
+          {{ is_state('input_boolean.plantinator_bewasserung_wasserstand_verwenden', 'on')
+             and ((not has_value(ent)) or states(ent) != sicher) }}
+        for: "00:00:02"
+    condition:
+      - condition: template
+        value_template: >
+          {{ is_state('input_boolean.plantinator_bewasserung_exec_laeuft', 'on')
+             or is_state('input_boolean.plantinator_bewasserung_mess_drain_laeuft', 'on')
+             or is_state('input_boolean.plantinator_bewasserung_shot_exec_laeuft', 'on')
+             or is_state('input_boolean.plantinator_bewasserung_tank_umwalzung_laeuft', 'on') }}
+      - condition: state
+        entity_id: input_boolean.plantinator_bewasserung_alarm_verriegelt
+        state: "off"
+    action:
+      - service: script.plantinator_bewasserung_alarm_ausloesen
+        data:
+          grund: wasserstand_im_lauf_nicht_sicher
+
+  - id: plantinator_bewasserung_alarm_verriegelt_sicher_stop
+    alias: Plantinator Bewasserung - Alarmverriegelung sicher Stop
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: input_boolean.plantinator_bewasserung_alarm_verriegelt
+        to: "on"
+    action:
+      - service: script.plantinator_bewasserung_sicher_stop
+
+  - id: plantinator_bewasserung_alarm_quittieren_button
+    alias: Plantinator Bewasserung - Alarm quittieren Button
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_button.plantinator_bewasserung_alarm_quittieren
+    action:
+      - service: script.plantinator_bewasserung_alarm_quittieren
+
+  - id: plantinator_bewasserung_nacht_dryback_start_erfassen
+    alias: Plantinator Bewasserung - Nacht-Dryback Start erfassen
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: sensor.plantinator_bewasserung_lichtstatus
+        to: "nacht"
+    action:
+      - repeat:
+          for_each: [1, 2, 3, 4]
+          sequence:
+            - variables:
+                p: "{{ repeat.item | int }}"
+                feuchte: "{{ states('sensor.plantinator_bewasserung_p' ~ (repeat.item | int) ~ '_bodenfeuchte_wert') }}"
+            - choose:
+                - conditions:
+                    - condition: template
+                      value_template: >
+                        {{ is_state('input_boolean.plantinator_bewasserung_p' ~ p ~ '_aktiv', 'on')
+                           and is_number(feuchte) }}
+                  sequence:
+                    - service: input_number.set_value
+                      target:
+                        entity_id: "input_number.plantinator_bewasserung_p{{ p }}_nacht_dryback_start"
+                      data:
+                        value: "{{ feuchte | float | round(1) }}"
+
+  - id: plantinator_bewasserung_nacht_dryback_abschliessen
+    alias: Plantinator Bewasserung - Nacht-Dryback abschließen
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: sensor.plantinator_bewasserung_lichtstatus
+        to: "tag"
+    action:
+      - repeat:
+          for_each: [1, 2, 3, 4]
+          sequence:
+            - variables:
+                p: "{{ repeat.item | int }}"
+                start: "{{ states('input_number.plantinator_bewasserung_p' ~ (repeat.item | int) ~ '_nacht_dryback_start') | float(0) }}"
+                feuchte: "{{ states('sensor.plantinator_bewasserung_p' ~ (repeat.item | int) ~ '_bodenfeuchte_wert') }}"
+            - choose:
+                - conditions:
+                    - condition: template
+                      value_template: >
+                        {{ is_state('input_boolean.plantinator_bewasserung_p' ~ p ~ '_aktiv', 'on')
+                           and start > 0 and is_number(feuchte) }}
+                  sequence:
+                    - service: input_number.set_value
+                      target:
+                        entity_id: "input_number.plantinator_bewasserung_p{{ p }}_letzter_nacht_dryback"
+                      data:
+                        value: "{{ [0, start - (feuchte | float)] | max | round(1) }}"

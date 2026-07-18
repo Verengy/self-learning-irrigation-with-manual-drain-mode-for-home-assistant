@@ -1,0 +1,206 @@
+############################################################
+# PLANTINATOR BEWASSERUNG - PROFILWERTE
+# Datei: plantinator_bewasserung_profil_v3.yaml
+#
+# Zweck:
+# - Wenige zentrale Profilwerte
+# - Normalguss und Mess-Drain-Guss getrennt
+# - Keine initial:-Werte
+############################################################
+
+input_number:
+  plantinator_bewasserung_pumpe_ml_pro_sekunde:
+    name: Plantinator Bewasserung Pumpe ml pro Sekunde
+    icon: mdi:pump
+    min: 1
+    max: 300
+    step: 1
+    mode: box
+    unit_of_measurement: "ml/s"
+  plantinator_bewasserung_bodenfeuchte_minimum:
+    name: Plantinator Bewasserung Bodenfeuchte Minimum
+    icon: mdi:water-percent-alert
+    min: 1
+    max: 80
+    step: 0.5
+    mode: box
+    unit_of_measurement: "%"
+  plantinator_bewasserung_bodenfeuchte_ziel:
+    name: Plantinator Bewasserung Bodenfeuchte Ziel
+    icon: mdi:water-percent
+    min: 1
+    max: 90
+    step: 0.5
+    mode: box
+    unit_of_measurement: "%"
+  plantinator_bewasserung_bodenfeuchte_maximum:
+    name: Plantinator Bewasserung Bodenfeuchte Maximum
+    icon: mdi:water-percent
+    min: 1
+    max: 100
+    step: 0.5
+    mode: box
+    unit_of_measurement: "%"
+  plantinator_bewasserung_max_ml_pro_normalguss:
+    name: Plantinator Bewasserung Max ml pro Normalguss
+    icon: mdi:cup-water
+    min: 50
+    max: 10000
+    step: 25
+    mode: box
+    unit_of_measurement: "ml"
+  plantinator_bewasserung_max_ml_pro_tag:
+    name: Plantinator Bewasserung Max ml pro Tag und Pflanze
+    icon: mdi:calendar-today
+    min: 100
+    max: 30000
+    step: 50
+    mode: box
+    unit_of_measurement: "ml"
+  plantinator_bewasserung_max_ml_mess_drain_guss:
+    name: Plantinator Bewasserung Max ml Mess-Drain-Guss
+    icon: mdi:water-check
+    min: 100
+    max: 30000
+    step: 50
+    mode: box
+    unit_of_measurement: "ml"
+  plantinator_bewasserung_mess_drain_puls_ml:
+    name: Plantinator Bewasserung Mess-Drain Puls ml
+    icon: mdi:water-plus
+    min: 25
+    max: 5000
+    step: 25
+    mode: box
+    unit_of_measurement: "ml"
+  plantinator_bewasserung_mess_drain_pulspause_sekunden:
+    name: Plantinator Bewasserung Mess-Drain Pulspause Sekunden
+    icon: mdi:timer-sand
+    min: 10
+    max: 300
+    step: 5
+    mode: box
+    unit_of_measurement: "s"
+  plantinator_bewasserung_bodentemperatur_minimum:
+    name: Plantinator Bewasserung Bodentemperatur Minimum
+    icon: mdi:thermometer-low
+    min: 5
+    max: 30
+    step: 0.5
+    mode: box
+    unit_of_measurement: "°C"
+  plantinator_bewasserung_bodentemperatur_maximum:
+    name: Plantinator Bewasserung Bodentemperatur Maximum
+    icon: mdi:thermometer-high
+    min: 10
+    max: 40
+    step: 0.5
+    mode: box
+    unit_of_measurement: "°C"
+
+template:
+  - sensor:
+      - name: Plantinator Bewasserung Profil Status
+        unique_id: plantinator_bewasserung_profil_status
+        icon: mdi:tune
+        state: >
+          {% set minv = states('input_number.plantinator_bewasserung_bodenfeuchte_minimum') | float(0) %}
+          {% set ziel = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(0) %}
+          {% set maxv = states('input_number.plantinator_bewasserung_bodenfeuchte_maximum') | float(0) %}
+          {% set pumpe = states('input_number.plantinator_bewasserung_pumpe_ml_pro_sekunde') | float(0) %}
+          {% set temp_min = states('input_number.plantinator_bewasserung_bodentemperatur_minimum') | float(0) %}
+          {% set temp_max = states('input_number.plantinator_bewasserung_bodentemperatur_maximum') | float(0) %}
+          {% if pumpe > 0 and minv > 0 and minv < ziel and ziel < maxv and temp_min < temp_max %}
+            ok
+          {% else %}
+            fehler
+          {% endif %}
+        attributes:
+          pumpe_ml_s: "{{ states('input_number.plantinator_bewasserung_pumpe_ml_pro_sekunde') }}"
+          minimum_prozent: "{{ states('input_number.plantinator_bewasserung_bodenfeuchte_minimum') }}"
+          ziel_prozent: "{{ states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') }}"
+          maximum_prozent: "{{ states('input_number.plantinator_bewasserung_bodenfeuchte_maximum') }}"
+          bodentemperatur_minimum: "{{ states('input_number.plantinator_bewasserung_bodentemperatur_minimum') }}"
+          bodentemperatur_maximum: "{{ states('input_number.plantinator_bewasserung_bodentemperatur_maximum') }}"
+          max_normalguss_ml: "{{ states('input_number.plantinator_bewasserung_max_ml_pro_normalguss') }}"
+          max_tag_ml: "{{ states('input_number.plantinator_bewasserung_max_ml_pro_tag') }}"
+          max_mess_drain_guss_ml: "{{ states('input_number.plantinator_bewasserung_max_ml_mess_drain_guss') }}"
+      - name: Plantinator Bewasserung Mess-Drain Puls Sekunden
+        unique_id: plantinator_bewasserung_mess_drain_puls_sekunden
+        icon: mdi:timer-outline
+        unit_of_measurement: "s"
+        state: >
+          {% set ml = states('input_number.plantinator_bewasserung_mess_drain_puls_ml') | float(0) %}
+          {% set rate = states('input_number.plantinator_bewasserung_pumpe_ml_pro_sekunde') | float(0) %}
+          {% if ml > 0 and rate > 0 %}
+            {{ (ml / rate) | round(2) }}
+          {% else %}
+            unknown
+          {% endif %}
+
+script:
+  plantinator_bewasserung_profil_standardwerte_setzen:
+    alias: Plantinator Bewasserung Profil Standardwerte setzen
+    icon: mdi:tune-variant
+    mode: single
+    sequence:
+      - service: input_number.set_value
+        target:
+          {
+            entity_id: input_number.plantinator_bewasserung_pumpe_ml_pro_sekunde,
+          }
+        data: { value: 50 }
+      - service: input_number.set_value
+        target:
+          {
+            entity_id: input_number.plantinator_bewasserung_bodenfeuchte_minimum,
+          }
+        data: { value: 32 }
+      - service: input_number.set_value
+        target:
+          { entity_id: input_number.plantinator_bewasserung_bodenfeuchte_ziel }
+        data: { value: 42 }
+      - service: input_number.set_value
+        target:
+          {
+            entity_id: input_number.plantinator_bewasserung_bodenfeuchte_maximum,
+          }
+        data: { value: 55 }
+      - service: input_number.set_value
+        target:
+          {
+            entity_id: input_number.plantinator_bewasserung_max_ml_pro_normalguss,
+          }
+        data: { value: 500 }
+      - service: input_number.set_value
+        target:
+          { entity_id: input_number.plantinator_bewasserung_max_ml_pro_tag }
+        data: { value: 1200 }
+      - service: input_number.set_value
+        target:
+          {
+            entity_id: input_number.plantinator_bewasserung_max_ml_mess_drain_guss,
+          }
+        data: { value: 1200 }
+      - service: input_number.set_value
+        target:
+          { entity_id: input_number.plantinator_bewasserung_mess_drain_puls_ml }
+        data: { value: 200 }
+      - service: input_number.set_value
+        target:
+          {
+            entity_id: input_number.plantinator_bewasserung_mess_drain_pulspause_sekunden,
+          }
+        data: { value: 180 }
+      - service: input_number.set_value
+        target:
+          {
+            entity_id: input_number.plantinator_bewasserung_bodentemperatur_minimum,
+          }
+        data: { value: 17 }
+      - service: input_number.set_value
+        target:
+          {
+            entity_id: input_number.plantinator_bewasserung_bodentemperatur_maximum,
+          }
+        data: { value: 26 }

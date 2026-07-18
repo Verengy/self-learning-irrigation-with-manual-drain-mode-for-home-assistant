@@ -1,0 +1,151 @@
+############################################################
+# PLANTINATOR BEWASSERUNG - MANUELLER MESS-DRAIN (Fixed)
+# Datei: plantinator_bewasserung_mess_drain_v2.yaml
+#
+# Änderungen gegenüber Original:
+# - Fehlende drain_bestaetigt-Buttons ergänzt (P1-P4)
+#   Diese wurden in exec_v1.yaml als Trigger genutzt, aber nirgends definiert
+############################################################
+
+input_select:
+  plantinator_bewasserung_drain_modus:
+    name: Plantinator Bewasserung Drain Modus
+    icon: mdi:water-check
+    options:
+      - aus
+      - manuell
+
+input_button:
+  plantinator_bewasserung_p1_mess_drain_start:
+    name: Plantinator Bewasserung P1 Mess-Drain Start
+    icon: mdi:water-plus
+  plantinator_bewasserung_p2_mess_drain_start:
+    name: Plantinator Bewasserung P2 Mess-Drain Start
+    icon: mdi:water-plus
+  plantinator_bewasserung_p3_mess_drain_start:
+    name: Plantinator Bewasserung P3 Mess-Drain Start
+    icon: mdi:water-plus
+  plantinator_bewasserung_p4_mess_drain_start:
+    name: Plantinator Bewasserung P4 Mess-Drain Start
+    icon: mdi:water-plus
+
+  # NEU: Drain-Bestätigt-Buttons (fehlten im Original)
+  plantinator_bewasserung_p1_drain_bestaetigt:
+    name: Plantinator Bewasserung P1 Drain bestätigt
+    icon: mdi:check-circle
+  plantinator_bewasserung_p2_drain_bestaetigt:
+    name: Plantinator Bewasserung P2 Drain bestätigt
+    icon: mdi:check-circle
+  plantinator_bewasserung_p3_drain_bestaetigt:
+    name: Plantinator Bewasserung P3 Drain bestätigt
+    icon: mdi:check-circle
+  plantinator_bewasserung_p4_drain_bestaetigt:
+    name: Plantinator Bewasserung P4 Drain bestätigt
+    icon: mdi:check-circle
+
+input_number:
+  plantinator_bewasserung_p1_drain_ec_manuell:
+    name: Plantinator Bewasserung P1 Drain EC manuell
+    icon: mdi:flash
+    min: 0
+    max: 10
+    step: 0.01
+    mode: box
+    unit_of_measurement: "mS/cm"
+  plantinator_bewasserung_p2_drain_ec_manuell:
+    name: Plantinator Bewasserung P2 Drain EC manuell
+    icon: mdi:flash
+    min: 0
+    max: 10
+    step: 0.01
+    mode: box
+    unit_of_measurement: "mS/cm"
+  plantinator_bewasserung_p3_drain_ec_manuell:
+    name: Plantinator Bewasserung P3 Drain EC manuell
+    icon: mdi:flash
+    min: 0
+    max: 10
+    step: 0.01
+    mode: box
+    unit_of_measurement: "mS/cm"
+  plantinator_bewasserung_p4_drain_ec_manuell:
+    name: Plantinator Bewasserung P4 Drain EC manuell
+    icon: mdi:flash
+    min: 0
+    max: 10
+    step: 0.01
+    mode: box
+    unit_of_measurement: "mS/cm"
+
+  plantinator_bewasserung_p1_drain_ph_manuell:
+    name: Plantinator Bewasserung P1 Drain pH manuell
+    icon: mdi:ph
+    min: 3
+    max: 10
+    step: 0.01
+    mode: box
+  plantinator_bewasserung_p2_drain_ph_manuell:
+    name: Plantinator Bewasserung P2 Drain pH manuell
+    icon: mdi:ph
+    min: 3
+    max: 10
+    step: 0.01
+    mode: box
+  plantinator_bewasserung_p3_drain_ph_manuell:
+    name: Plantinator Bewasserung P3 Drain pH manuell
+    icon: mdi:ph
+    min: 3
+    max: 10
+    step: 0.01
+    mode: box
+  plantinator_bewasserung_p4_drain_ph_manuell:
+    name: Plantinator Bewasserung P4 Drain pH manuell
+    icon: mdi:ph
+    min: 3
+    max: 10
+    step: 0.01
+    mode: box
+
+template:
+  - sensor:
+      - name: Plantinator Bewasserung Mess-Drain Status
+        unique_id: plantinator_bewasserung_mess_drain_status
+        icon: mdi:water-check
+        state: >
+          {% set modus = states('input_select.plantinator_bewasserung_drain_modus') %}
+          {% set laufstatus = states('input_text.plantinator_bewasserung_mess_drain_lauf_status') %}
+          {% if is_state('input_boolean.plantinator_bewasserung_mess_drain_laeuft', 'on') %}
+            {{ laufstatus }}
+          {% elif modus == 'aus' %}
+            aus
+          {% elif laufstatus not in ['', 'unknown', 'unavailable', 'none', 'bereit'] %}
+            {{ laufstatus }}
+          {% elif modus == 'manuell' %}
+            bereit_manuell
+          {% else %}
+            unbekannt
+          {% endif %}
+        attributes:
+          modus: "{{ states('input_select.plantinator_bewasserung_drain_modus') }}"
+          laeuft: "{{ states('input_boolean.plantinator_bewasserung_mess_drain_laeuft') }}"
+          laufstatus: "{{ states('input_text.plantinator_bewasserung_mess_drain_lauf_status') }}"
+          exec_status: "{{ states('input_text.plantinator_bewasserung_exec_status') }}"
+          drain_bestaetigt: "{{ states('input_boolean.plantinator_bewasserung_mess_drain_drain_bestaetigt') }}"
+          aktive_pflanze: "{{ states('input_number.plantinator_bewasserung_mess_drain_aktive_pflanze') }}"
+          abgegeben_ml: "{{ states('input_number.plantinator_bewasserung_mess_drain_abgegeben_ml') }}"
+          max_mess_drain_guss_ml: "{{ states('input_number.plantinator_bewasserung_max_ml_mess_drain_guss') }}"
+          puls_ml: "{{ states('input_number.plantinator_bewasserung_mess_drain_puls_ml') }}"
+          puls_sekunden: "{{ states('sensor.plantinator_bewasserung_mess_drain_puls_sekunden') }}"
+          pulspause_sekunden: "{{ states('input_number.plantinator_bewasserung_mess_drain_pulspause_sekunden') }}"
+
+      - name: Plantinator Bewasserung Mess-Drain Geplante Pulse
+        unique_id: plantinator_bewasserung_mess_drain_geplante_pulse
+        icon: mdi:counter
+        state: >
+          {% set maxml = states('input_number.plantinator_bewasserung_max_ml_mess_drain_guss') | float(0) %}
+          {% set pulsml = states('input_number.plantinator_bewasserung_mess_drain_puls_ml') | float(0) %}
+          {% if maxml > 0 and pulsml > 0 %}
+            {{ (maxml / pulsml) | round(0, 'ceil') | int }}
+          {% else %}
+            unknown
+          {% endif %}

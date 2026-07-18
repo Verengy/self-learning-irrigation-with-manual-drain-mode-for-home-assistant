@@ -1,0 +1,715 @@
+############################################################
+# PLANTINATOR BEWASSERUNG - LERNSENSORIK V2 (Fixed)
+# Datei: plantinator_bewasserung_lernsensorik_v2.yaml
+#
+# Änderungen gegenüber Original:
+# - float(none)-Anti-Pattern ersetzt durch expliziten Rohwert-Check
+# - Sensorfehler wird zuverlässig erkannt (verhindert Fehl-Notgüsse)
+# - Header-Versionsreferenz auf v5 aktualisiert
+#
+# Benötigt:
+# - plantinator_bewasserung_mapping_v4.yaml
+# - plantinator_bewasserung_profil_v3.yaml
+# - plantinator_bewasserung_crop_steering.yaml
+############################################################
+
+input_number:
+  plantinator_bewasserung_startwert_ml_pro_prozent:
+    name: Plantinator Bewasserung Startwert ml pro Prozent
+    icon: mdi:calculator-variant
+    min: 10
+    max: 300
+    step: 5
+    mode: box
+    unit_of_measurement: "ml/%"
+
+  plantinator_bewasserung_min_empfohlener_guss_ml:
+    name: Plantinator Bewasserung Minimum empfohlener Guss ml
+    icon: mdi:cup-water
+    min: 25
+    max: 500
+    step: 25
+    mode: box
+    unit_of_measurement: "ml"
+
+  plantinator_bewasserung_notguss_schwelle_prozent:
+    name: Plantinator Bewasserung Notguss Schwelle Prozent unter Minimum
+    icon: mdi:alert
+    min: 1
+    max: 20
+    step: 0.5
+    mode: box
+    unit_of_measurement: "%"
+
+template:
+  - sensor:
+      - name: Plantinator Bewasserung P1 Feuchtezustand
+        unique_id: plantinator_bewasserung_p1_feuchtezustand
+        icon: mdi:water-percent-alert
+        state: >
+          {% set raw = states('sensor.plantinator_bewasserung_p1_bodenfeuchte_wert') %}
+          {% if raw in ['unknown', 'unavailable', 'none', '', None] %}
+            sensorfehler
+          {% else %}
+            {% set f = raw | float(-1) %}
+            {% if f < 0 %}
+              sensorfehler
+            {% else %}
+              {% set sicherheitsminimum = states('input_number.plantinator_bewasserung_bodenfeuchte_minimum') | float(32) %}
+              {% set minv = states('sensor.plantinator_bewasserung_crop_giessschwelle_effektiv') | float(sicherheitsminimum) %}
+              {% set ziel = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(42) %}
+              {% set maxv = states('input_number.plantinator_bewasserung_bodenfeuchte_maximum') | float(55) %}
+              {% set notdiff = states('input_number.plantinator_bewasserung_notguss_schwelle_prozent') | float(5) %}
+              {% if f < (sicherheitsminimum - notdiff) %}
+                kritisch_trocken
+              {% elif f < minv %}
+                trocken
+              {% elif f < ziel %}
+                unter_ziel
+              {% elif f <= maxv %}
+                zielbereich
+              {% else %}
+                zu_nass
+              {% endif %}
+            {% endif %}
+          {% endif %}
+        attributes:
+          feuchte: "{{ states('sensor.plantinator_bewasserung_p1_bodenfeuchte_wert') }}"
+          minimum: "{{ states('input_number.plantinator_bewasserung_bodenfeuchte_minimum') }}"
+          crop_giessschwelle: "{{ states('sensor.plantinator_bewasserung_crop_giessschwelle_effektiv') }}"
+          crop_dryback_ziel: "{{ states('sensor.plantinator_bewasserung_crop_dryback_ziel_effektiv') }}"
+          ziel: "{{ states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') }}"
+          maximum: "{{ states('input_number.plantinator_bewasserung_bodenfeuchte_maximum') }}"
+
+      - name: Plantinator Bewasserung P1 Bodentemperatur Zustand
+        unique_id: plantinator_bewasserung_p1_bodentemperatur_zustand
+        icon: mdi:thermometer-alert
+        state: >
+          {% set raw = states('sensor.plantinator_bewasserung_p1_bodentemperatur_wert') %}
+          {% if raw in ['unknown', 'unavailable', 'none', '', None] %}
+            sensorfehler
+          {% else %}
+            {% set t = raw | float(-999) %}
+            {% if t < -100 %}
+              sensorfehler
+            {% else %}
+              {% set minv = states('input_number.plantinator_bewasserung_bodentemperatur_minimum') | float(17) %}
+              {% set maxv = states('input_number.plantinator_bewasserung_bodentemperatur_maximum') | float(26) %}
+              {% if t < (minv - 2) %}
+                kritisch_kalt
+              {% elif t < minv %}
+                kalt
+              {% elif t <= maxv %}
+                ok
+              {% elif t <= (maxv + 2) %}
+                warm
+              {% else %}
+                kritisch_warm
+              {% endif %}
+            {% endif %}
+          {% endif %}
+        attributes:
+          temperatur: "{{ states('sensor.plantinator_bewasserung_p1_bodentemperatur_wert') }}"
+          minimum: "{{ states('input_number.plantinator_bewasserung_bodentemperatur_minimum') }}"
+          maximum: "{{ states('input_number.plantinator_bewasserung_bodentemperatur_maximum') }}"
+
+      - name: Plantinator Bewasserung P1 Gussbedarf
+        unique_id: plantinator_bewasserung_p1_gussbedarf
+        icon: mdi:water-alert
+        state: >
+          {% set aktiv = is_state('input_boolean.plantinator_bewasserung_p1_aktiv', 'on') %}
+          {% set fz = states('sensor.plantinator_bewasserung_p1_feuchtezustand') %}
+          {% set tz = states('sensor.plantinator_bewasserung_p1_bodentemperatur_zustand') %}
+          {% if not aktiv %}
+            inaktiv
+          {% elif fz in ['sensorfehler'] or tz in ['sensorfehler'] %}
+            sensorfehler
+          {% elif tz in ['kritisch_kalt', 'kritisch_warm'] and fz != 'kritisch_trocken' %}
+            temperatur_sperre
+          {% elif fz == 'kritisch_trocken' %}
+            notguss
+          {% elif fz == 'trocken' %}
+            ja
+          {% else %}
+            nein
+          {% endif %}
+        attributes:
+          feuchtezustand: "{{ states('sensor.plantinator_bewasserung_p1_feuchtezustand') }}"
+          bodentemperatur_zustand: "{{ states('sensor.plantinator_bewasserung_p1_bodentemperatur_zustand') }}"
+          crop_erlaubnis: "{{ states('sensor.plantinator_bewasserung_crop_normalguss_erlaubnis') }}"
+
+      - name: Plantinator Bewasserung P1 Empfehlung Normalguss ml
+        unique_id: plantinator_bewasserung_p1_empfehlung_normalguss_ml
+        icon: mdi:cup-water
+        unit_of_measurement: "ml"
+        state: >
+          {% set bedarf = states('sensor.plantinator_bewasserung_p1_gussbedarf') %}
+          {% set raw = states('sensor.plantinator_bewasserung_p1_bodenfeuchte_wert') %}
+          {% if bedarf not in ['ja', 'notguss'] or raw in ['unknown', 'unavailable', 'none', '', None] %}
+            0
+          {% else %}
+            {% set f = raw | float(-1) %}
+            {% if f < 0 %}
+              0
+            {% else %}
+              {% set ziel = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(42) %}
+              {% set mlp_gelernt = states('input_number.plantinator_bewasserung_p1_gelernt_ml_pro_prozent') | float(0) %}
+              {% set mlp_start = states('input_number.plantinator_bewasserung_startwert_ml_pro_prozent') | float(100) %}
+              {% set mlp = mlp_gelernt if is_state('input_boolean.plantinator_bewasserung_p1_lernwert_gueltig', 'on') else mlp_start %}
+              {% set minml = states('input_number.plantinator_bewasserung_min_empfohlener_guss_ml') | float(50) %}
+              {% set maxml = states('input_number.plantinator_bewasserung_max_ml_pro_normalguss') | float(500) %}
+              {% set faktor = states('sensor.plantinator_bewasserung_crop_steering_faktor') | float(1) %}
+              {% set umwelt = states('sensor.plantinator_bewasserung_umwelt_faktor') | float(1) %}
+              {% set fehl = [ziel - f, 0] | max %}
+              {% set roh = fehl * mlp * faktor * umwelt %}
+              {% set begrenzt = [roh, maxml] | min %}
+              {% if begrenzt > 0 and begrenzt < minml %}
+                {{ minml | round(0) }}
+              {% else %}
+                {{ begrenzt | round(0) }}
+              {% endif %}
+            {% endif %}
+          {% endif %}
+        attributes:
+          berechnung: "max(0, ziel - feuchte) * ml_pro_prozent * crop_faktor * umwelt_faktor, begrenzt durch Max-Normalguss"
+          feuchte: "{{ states('sensor.plantinator_bewasserung_p1_bodenfeuchte_wert') }}"
+          ziel: "{{ states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') }}"
+          ml_pro_prozent_genutzt: >
+            {% set gelernt = states('input_number.plantinator_bewasserung_p1_gelernt_ml_pro_prozent') | float(0) %}
+            {% set start = states('input_number.plantinator_bewasserung_startwert_ml_pro_prozent') | float(100) %}
+            {{ gelernt if is_state('input_boolean.plantinator_bewasserung_p1_lernwert_gueltig', 'on') else start }}
+          ml_pro_prozent_gelernt: "{{ states('input_number.plantinator_bewasserung_p1_gelernt_ml_pro_prozent') }}"
+          ml_pro_prozent_startwert: "{{ states('input_number.plantinator_bewasserung_startwert_ml_pro_prozent') }}"
+          crop_faktor: "{{ states('sensor.plantinator_bewasserung_crop_steering_faktor') }}"
+          umwelt_faktor: "{{ states('sensor.plantinator_bewasserung_umwelt_faktor') }}"
+          max_normalguss_ml: "{{ states('input_number.plantinator_bewasserung_max_ml_pro_normalguss') }}"
+
+      - name: Plantinator Bewasserung P1 Empfehlung Pumpenlaufzeit Sekunden
+        unique_id: plantinator_bewasserung_p1_empfehlung_pumpenlaufzeit_sekunden
+        icon: mdi:timer-outline
+        unit_of_measurement: "s"
+        state: >
+          {% set ml = states('sensor.plantinator_bewasserung_p1_empfehlung_normalguss_ml') | float(0) %}
+          {% set rate = states('input_number.plantinator_bewasserung_pumpe_ml_pro_sekunde') | float(50) %}
+          {% if ml > 0 and rate > 0 %}
+            {{ (ml / rate) | round(2) }}
+          {% else %}
+            0
+          {% endif %}
+
+      - name: Plantinator Bewasserung P2 Feuchtezustand
+        unique_id: plantinator_bewasserung_p2_feuchtezustand
+        icon: mdi:water-percent-alert
+        state: >
+          {% set raw = states('sensor.plantinator_bewasserung_p2_bodenfeuchte_wert') %}
+          {% if raw in ['unknown', 'unavailable', 'none', '', None] %}
+            sensorfehler
+          {% else %}
+            {% set f = raw | float(-1) %}
+            {% if f < 0 %}
+              sensorfehler
+            {% else %}
+              {% set sicherheitsminimum = states('input_number.plantinator_bewasserung_bodenfeuchte_minimum') | float(32) %}
+              {% set minv = states('sensor.plantinator_bewasserung_crop_giessschwelle_effektiv') | float(sicherheitsminimum) %}
+              {% set ziel = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(42) %}
+              {% set maxv = states('input_number.plantinator_bewasserung_bodenfeuchte_maximum') | float(55) %}
+              {% set notdiff = states('input_number.plantinator_bewasserung_notguss_schwelle_prozent') | float(5) %}
+              {% if f < (sicherheitsminimum - notdiff) %}
+                kritisch_trocken
+              {% elif f < minv %}
+                trocken
+              {% elif f < ziel %}
+                unter_ziel
+              {% elif f <= maxv %}
+                zielbereich
+              {% else %}
+                zu_nass
+              {% endif %}
+            {% endif %}
+          {% endif %}
+        attributes:
+          feuchte: "{{ states('sensor.plantinator_bewasserung_p2_bodenfeuchte_wert') }}"
+          minimum: "{{ states('input_number.plantinator_bewasserung_bodenfeuchte_minimum') }}"
+          crop_giessschwelle: "{{ states('sensor.plantinator_bewasserung_crop_giessschwelle_effektiv') }}"
+          crop_dryback_ziel: "{{ states('sensor.plantinator_bewasserung_crop_dryback_ziel_effektiv') }}"
+          ziel: "{{ states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') }}"
+          maximum: "{{ states('input_number.plantinator_bewasserung_bodenfeuchte_maximum') }}"
+
+      - name: Plantinator Bewasserung P2 Bodentemperatur Zustand
+        unique_id: plantinator_bewasserung_p2_bodentemperatur_zustand
+        icon: mdi:thermometer-alert
+        state: >
+          {% set raw = states('sensor.plantinator_bewasserung_p2_bodentemperatur_wert') %}
+          {% if raw in ['unknown', 'unavailable', 'none', '', None] %}
+            sensorfehler
+          {% else %}
+            {% set t = raw | float(-999) %}
+            {% if t < -100 %}
+              sensorfehler
+            {% else %}
+              {% set minv = states('input_number.plantinator_bewasserung_bodentemperatur_minimum') | float(17) %}
+              {% set maxv = states('input_number.plantinator_bewasserung_bodentemperatur_maximum') | float(26) %}
+              {% if t < (minv - 2) %}
+                kritisch_kalt
+              {% elif t < minv %}
+                kalt
+              {% elif t <= maxv %}
+                ok
+              {% elif t <= (maxv + 2) %}
+                warm
+              {% else %}
+                kritisch_warm
+              {% endif %}
+            {% endif %}
+          {% endif %}
+        attributes:
+          temperatur: "{{ states('sensor.plantinator_bewasserung_p2_bodentemperatur_wert') }}"
+          minimum: "{{ states('input_number.plantinator_bewasserung_bodentemperatur_minimum') }}"
+          maximum: "{{ states('input_number.plantinator_bewasserung_bodentemperatur_maximum') }}"
+
+      - name: Plantinator Bewasserung P2 Gussbedarf
+        unique_id: plantinator_bewasserung_p2_gussbedarf
+        icon: mdi:water-alert
+        state: >
+          {% set aktiv = is_state('input_boolean.plantinator_bewasserung_p2_aktiv', 'on') %}
+          {% set fz = states('sensor.plantinator_bewasserung_p2_feuchtezustand') %}
+          {% set tz = states('sensor.plantinator_bewasserung_p2_bodentemperatur_zustand') %}
+          {% if not aktiv %}
+            inaktiv
+          {% elif fz in ['sensorfehler'] or tz in ['sensorfehler'] %}
+            sensorfehler
+          {% elif tz in ['kritisch_kalt', 'kritisch_warm'] and fz != 'kritisch_trocken' %}
+            temperatur_sperre
+          {% elif fz == 'kritisch_trocken' %}
+            notguss
+          {% elif fz == 'trocken' %}
+            ja
+          {% else %}
+            nein
+          {% endif %}
+        attributes:
+          feuchtezustand: "{{ states('sensor.plantinator_bewasserung_p2_feuchtezustand') }}"
+          bodentemperatur_zustand: "{{ states('sensor.plantinator_bewasserung_p2_bodentemperatur_zustand') }}"
+          crop_erlaubnis: "{{ states('sensor.plantinator_bewasserung_crop_normalguss_erlaubnis') }}"
+
+      - name: Plantinator Bewasserung P2 Empfehlung Normalguss ml
+        unique_id: plantinator_bewasserung_p2_empfehlung_normalguss_ml
+        icon: mdi:cup-water
+        unit_of_measurement: "ml"
+        state: >
+          {% set bedarf = states('sensor.plantinator_bewasserung_p2_gussbedarf') %}
+          {% set raw = states('sensor.plantinator_bewasserung_p2_bodenfeuchte_wert') %}
+          {% if bedarf not in ['ja', 'notguss'] or raw in ['unknown', 'unavailable', 'none', '', None] %}
+            0
+          {% else %}
+            {% set f = raw | float(-1) %}
+            {% if f < 0 %}
+              0
+            {% else %}
+              {% set ziel = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(42) %}
+              {% set mlp_gelernt = states('input_number.plantinator_bewasserung_p2_gelernt_ml_pro_prozent') | float(0) %}
+              {% set mlp_start = states('input_number.plantinator_bewasserung_startwert_ml_pro_prozent') | float(100) %}
+              {% set mlp = mlp_gelernt if is_state('input_boolean.plantinator_bewasserung_p2_lernwert_gueltig', 'on') else mlp_start %}
+              {% set minml = states('input_number.plantinator_bewasserung_min_empfohlener_guss_ml') | float(50) %}
+              {% set maxml = states('input_number.plantinator_bewasserung_max_ml_pro_normalguss') | float(500) %}
+              {% set faktor = states('sensor.plantinator_bewasserung_crop_steering_faktor') | float(1) %}
+              {% set umwelt = states('sensor.plantinator_bewasserung_umwelt_faktor') | float(1) %}
+              {% set fehl = [ziel - f, 0] | max %}
+              {% set roh = fehl * mlp * faktor * umwelt %}
+              {% set begrenzt = [roh, maxml] | min %}
+              {% if begrenzt > 0 and begrenzt < minml %}
+                {{ minml | round(0) }}
+              {% else %}
+                {{ begrenzt | round(0) }}
+              {% endif %}
+            {% endif %}
+          {% endif %}
+        attributes:
+          berechnung: "max(0, ziel - feuchte) * ml_pro_prozent * crop_faktor * umwelt_faktor, begrenzt durch Max-Normalguss"
+          feuchte: "{{ states('sensor.plantinator_bewasserung_p2_bodenfeuchte_wert') }}"
+          ziel: "{{ states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') }}"
+          ml_pro_prozent_genutzt: >
+            {% set gelernt = states('input_number.plantinator_bewasserung_p2_gelernt_ml_pro_prozent') | float(0) %}
+            {% set start = states('input_number.plantinator_bewasserung_startwert_ml_pro_prozent') | float(100) %}
+            {{ gelernt if is_state('input_boolean.plantinator_bewasserung_p2_lernwert_gueltig', 'on') else start }}
+          ml_pro_prozent_gelernt: "{{ states('input_number.plantinator_bewasserung_p2_gelernt_ml_pro_prozent') }}"
+          ml_pro_prozent_startwert: "{{ states('input_number.plantinator_bewasserung_startwert_ml_pro_prozent') }}"
+          crop_faktor: "{{ states('sensor.plantinator_bewasserung_crop_steering_faktor') }}"
+          umwelt_faktor: "{{ states('sensor.plantinator_bewasserung_umwelt_faktor') }}"
+          max_normalguss_ml: "{{ states('input_number.plantinator_bewasserung_max_ml_pro_normalguss') }}"
+
+      - name: Plantinator Bewasserung P2 Empfehlung Pumpenlaufzeit Sekunden
+        unique_id: plantinator_bewasserung_p2_empfehlung_pumpenlaufzeit_sekunden
+        icon: mdi:timer-outline
+        unit_of_measurement: "s"
+        state: >
+          {% set ml = states('sensor.plantinator_bewasserung_p2_empfehlung_normalguss_ml') | float(0) %}
+          {% set rate = states('input_number.plantinator_bewasserung_pumpe_ml_pro_sekunde') | float(50) %}
+          {% if ml > 0 and rate > 0 %}
+            {{ (ml / rate) | round(2) }}
+          {% else %}
+            0
+          {% endif %}
+
+      - name: Plantinator Bewasserung P3 Feuchtezustand
+        unique_id: plantinator_bewasserung_p3_feuchtezustand
+        icon: mdi:water-percent-alert
+        state: >
+          {% set raw = states('sensor.plantinator_bewasserung_p3_bodenfeuchte_wert') %}
+          {% if raw in ['unknown', 'unavailable', 'none', '', None] %}
+            sensorfehler
+          {% else %}
+            {% set f = raw | float(-1) %}
+            {% if f < 0 %}
+              sensorfehler
+            {% else %}
+              {% set sicherheitsminimum = states('input_number.plantinator_bewasserung_bodenfeuchte_minimum') | float(32) %}
+              {% set minv = states('sensor.plantinator_bewasserung_crop_giessschwelle_effektiv') | float(sicherheitsminimum) %}
+              {% set ziel = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(42) %}
+              {% set maxv = states('input_number.plantinator_bewasserung_bodenfeuchte_maximum') | float(55) %}
+              {% set notdiff = states('input_number.plantinator_bewasserung_notguss_schwelle_prozent') | float(5) %}
+              {% if f < (sicherheitsminimum - notdiff) %}
+                kritisch_trocken
+              {% elif f < minv %}
+                trocken
+              {% elif f < ziel %}
+                unter_ziel
+              {% elif f <= maxv %}
+                zielbereich
+              {% else %}
+                zu_nass
+              {% endif %}
+            {% endif %}
+          {% endif %}
+        attributes:
+          feuchte: "{{ states('sensor.plantinator_bewasserung_p3_bodenfeuchte_wert') }}"
+          minimum: "{{ states('input_number.plantinator_bewasserung_bodenfeuchte_minimum') }}"
+          crop_giessschwelle: "{{ states('sensor.plantinator_bewasserung_crop_giessschwelle_effektiv') }}"
+          crop_dryback_ziel: "{{ states('sensor.plantinator_bewasserung_crop_dryback_ziel_effektiv') }}"
+          ziel: "{{ states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') }}"
+          maximum: "{{ states('input_number.plantinator_bewasserung_bodenfeuchte_maximum') }}"
+
+      - name: Plantinator Bewasserung P3 Bodentemperatur Zustand
+        unique_id: plantinator_bewasserung_p3_bodentemperatur_zustand
+        icon: mdi:thermometer-alert
+        state: >
+          {% set raw = states('sensor.plantinator_bewasserung_p3_bodentemperatur_wert') %}
+          {% if raw in ['unknown', 'unavailable', 'none', '', None] %}
+            sensorfehler
+          {% else %}
+            {% set t = raw | float(-999) %}
+            {% if t < -100 %}
+              sensorfehler
+            {% else %}
+              {% set minv = states('input_number.plantinator_bewasserung_bodentemperatur_minimum') | float(17) %}
+              {% set maxv = states('input_number.plantinator_bewasserung_bodentemperatur_maximum') | float(26) %}
+              {% if t < (minv - 2) %}
+                kritisch_kalt
+              {% elif t < minv %}
+                kalt
+              {% elif t <= maxv %}
+                ok
+              {% elif t <= (maxv + 2) %}
+                warm
+              {% else %}
+                kritisch_warm
+              {% endif %}
+            {% endif %}
+          {% endif %}
+        attributes:
+          temperatur: "{{ states('sensor.plantinator_bewasserung_p3_bodentemperatur_wert') }}"
+          minimum: "{{ states('input_number.plantinator_bewasserung_bodentemperatur_minimum') }}"
+          maximum: "{{ states('input_number.plantinator_bewasserung_bodentemperatur_maximum') }}"
+
+      - name: Plantinator Bewasserung P3 Gussbedarf
+        unique_id: plantinator_bewasserung_p3_gussbedarf
+        icon: mdi:water-alert
+        state: >
+          {% set aktiv = is_state('input_boolean.plantinator_bewasserung_p3_aktiv', 'on') %}
+          {% set fz = states('sensor.plantinator_bewasserung_p3_feuchtezustand') %}
+          {% set tz = states('sensor.plantinator_bewasserung_p3_bodentemperatur_zustand') %}
+          {% if not aktiv %}
+            inaktiv
+          {% elif fz in ['sensorfehler'] or tz in ['sensorfehler'] %}
+            sensorfehler
+          {% elif tz in ['kritisch_kalt', 'kritisch_warm'] and fz != 'kritisch_trocken' %}
+            temperatur_sperre
+          {% elif fz == 'kritisch_trocken' %}
+            notguss
+          {% elif fz == 'trocken' %}
+            ja
+          {% else %}
+            nein
+          {% endif %}
+        attributes:
+          feuchtezustand: "{{ states('sensor.plantinator_bewasserung_p3_feuchtezustand') }}"
+          bodentemperatur_zustand: "{{ states('sensor.plantinator_bewasserung_p3_bodentemperatur_zustand') }}"
+          crop_erlaubnis: "{{ states('sensor.plantinator_bewasserung_crop_normalguss_erlaubnis') }}"
+
+      - name: Plantinator Bewasserung P3 Empfehlung Normalguss ml
+        unique_id: plantinator_bewasserung_p3_empfehlung_normalguss_ml
+        icon: mdi:cup-water
+        unit_of_measurement: "ml"
+        state: >
+          {% set bedarf = states('sensor.plantinator_bewasserung_p3_gussbedarf') %}
+          {% set raw = states('sensor.plantinator_bewasserung_p3_bodenfeuchte_wert') %}
+          {% if bedarf not in ['ja', 'notguss'] or raw in ['unknown', 'unavailable', 'none', '', None] %}
+            0
+          {% else %}
+            {% set f = raw | float(-1) %}
+            {% if f < 0 %}
+              0
+            {% else %}
+              {% set ziel = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(42) %}
+              {% set mlp_gelernt = states('input_number.plantinator_bewasserung_p3_gelernt_ml_pro_prozent') | float(0) %}
+              {% set mlp_start = states('input_number.plantinator_bewasserung_startwert_ml_pro_prozent') | float(100) %}
+              {% set mlp = mlp_gelernt if is_state('input_boolean.plantinator_bewasserung_p3_lernwert_gueltig', 'on') else mlp_start %}
+              {% set minml = states('input_number.plantinator_bewasserung_min_empfohlener_guss_ml') | float(50) %}
+              {% set maxml = states('input_number.plantinator_bewasserung_max_ml_pro_normalguss') | float(500) %}
+              {% set faktor = states('sensor.plantinator_bewasserung_crop_steering_faktor') | float(1) %}
+              {% set umwelt = states('sensor.plantinator_bewasserung_umwelt_faktor') | float(1) %}
+              {% set fehl = [ziel - f, 0] | max %}
+              {% set roh = fehl * mlp * faktor * umwelt %}
+              {% set begrenzt = [roh, maxml] | min %}
+              {% if begrenzt > 0 and begrenzt < minml %}
+                {{ minml | round(0) }}
+              {% else %}
+                {{ begrenzt | round(0) }}
+              {% endif %}
+            {% endif %}
+          {% endif %}
+        attributes:
+          berechnung: "max(0, ziel - feuchte) * ml_pro_prozent * crop_faktor * umwelt_faktor, begrenzt durch Max-Normalguss"
+          feuchte: "{{ states('sensor.plantinator_bewasserung_p3_bodenfeuchte_wert') }}"
+          ziel: "{{ states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') }}"
+          ml_pro_prozent_genutzt: >
+            {% set gelernt = states('input_number.plantinator_bewasserung_p3_gelernt_ml_pro_prozent') | float(0) %}
+            {% set start = states('input_number.plantinator_bewasserung_startwert_ml_pro_prozent') | float(100) %}
+            {{ gelernt if is_state('input_boolean.plantinator_bewasserung_p3_lernwert_gueltig', 'on') else start }}
+          ml_pro_prozent_gelernt: "{{ states('input_number.plantinator_bewasserung_p3_gelernt_ml_pro_prozent') }}"
+          ml_pro_prozent_startwert: "{{ states('input_number.plantinator_bewasserung_startwert_ml_pro_prozent') }}"
+          crop_faktor: "{{ states('sensor.plantinator_bewasserung_crop_steering_faktor') }}"
+          umwelt_faktor: "{{ states('sensor.plantinator_bewasserung_umwelt_faktor') }}"
+          max_normalguss_ml: "{{ states('input_number.plantinator_bewasserung_max_ml_pro_normalguss') }}"
+
+      - name: Plantinator Bewasserung P3 Empfehlung Pumpenlaufzeit Sekunden
+        unique_id: plantinator_bewasserung_p3_empfehlung_pumpenlaufzeit_sekunden
+        icon: mdi:timer-outline
+        unit_of_measurement: "s"
+        state: >
+          {% set ml = states('sensor.plantinator_bewasserung_p3_empfehlung_normalguss_ml') | float(0) %}
+          {% set rate = states('input_number.plantinator_bewasserung_pumpe_ml_pro_sekunde') | float(50) %}
+          {% if ml > 0 and rate > 0 %}
+            {{ (ml / rate) | round(2) }}
+          {% else %}
+            0
+          {% endif %}
+
+      - name: Plantinator Bewasserung P4 Feuchtezustand
+        unique_id: plantinator_bewasserung_p4_feuchtezustand
+        icon: mdi:water-percent-alert
+        state: >
+          {% set raw = states('sensor.plantinator_bewasserung_p4_bodenfeuchte_wert') %}
+          {% if raw in ['unknown', 'unavailable', 'none', '', None] %}
+            sensorfehler
+          {% else %}
+            {% set f = raw | float(-1) %}
+            {% if f < 0 %}
+              sensorfehler
+            {% else %}
+              {% set sicherheitsminimum = states('input_number.plantinator_bewasserung_bodenfeuchte_minimum') | float(32) %}
+              {% set minv = states('sensor.plantinator_bewasserung_crop_giessschwelle_effektiv') | float(sicherheitsminimum) %}
+              {% set ziel = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(42) %}
+              {% set maxv = states('input_number.plantinator_bewasserung_bodenfeuchte_maximum') | float(55) %}
+              {% set notdiff = states('input_number.plantinator_bewasserung_notguss_schwelle_prozent') | float(5) %}
+              {% if f < (sicherheitsminimum - notdiff) %}
+                kritisch_trocken
+              {% elif f < minv %}
+                trocken
+              {% elif f < ziel %}
+                unter_ziel
+              {% elif f <= maxv %}
+                zielbereich
+              {% else %}
+                zu_nass
+              {% endif %}
+            {% endif %}
+          {% endif %}
+        attributes:
+          feuchte: "{{ states('sensor.plantinator_bewasserung_p4_bodenfeuchte_wert') }}"
+          minimum: "{{ states('input_number.plantinator_bewasserung_bodenfeuchte_minimum') }}"
+          crop_giessschwelle: "{{ states('sensor.plantinator_bewasserung_crop_giessschwelle_effektiv') }}"
+          crop_dryback_ziel: "{{ states('sensor.plantinator_bewasserung_crop_dryback_ziel_effektiv') }}"
+          ziel: "{{ states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') }}"
+          maximum: "{{ states('input_number.plantinator_bewasserung_bodenfeuchte_maximum') }}"
+
+      - name: Plantinator Bewasserung P4 Bodentemperatur Zustand
+        unique_id: plantinator_bewasserung_p4_bodentemperatur_zustand
+        icon: mdi:thermometer-alert
+        state: >
+          {% set raw = states('sensor.plantinator_bewasserung_p4_bodentemperatur_wert') %}
+          {% if raw in ['unknown', 'unavailable', 'none', '', None] %}
+            sensorfehler
+          {% else %}
+            {% set t = raw | float(-999) %}
+            {% if t < -100 %}
+              sensorfehler
+            {% else %}
+              {% set minv = states('input_number.plantinator_bewasserung_bodentemperatur_minimum') | float(17) %}
+              {% set maxv = states('input_number.plantinator_bewasserung_bodentemperatur_maximum') | float(26) %}
+              {% if t < (minv - 2) %}
+                kritisch_kalt
+              {% elif t < minv %}
+                kalt
+              {% elif t <= maxv %}
+                ok
+              {% elif t <= (maxv + 2) %}
+                warm
+              {% else %}
+                kritisch_warm
+              {% endif %}
+            {% endif %}
+          {% endif %}
+        attributes:
+          temperatur: "{{ states('sensor.plantinator_bewasserung_p4_bodentemperatur_wert') }}"
+          minimum: "{{ states('input_number.plantinator_bewasserung_bodentemperatur_minimum') }}"
+          maximum: "{{ states('input_number.plantinator_bewasserung_bodentemperatur_maximum') }}"
+
+      - name: Plantinator Bewasserung P4 Gussbedarf
+        unique_id: plantinator_bewasserung_p4_gussbedarf
+        icon: mdi:water-alert
+        state: >
+          {% set aktiv = is_state('input_boolean.plantinator_bewasserung_p4_aktiv', 'on') %}
+          {% set fz = states('sensor.plantinator_bewasserung_p4_feuchtezustand') %}
+          {% set tz = states('sensor.plantinator_bewasserung_p4_bodentemperatur_zustand') %}
+          {% if not aktiv %}
+            inaktiv
+          {% elif fz in ['sensorfehler'] or tz in ['sensorfehler'] %}
+            sensorfehler
+          {% elif tz in ['kritisch_kalt', 'kritisch_warm'] and fz != 'kritisch_trocken' %}
+            temperatur_sperre
+          {% elif fz == 'kritisch_trocken' %}
+            notguss
+          {% elif fz == 'trocken' %}
+            ja
+          {% else %}
+            nein
+          {% endif %}
+        attributes:
+          feuchtezustand: "{{ states('sensor.plantinator_bewasserung_p4_feuchtezustand') }}"
+          bodentemperatur_zustand: "{{ states('sensor.plantinator_bewasserung_p4_bodentemperatur_zustand') }}"
+          crop_erlaubnis: "{{ states('sensor.plantinator_bewasserung_crop_normalguss_erlaubnis') }}"
+
+      - name: Plantinator Bewasserung P4 Empfehlung Normalguss ml
+        unique_id: plantinator_bewasserung_p4_empfehlung_normalguss_ml
+        icon: mdi:cup-water
+        unit_of_measurement: "ml"
+        state: >
+          {% set bedarf = states('sensor.plantinator_bewasserung_p4_gussbedarf') %}
+          {% set raw = states('sensor.plantinator_bewasserung_p4_bodenfeuchte_wert') %}
+          {% if bedarf not in ['ja', 'notguss'] or raw in ['unknown', 'unavailable', 'none', '', None] %}
+            0
+          {% else %}
+            {% set f = raw | float(-1) %}
+            {% if f < 0 %}
+              0
+            {% else %}
+              {% set ziel = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(42) %}
+              {% set mlp_gelernt = states('input_number.plantinator_bewasserung_p4_gelernt_ml_pro_prozent') | float(0) %}
+              {% set mlp_start = states('input_number.plantinator_bewasserung_startwert_ml_pro_prozent') | float(100) %}
+              {% set mlp = mlp_gelernt if is_state('input_boolean.plantinator_bewasserung_p4_lernwert_gueltig', 'on') else mlp_start %}
+              {% set minml = states('input_number.plantinator_bewasserung_min_empfohlener_guss_ml') | float(50) %}
+              {% set maxml = states('input_number.plantinator_bewasserung_max_ml_pro_normalguss') | float(500) %}
+              {% set faktor = states('sensor.plantinator_bewasserung_crop_steering_faktor') | float(1) %}
+              {% set umwelt = states('sensor.plantinator_bewasserung_umwelt_faktor') | float(1) %}
+              {% set fehl = [ziel - f, 0] | max %}
+              {% set roh = fehl * mlp * faktor * umwelt %}
+              {% set begrenzt = [roh, maxml] | min %}
+              {% if begrenzt > 0 and begrenzt < minml %}
+                {{ minml | round(0) }}
+              {% else %}
+                {{ begrenzt | round(0) }}
+              {% endif %}
+            {% endif %}
+          {% endif %}
+        attributes:
+          berechnung: "max(0, ziel - feuchte) * ml_pro_prozent * crop_faktor * umwelt_faktor, begrenzt durch Max-Normalguss"
+          feuchte: "{{ states('sensor.plantinator_bewasserung_p4_bodenfeuchte_wert') }}"
+          ziel: "{{ states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') }}"
+          ml_pro_prozent_genutzt: >
+            {% set gelernt = states('input_number.plantinator_bewasserung_p4_gelernt_ml_pro_prozent') | float(0) %}
+            {% set start = states('input_number.plantinator_bewasserung_startwert_ml_pro_prozent') | float(100) %}
+            {{ gelernt if is_state('input_boolean.plantinator_bewasserung_p4_lernwert_gueltig', 'on') else start }}
+          ml_pro_prozent_gelernt: "{{ states('input_number.plantinator_bewasserung_p4_gelernt_ml_pro_prozent') }}"
+          ml_pro_prozent_startwert: "{{ states('input_number.plantinator_bewasserung_startwert_ml_pro_prozent') }}"
+          crop_faktor: "{{ states('sensor.plantinator_bewasserung_crop_steering_faktor') }}"
+          umwelt_faktor: "{{ states('sensor.plantinator_bewasserung_umwelt_faktor') }}"
+          max_normalguss_ml: "{{ states('input_number.plantinator_bewasserung_max_ml_pro_normalguss') }}"
+
+      - name: Plantinator Bewasserung P4 Empfehlung Pumpenlaufzeit Sekunden
+        unique_id: plantinator_bewasserung_p4_empfehlung_pumpenlaufzeit_sekunden
+        icon: mdi:timer-outline
+        unit_of_measurement: "s"
+        state: >
+          {% set ml = states('sensor.plantinator_bewasserung_p4_empfehlung_normalguss_ml') | float(0) %}
+          {% set rate = states('input_number.plantinator_bewasserung_pumpe_ml_pro_sekunde') | float(50) %}
+          {% if ml > 0 and rate > 0 %}
+            {{ (ml / rate) | round(2) }}
+          {% else %}
+            0
+          {% endif %}
+
+      - name: Plantinator Bewasserung Gesamt Gussbedarf
+        unique_id: plantinator_bewasserung_gesamt_gussbedarf
+        icon: mdi:water-alert
+        state: >
+          {% set vals = [
+            states('sensor.plantinator_bewasserung_p1_gussbedarf'),
+            states('sensor.plantinator_bewasserung_p2_gussbedarf'),
+            states('sensor.plantinator_bewasserung_p3_gussbedarf'),
+            states('sensor.plantinator_bewasserung_p4_gussbedarf')
+          ] %}
+          {% if 'notguss' in vals %}
+            notguss
+          {% elif 'ja' in vals %}
+            ja
+          {% elif 'sensorfehler' in vals %}
+            sensorfehler
+          {% elif 'temperatur_sperre' in vals %}
+            temperatur_sperre
+          {% else %}
+            nein
+          {% endif %}
+        attributes:
+          p1: "{{ states('sensor.plantinator_bewasserung_p1_gussbedarf') }}"
+          p2: "{{ states('sensor.plantinator_bewasserung_p2_gussbedarf') }}"
+          p3: "{{ states('sensor.plantinator_bewasserung_p3_gussbedarf') }}"
+          p4: "{{ states('sensor.plantinator_bewasserung_p4_gussbedarf') }}"
+          p1_ml: "{{ states('sensor.plantinator_bewasserung_p1_empfehlung_normalguss_ml') }}"
+          p2_ml: "{{ states('sensor.plantinator_bewasserung_p2_empfehlung_normalguss_ml') }}"
+          p3_ml: "{{ states('sensor.plantinator_bewasserung_p3_empfehlung_normalguss_ml') }}"
+          p4_ml: "{{ states('sensor.plantinator_bewasserung_p4_empfehlung_normalguss_ml') }}"
+
+script:
+  plantinator_bewasserung_lernsensorik_standardwerte_setzen:
+    alias: Plantinator Bewasserung Lernsensorik Standardwerte setzen
+    icon: mdi:database-import
+    mode: single
+    sequence:
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_startwert_ml_pro_prozent
+        data:
+          value: 35
+
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_min_empfohlener_guss_ml
+        data:
+          value: 50
+
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_notguss_schwelle_prozent
+        data:
+          value: 5

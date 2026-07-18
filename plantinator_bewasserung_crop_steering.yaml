@@ -1,0 +1,1473 @@
+############################################################
+# PLANTINATOR BEWASSERUNG - UNIVERSAL CROP STEERING
+# Datei: plantinator_bewasserung_crop_steering.yaml
+#
+# Zweck:
+# - Beliebige externe Software über Home-Assistant-Entitäten anbinden
+# - Externe Stage-Namen über frei editierbare Aliase normieren
+# - Manueller Fallback ohne externe Software
+# - Einstellbare Stage-Faktoren, Dryback-Ziele, Zeitfenster und Shot-Größen
+# - Reduzierte Shot-Größe während der einstellbaren Ramp-up-Phase
+# - Keine Pumpen-/Ventilsteuerung
+############################################################
+
+input_boolean:
+  plantinator_bewasserung_crop_individuelle_parameter:
+    name: Plantinator Bewasserung individuelle Crop Parameter
+    icon: mdi:tune-vertical
+
+input_select:
+  plantinator_bewasserung_crop_stage_manuell:
+    name: Plantinator Bewasserung Crop Stage manuell
+    icon: mdi:sprout
+    options:
+      - keimung
+      - steckling
+      - early_veg
+      - mid_veg
+      - late_veg
+      - early_flower
+      - mid_flower
+      - late_flower
+  plantinator_bewasserung_crop_substratprofil:
+    name: Plantinator Bewasserung Crop Substratprofil
+    icon: mdi:land-plots
+    options:
+      - coco
+      - steinwolle
+      - erde
+      - benutzerdefiniert
+
+input_datetime:
+  plantinator_bewasserung_licht_an_manuell:
+    name: Plantinator Bewasserung Licht an manuell
+    icon: mdi:weather-sunset-up
+    has_date: false
+    has_time: true
+  plantinator_bewasserung_licht_aus_manuell:
+    name: Plantinator Bewasserung Licht aus manuell
+    icon: mdi:weather-sunset-down
+    has_date: false
+    has_time: true
+
+input_number:
+  plantinator_bewasserung_crop_faktor_keimung:
+    name: Plantinator Bewasserung Crop Faktor Keimung
+    icon: mdi:sprout-outline
+    min: 0.25
+    max: 1.50
+    step: 0.05
+    mode: box
+  plantinator_bewasserung_crop_faktor_steckling:
+    name: Plantinator Bewasserung Crop Faktor Steckling
+    icon: mdi:sprout-outline
+    min: 0.25
+    max: 1.50
+    step: 0.05
+    mode: box
+  plantinator_bewasserung_crop_faktor_early_veg:
+    name: Plantinator Bewasserung Crop Faktor Early Veg
+    icon: mdi:leaf
+    min: 0.25
+    max: 1.50
+    step: 0.05
+    mode: box
+  plantinator_bewasserung_crop_faktor_mid_veg:
+    name: Plantinator Bewasserung Crop Faktor Mid Veg
+    icon: mdi:leaf
+    min: 0.25
+    max: 1.50
+    step: 0.05
+    mode: box
+  plantinator_bewasserung_crop_faktor_late_veg:
+    name: Plantinator Bewasserung Crop Faktor Late Veg
+    icon: mdi:leaf
+    min: 0.25
+    max: 1.50
+    step: 0.05
+    mode: box
+  plantinator_bewasserung_crop_faktor_early_flower:
+    name: Plantinator Bewasserung Crop Faktor Early Flower
+    icon: mdi:flower
+    min: 0.25
+    max: 1.50
+    step: 0.05
+    mode: box
+  plantinator_bewasserung_crop_faktor_mid_flower:
+    name: Plantinator Bewasserung Crop Faktor Mid Flower
+    icon: mdi:flower
+    min: 0.25
+    max: 1.50
+    step: 0.05
+    mode: box
+  plantinator_bewasserung_crop_faktor_late_flower:
+    name: Plantinator Bewasserung Crop Faktor Late Flower
+    icon: mdi:flower
+    min: 0.25
+    max: 1.50
+    step: 0.05
+    mode: box
+  plantinator_bewasserung_crop_substratvolumen_liter:
+    name: Plantinator Bewasserung Crop Substratvolumen Liter
+    icon: mdi:pot
+    min: 0.5
+    max: 100
+    step: 0.5
+    mode: box
+    unit_of_measurement: "l"
+  plantinator_bewasserung_crop_ramp_up_dauer_minuten:
+    name: Plantinator Bewasserung Crop Ramp Up Dauer Minuten
+    icon: mdi:chart-timeline-variant-shimmer
+    min: 0
+    max: 240
+    step: 15
+    mode: box
+    unit_of_measurement: "min"
+  plantinator_bewasserung_crop_ramp_up_shot_faktor_prozent:
+    name: Plantinator Bewasserung Crop Ramp Up Shot Faktor
+    icon: mdi:water-percent
+    min: 25
+    max: 100
+    step: 5
+    mode: box
+    unit_of_measurement: "%"
+
+  plantinator_bewasserung_crop_start_nach_licht_an_keimung_minuten:
+    name: Plantinator Crop Start nach Licht an Keimung
+    icon: mdi:weather-sunset-up
+    min: 0
+    max: 360
+    step: 15
+    mode: box
+    unit_of_measurement: "min"
+  plantinator_bewasserung_crop_stop_vor_licht_aus_keimung_minuten:
+    name: Plantinator Crop Stop vor Licht aus Keimung
+    icon: mdi:weather-night
+    min: 0
+    max: 360
+    step: 15
+    mode: box
+    unit_of_measurement: "min"
+  plantinator_bewasserung_crop_dryback_ziel_keimung_prozent:
+    name: Plantinator Crop Dryback Ziel Keimung
+    icon: mdi:water-percent-alert
+    min: 0
+    max: 35
+    step: 0.5
+    mode: box
+    unit_of_measurement: "%"
+  plantinator_bewasserung_crop_shot_keimung_prozent:
+    name: Plantinator Crop Shot Keimung
+    icon: mdi:cup-water
+    min: 0.5
+    max: 10
+    step: 0.5
+    mode: box
+    unit_of_measurement: "%"
+
+  plantinator_bewasserung_crop_start_nach_licht_an_steckling_minuten:
+    name: Plantinator Crop Start nach Licht an Steckling
+    icon: mdi:weather-sunset-up
+    min: 0
+    max: 360
+    step: 15
+    mode: box
+    unit_of_measurement: "min"
+  plantinator_bewasserung_crop_stop_vor_licht_aus_steckling_minuten:
+    name: Plantinator Crop Stop vor Licht aus Steckling
+    icon: mdi:weather-night
+    min: 0
+    max: 360
+    step: 15
+    mode: box
+    unit_of_measurement: "min"
+  plantinator_bewasserung_crop_dryback_ziel_steckling_prozent:
+    name: Plantinator Crop Dryback Ziel Steckling
+    icon: mdi:water-percent-alert
+    min: 0
+    max: 35
+    step: 0.5
+    mode: box
+    unit_of_measurement: "%"
+  plantinator_bewasserung_crop_shot_steckling_prozent:
+    name: Plantinator Crop Shot Steckling
+    icon: mdi:cup-water
+    min: 0.5
+    max: 10
+    step: 0.5
+    mode: box
+    unit_of_measurement: "%"
+
+  plantinator_bewasserung_crop_start_nach_licht_an_early_veg_minuten:
+    name: Plantinator Crop Start nach Licht an Early Veg
+    icon: mdi:weather-sunset-up
+    min: 0
+    max: 360
+    step: 15
+    mode: box
+    unit_of_measurement: "min"
+  plantinator_bewasserung_crop_stop_vor_licht_aus_early_veg_minuten:
+    name: Plantinator Crop Stop vor Licht aus Early Veg
+    icon: mdi:weather-night
+    min: 0
+    max: 360
+    step: 15
+    mode: box
+    unit_of_measurement: "min"
+  plantinator_bewasserung_crop_dryback_ziel_early_veg_prozent:
+    name: Plantinator Crop Dryback Ziel Early Veg
+    icon: mdi:water-percent-alert
+    min: 0
+    max: 35
+    step: 0.5
+    mode: box
+    unit_of_measurement: "%"
+  plantinator_bewasserung_crop_shot_early_veg_prozent:
+    name: Plantinator Crop Shot Early Veg
+    icon: mdi:cup-water
+    min: 0.5
+    max: 10
+    step: 0.5
+    mode: box
+    unit_of_measurement: "%"
+
+  plantinator_bewasserung_crop_start_nach_licht_an_mid_veg_minuten:
+    name: Plantinator Crop Start nach Licht an Mid Veg
+    icon: mdi:weather-sunset-up
+    min: 0
+    max: 360
+    step: 15
+    mode: box
+    unit_of_measurement: "min"
+  plantinator_bewasserung_crop_stop_vor_licht_aus_mid_veg_minuten:
+    name: Plantinator Crop Stop vor Licht aus Mid Veg
+    icon: mdi:weather-night
+    min: 0
+    max: 360
+    step: 15
+    mode: box
+    unit_of_measurement: "min"
+  plantinator_bewasserung_crop_dryback_ziel_mid_veg_prozent:
+    name: Plantinator Crop Dryback Ziel Mid Veg
+    icon: mdi:water-percent-alert
+    min: 0
+    max: 35
+    step: 0.5
+    mode: box
+    unit_of_measurement: "%"
+  plantinator_bewasserung_crop_shot_mid_veg_prozent:
+    name: Plantinator Crop Shot Mid Veg
+    icon: mdi:cup-water
+    min: 0.5
+    max: 10
+    step: 0.5
+    mode: box
+    unit_of_measurement: "%"
+
+  plantinator_bewasserung_crop_start_nach_licht_an_late_veg_minuten:
+    name: Plantinator Crop Start nach Licht an Late Veg
+    icon: mdi:weather-sunset-up
+    min: 0
+    max: 360
+    step: 15
+    mode: box
+    unit_of_measurement: "min"
+  plantinator_bewasserung_crop_stop_vor_licht_aus_late_veg_minuten:
+    name: Plantinator Crop Stop vor Licht aus Late Veg
+    icon: mdi:weather-night
+    min: 0
+    max: 360
+    step: 15
+    mode: box
+    unit_of_measurement: "min"
+  plantinator_bewasserung_crop_dryback_ziel_late_veg_prozent:
+    name: Plantinator Crop Dryback Ziel Late Veg
+    icon: mdi:water-percent-alert
+    min: 0
+    max: 35
+    step: 0.5
+    mode: box
+    unit_of_measurement: "%"
+  plantinator_bewasserung_crop_shot_late_veg_prozent:
+    name: Plantinator Crop Shot Late Veg
+    icon: mdi:cup-water
+    min: 0.5
+    max: 10
+    step: 0.5
+    mode: box
+    unit_of_measurement: "%"
+
+  plantinator_bewasserung_crop_start_nach_licht_an_early_flower_minuten:
+    name: Plantinator Crop Start nach Licht an Early Flower
+    icon: mdi:weather-sunset-up
+    min: 0
+    max: 360
+    step: 15
+    mode: box
+    unit_of_measurement: "min"
+  plantinator_bewasserung_crop_stop_vor_licht_aus_early_flower_minuten:
+    name: Plantinator Crop Stop vor Licht aus Early Flower
+    icon: mdi:weather-night
+    min: 0
+    max: 360
+    step: 15
+    mode: box
+    unit_of_measurement: "min"
+  plantinator_bewasserung_crop_dryback_ziel_early_flower_prozent:
+    name: Plantinator Crop Dryback Ziel Early Flower
+    icon: mdi:water-percent-alert
+    min: 0
+    max: 35
+    step: 0.5
+    mode: box
+    unit_of_measurement: "%"
+  plantinator_bewasserung_crop_shot_early_flower_prozent:
+    name: Plantinator Crop Shot Early Flower
+    icon: mdi:cup-water
+    min: 0.5
+    max: 10
+    step: 0.5
+    mode: box
+    unit_of_measurement: "%"
+
+  plantinator_bewasserung_crop_start_nach_licht_an_mid_flower_minuten:
+    name: Plantinator Crop Start nach Licht an Mid Flower
+    icon: mdi:weather-sunset-up
+    min: 0
+    max: 360
+    step: 15
+    mode: box
+    unit_of_measurement: "min"
+  plantinator_bewasserung_crop_stop_vor_licht_aus_mid_flower_minuten:
+    name: Plantinator Crop Stop vor Licht aus Mid Flower
+    icon: mdi:weather-night
+    min: 0
+    max: 360
+    step: 15
+    mode: box
+    unit_of_measurement: "min"
+  plantinator_bewasserung_crop_dryback_ziel_mid_flower_prozent:
+    name: Plantinator Crop Dryback Ziel Mid Flower
+    icon: mdi:water-percent-alert
+    min: 0
+    max: 35
+    step: 0.5
+    mode: box
+    unit_of_measurement: "%"
+  plantinator_bewasserung_crop_shot_mid_flower_prozent:
+    name: Plantinator Crop Shot Mid Flower
+    icon: mdi:cup-water
+    min: 0.5
+    max: 10
+    step: 0.5
+    mode: box
+    unit_of_measurement: "%"
+
+  plantinator_bewasserung_crop_start_nach_licht_an_late_flower_minuten:
+    name: Plantinator Crop Start nach Licht an Late Flower
+    icon: mdi:weather-sunset-up
+    min: 0
+    max: 360
+    step: 15
+    mode: box
+    unit_of_measurement: "min"
+  plantinator_bewasserung_crop_stop_vor_licht_aus_late_flower_minuten:
+    name: Plantinator Crop Stop vor Licht aus Late Flower
+    icon: mdi:weather-night
+    min: 0
+    max: 360
+    step: 15
+    mode: box
+    unit_of_measurement: "min"
+  plantinator_bewasserung_crop_dryback_ziel_late_flower_prozent:
+    name: Plantinator Crop Dryback Ziel Late Flower
+    icon: mdi:water-percent-alert
+    min: 0
+    max: 35
+    step: 0.5
+    mode: box
+    unit_of_measurement: "%"
+  plantinator_bewasserung_crop_shot_late_flower_prozent:
+    name: Plantinator Crop Shot Late Flower
+    icon: mdi:cup-water
+    min: 0.5
+    max: 10
+    step: 0.5
+    mode: box
+    unit_of_measurement: "%"
+
+input_text:
+  plantinator_bewasserung_crop_stage_entity:
+    name: Plantinator Bewasserung Crop Stage Quell Entity
+    icon: mdi:connection
+    max: 255
+  plantinator_bewasserung_crop_stage_attribut:
+    name: Plantinator Bewasserung Crop Stage Quell Attribut optional
+    icon: mdi:code-braces
+    max: 255
+  plantinator_bewasserung_licht_an_entity:
+    name: Plantinator Bewasserung Licht an Quell Entity
+    icon: mdi:connection
+    max: 255
+  plantinator_bewasserung_licht_an_attribut:
+    name: Plantinator Bewasserung Licht an Quell Attribut optional
+    icon: mdi:code-braces
+    max: 255
+  plantinator_bewasserung_licht_aus_entity:
+    name: Plantinator Bewasserung Licht aus Quell Entity
+    icon: mdi:connection
+    max: 255
+  plantinator_bewasserung_licht_aus_attribut:
+    name: Plantinator Bewasserung Licht aus Quell Attribut optional
+    icon: mdi:code-braces
+    max: 255
+
+  plantinator_bewasserung_crop_alias_keimung:
+    name: Plantinator Bewasserung Crop Aliase Keimung
+    icon: mdi:format-list-bulleted
+    max: 255
+  plantinator_bewasserung_crop_alias_steckling:
+    name: Plantinator Bewasserung Crop Aliase Steckling
+    icon: mdi:format-list-bulleted
+    max: 255
+  plantinator_bewasserung_crop_alias_early_veg:
+    name: Plantinator Bewasserung Crop Aliase Early Veg
+    icon: mdi:format-list-bulleted
+    max: 255
+  plantinator_bewasserung_crop_alias_mid_veg:
+    name: Plantinator Bewasserung Crop Aliase Mid Veg
+    icon: mdi:format-list-bulleted
+    max: 255
+  plantinator_bewasserung_crop_alias_late_veg:
+    name: Plantinator Bewasserung Crop Aliase Late Veg
+    icon: mdi:format-list-bulleted
+    max: 255
+  plantinator_bewasserung_crop_alias_early_flower:
+    name: Plantinator Bewasserung Crop Aliase Early Flower
+    icon: mdi:format-list-bulleted
+    max: 255
+  plantinator_bewasserung_crop_alias_mid_flower:
+    name: Plantinator Bewasserung Crop Aliase Mid Flower
+    icon: mdi:format-list-bulleted
+    max: 255
+  plantinator_bewasserung_crop_alias_late_flower:
+    name: Plantinator Bewasserung Crop Aliase Late Flower
+    icon: mdi:format-list-bulleted
+    max: 255
+
+template:
+  - sensor:
+      - name: Plantinator Bewasserung Plant Stage Roh
+        unique_id: plantinator_bewasserung_plant_stage_roh
+        icon: mdi:sprout-outline
+        state: >
+          {% set ent = states('input_text.plantinator_bewasserung_crop_stage_entity') | trim %}
+          {% set attr = states('input_text.plantinator_bewasserung_crop_stage_attribut') | trim %}
+          {% set leer = ['', 'unknown', 'unavailable', 'none'] %}
+          {% if ent in leer %}
+            {{ states('input_select.plantinator_bewasserung_crop_stage_manuell') }}
+          {% elif not has_value(ent) %}
+            unknown
+          {% elif attr not in leer %}
+            {% set wert = state_attr(ent, attr) %}
+            {{ wert if wert is not none else 'unknown' }}
+          {% else %}
+            {{ states(ent) }}
+          {% endif %}
+        attributes:
+          source_entity: "{{ states('input_text.plantinator_bewasserung_crop_stage_entity') | trim }}"
+          source_attribute: "{{ states('input_text.plantinator_bewasserung_crop_stage_attribut') | trim }}"
+          fallback_entity: input_select.plantinator_bewasserung_crop_stage_manuell
+
+      - name: Plantinator Bewasserung Licht an Roh
+        unique_id: plantinator_bewasserung_licht_an_roh
+        icon: mdi:weather-sunset-up
+        state: >
+          {% set ent = states('input_text.plantinator_bewasserung_licht_an_entity') | trim %}
+          {% set attr = states('input_text.plantinator_bewasserung_licht_an_attribut') | trim %}
+          {% set leer = ['', 'unknown', 'unavailable', 'none'] %}
+          {% if ent in leer %}
+            {{ states('input_datetime.plantinator_bewasserung_licht_an_manuell') }}
+          {% elif not has_value(ent) %}
+            unknown
+          {% elif attr not in leer %}
+            {% set wert = state_attr(ent, attr) %}
+            {{ wert if wert is not none else 'unknown' }}
+          {% else %}
+            {{ states(ent) }}
+          {% endif %}
+        attributes:
+          source_entity: "{{ states('input_text.plantinator_bewasserung_licht_an_entity') | trim }}"
+          source_attribute: "{{ states('input_text.plantinator_bewasserung_licht_an_attribut') | trim }}"
+          fallback_entity: input_datetime.plantinator_bewasserung_licht_an_manuell
+
+      - name: Plantinator Bewasserung Licht aus Roh
+        unique_id: plantinator_bewasserung_licht_aus_roh
+        icon: mdi:weather-sunset-down
+        state: >
+          {% set ent = states('input_text.plantinator_bewasserung_licht_aus_entity') | trim %}
+          {% set attr = states('input_text.plantinator_bewasserung_licht_aus_attribut') | trim %}
+          {% set leer = ['', 'unknown', 'unavailable', 'none'] %}
+          {% if ent in leer %}
+            {{ states('input_datetime.plantinator_bewasserung_licht_aus_manuell') }}
+          {% elif not has_value(ent) %}
+            unknown
+          {% elif attr not in leer %}
+            {% set wert = state_attr(ent, attr) %}
+            {{ wert if wert is not none else 'unknown' }}
+          {% else %}
+            {{ states(ent) }}
+          {% endif %}
+        attributes:
+          source_entity: "{{ states('input_text.plantinator_bewasserung_licht_aus_entity') | trim }}"
+          source_attribute: "{{ states('input_text.plantinator_bewasserung_licht_aus_attribut') | trim }}"
+          fallback_entity: input_datetime.plantinator_bewasserung_licht_aus_manuell
+
+      - name: Plantinator Bewasserung Crop Stage
+        unique_id: plantinator_bewasserung_crop_stage
+        icon: mdi:sprout
+        state: >
+          {% set raw = states('sensor.plantinator_bewasserung_plant_stage_roh') %}
+          {% set norm = raw | lower | trim | replace(' ', '_') | replace('-', '_') | replace('/', '_') %}
+          {% set intern = [
+            'keimung', 'steckling', 'early_veg', 'mid_veg',
+            'late_veg', 'early_flower', 'mid_flower', 'late_flower'
+          ] %}
+          {% set mappings = [
+            ['input_text.plantinator_bewasserung_crop_alias_keimung', 'keimung'],
+            ['input_text.plantinator_bewasserung_crop_alias_steckling', 'steckling'],
+            ['input_text.plantinator_bewasserung_crop_alias_early_veg', 'early_veg'],
+            ['input_text.plantinator_bewasserung_crop_alias_mid_veg', 'mid_veg'],
+            ['input_text.plantinator_bewasserung_crop_alias_late_veg', 'late_veg'],
+            ['input_text.plantinator_bewasserung_crop_alias_early_flower', 'early_flower'],
+            ['input_text.plantinator_bewasserung_crop_alias_mid_flower', 'mid_flower'],
+            ['input_text.plantinator_bewasserung_crop_alias_late_flower', 'late_flower']
+          ] %}
+          {% if norm in intern %}
+            {{ norm }}
+          {% elif raw in ['unknown', 'unavailable', 'none', ''] %}
+            unbekannt
+          {% else %}
+            {% set ns = namespace(treffer=[]) %}
+            {% for mapping in mappings %}
+              {% for alias in states(mapping[0]).split(',') %}
+                {% set alias_norm = alias | lower | trim | replace(' ', '_') | replace('-', '_') | replace('/', '_') %}
+                {% if alias_norm != '' and alias_norm == norm and mapping[1] not in ns.treffer %}
+                  {% set ns.treffer = ns.treffer + [mapping[1]] %}
+                {% endif %}
+              {% endfor %}
+            {% endfor %}
+            {{ ns.treffer[0] if ns.treffer | count == 1 else 'unbekannt' }}
+          {% endif %}
+        attributes:
+          source_raw: "{{ states('sensor.plantinator_bewasserung_plant_stage_roh') }}"
+          normalisierung: Kleinschreibung; Leerzeichen, Bindestrich und Schrägstrich werden zu Unterstrichen
+          interne_stufen: >
+            keimung, steckling, early_veg, mid_veg, late_veg,
+            early_flower, mid_flower, late_flower
+
+      - name: Plantinator Bewasserung Crop Quellen Status
+        unique_id: plantinator_bewasserung_crop_quellen_status
+        icon: mdi:connection
+        state: >
+          {% set leer = ['', 'unknown', 'unavailable', 'none'] %}
+          {% set stage = states('sensor.plantinator_bewasserung_crop_stage') %}
+          {% set on_raw = states('sensor.plantinator_bewasserung_licht_an_roh') %}
+          {% set off_raw = states('sensor.plantinator_bewasserung_licht_aus_roh') %}
+          {% set on_p = on_raw.split(':') %}
+          {% set off_p = off_raw.split(':') %}
+          {% set on_ok = on_raw not in leer and on_p | count >= 2
+                and is_number(on_p[0]) and is_number(on_p[1])
+                and 0 <= (on_p[0] | int(-1)) <= 23
+                and 0 <= (on_p[1] | int(-1)) <= 59 %}
+          {% set off_ok = off_raw not in leer and off_p | count >= 2
+                and is_number(off_p[0]) and is_number(off_p[1])
+                and 0 <= (off_p[0] | int(-1)) <= 23
+                and 0 <= (off_p[1] | int(-1)) <= 59 %}
+          {% set stage_ent = states('input_text.plantinator_bewasserung_crop_stage_entity') | trim %}
+          {% set on_ent = states('input_text.plantinator_bewasserung_licht_an_entity') | trim %}
+          {% set off_ent = states('input_text.plantinator_bewasserung_licht_aus_entity') | trim %}
+          {% if stage == 'unbekannt' %}
+            fehler_stage_unbekannt_oder_mehrdeutig
+          {% elif not on_ok or not off_ok %}
+            fehler_lichtzeit
+          {% elif stage_ent in leer and on_ent in leer and off_ent in leer %}
+            manuell
+          {% else %}
+            ok
+          {% endif %}
+        attributes:
+          stage_source: "{{ states('input_text.plantinator_bewasserung_crop_stage_entity') | trim }}"
+          stage_raw: "{{ states('sensor.plantinator_bewasserung_plant_stage_roh') }}"
+          stage_intern: "{{ states('sensor.plantinator_bewasserung_crop_stage') }}"
+          licht_an_source: "{{ states('input_text.plantinator_bewasserung_licht_an_entity') | trim }}"
+          licht_an_raw: "{{ states('sensor.plantinator_bewasserung_licht_an_roh') }}"
+          licht_aus_source: "{{ states('input_text.plantinator_bewasserung_licht_aus_entity') | trim }}"
+          licht_aus_raw: "{{ states('sensor.plantinator_bewasserung_licht_aus_roh') }}"
+          hinweis: >
+            Bei unbekannter Stage den externen Rohwert genau einer Aliasliste zuordnen.
+            Ein Alias darf nicht gleichzeitig in mehreren Listen vorkommen.
+
+      - name: Plantinator Bewasserung Crop Einstellungen Status
+        unique_id: plantinator_bewasserung_crop_einstellungen_status
+        icon: mdi:tune-check
+        state: >
+          {% set individuell = is_state('input_boolean.plantinator_bewasserung_crop_individuelle_parameter', 'on') %}
+          {% set stage = states('sensor.plantinator_bewasserung_crop_stage') %}
+          {% set start_helpers = {
+            'keimung': 'input_number.plantinator_bewasserung_crop_start_nach_licht_an_keimung_minuten',
+            'steckling': 'input_number.plantinator_bewasserung_crop_start_nach_licht_an_steckling_minuten',
+            'early_veg': 'input_number.plantinator_bewasserung_crop_start_nach_licht_an_early_veg_minuten',
+            'mid_veg': 'input_number.plantinator_bewasserung_crop_start_nach_licht_an_mid_veg_minuten',
+            'late_veg': 'input_number.plantinator_bewasserung_crop_start_nach_licht_an_late_veg_minuten',
+            'early_flower': 'input_number.plantinator_bewasserung_crop_start_nach_licht_an_early_flower_minuten',
+            'mid_flower': 'input_number.plantinator_bewasserung_crop_start_nach_licht_an_mid_flower_minuten',
+            'late_flower': 'input_number.plantinator_bewasserung_crop_start_nach_licht_an_late_flower_minuten'
+          } %}
+          {% set stop_helpers = {
+            'keimung': 'input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_keimung_minuten',
+            'steckling': 'input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_steckling_minuten',
+            'early_veg': 'input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_early_veg_minuten',
+            'mid_veg': 'input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_mid_veg_minuten',
+            'late_veg': 'input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_late_veg_minuten',
+            'early_flower': 'input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_early_flower_minuten',
+            'mid_flower': 'input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_mid_flower_minuten',
+            'late_flower': 'input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_late_flower_minuten'
+          } %}
+          {% set dryback_helpers = {
+            'keimung': 'input_number.plantinator_bewasserung_crop_dryback_ziel_keimung_prozent',
+            'steckling': 'input_number.plantinator_bewasserung_crop_dryback_ziel_steckling_prozent',
+            'early_veg': 'input_number.plantinator_bewasserung_crop_dryback_ziel_early_veg_prozent',
+            'mid_veg': 'input_number.plantinator_bewasserung_crop_dryback_ziel_mid_veg_prozent',
+            'late_veg': 'input_number.plantinator_bewasserung_crop_dryback_ziel_late_veg_prozent',
+            'early_flower': 'input_number.plantinator_bewasserung_crop_dryback_ziel_early_flower_prozent',
+            'mid_flower': 'input_number.plantinator_bewasserung_crop_dryback_ziel_mid_flower_prozent',
+            'late_flower': 'input_number.plantinator_bewasserung_crop_dryback_ziel_late_flower_prozent'
+          } %}
+          {% set shot_helpers = {
+            'keimung': 'input_number.plantinator_bewasserung_crop_shot_keimung_prozent',
+            'steckling': 'input_number.plantinator_bewasserung_crop_shot_steckling_prozent',
+            'early_veg': 'input_number.plantinator_bewasserung_crop_shot_early_veg_prozent',
+            'mid_veg': 'input_number.plantinator_bewasserung_crop_shot_mid_veg_prozent',
+            'late_veg': 'input_number.plantinator_bewasserung_crop_shot_late_veg_prozent',
+            'early_flower': 'input_number.plantinator_bewasserung_crop_shot_early_flower_prozent',
+            'mid_flower': 'input_number.plantinator_bewasserung_crop_shot_mid_flower_prozent',
+            'late_flower': 'input_number.plantinator_bewasserung_crop_shot_late_flower_prozent'
+          } %}
+          {% if stage in start_helpers %}
+            {% set start = states(start_helpers[stage]) | int(-1) %}
+            {% set stop = states(stop_helpers[stage]) | int(-1) %}
+            {% set dryback = states(dryback_helpers[stage]) | float(-1) %}
+            {% set shot = states(shot_helpers[stage]) | float(-1) %}
+          {% else %}
+            {% set start = -1 %}
+            {% set stop = -1 %}
+            {% set dryback = -1 %}
+            {% set shot = -1 %}
+          {% endif %}
+          {% set volumen = states('input_number.plantinator_bewasserung_crop_substratvolumen_liter') | float(-1) %}
+          {% set ramp = states('input_number.plantinator_bewasserung_crop_ramp_up_dauer_minuten') | int(-1) %}
+          {% set ramp_faktor = states('input_number.plantinator_bewasserung_crop_ramp_up_shot_faktor_prozent') | float(-1) %}
+          {% set on_raw = states('sensor.plantinator_bewasserung_licht_an_roh') %}
+          {% set off_raw = states('sensor.plantinator_bewasserung_licht_aus_roh') %}
+          {% set on_p = on_raw.split(':') %}
+          {% set off_p = off_raw.split(':') %}
+          {% set zeiten_ok = on_p | count >= 2 and off_p | count >= 2
+                and is_number(on_p[0]) and is_number(on_p[1])
+                and is_number(off_p[0]) and is_number(off_p[1]) %}
+          {% if zeiten_ok %}
+            {% set on_m = (on_p[0] | int(0)) * 60 + (on_p[1] | int(0)) %}
+            {% set off_m = (off_p[0] | int(0)) * 60 + (off_p[1] | int(0)) %}
+            {% set lichtdauer = off_m - on_m if off_m > on_m else off_m + 1440 - on_m %}
+          {% else %}
+            {% set lichtdauer = 0 %}
+          {% endif %}
+          {% if not individuell %}
+            standard
+          {% elif stage not in start_helpers %}
+            fehler_stage_unbekannt
+          {% elif start < 0 or stop < 0 or dryback < 0 or shot <= 0 or volumen <= 0
+                or ramp < 0 or ramp_faktor < 25 or ramp_faktor > 100 %}
+            fehler_ungueltiger_wert
+          {% elif lichtdauer > 0 and (start + stop) >= lichtdauer %}
+            fehler_keine_bewaesserungszeit
+          {% else %}
+            ok
+          {% endif %}
+        attributes:
+          individuelle_parameter: "{{ states('input_boolean.plantinator_bewasserung_crop_individuelle_parameter') }}"
+          crop_stage: "{{ states('sensor.plantinator_bewasserung_crop_stage') }}"
+          substratprofil: "{{ states('input_select.plantinator_bewasserung_crop_substratprofil') }}"
+          hinweis: >
+            Bei einem Fehler werden die konservativen Standardwerte verwendet.
+            Start plus Stop muss kleiner als die Lichtdauer sein.
+
+      - name: Plantinator Bewasserung Crop Start nach Licht an effektiv
+        unique_id: plantinator_bewasserung_crop_start_nach_licht_an_effektiv
+        icon: mdi:weather-sunset-up
+        unit_of_measurement: "min"
+        state: >
+          {% set stage = states('sensor.plantinator_bewasserung_crop_stage') %}
+          {% set defaults = {
+            'keimung': 0, 'steckling': 0, 'early_veg': 30, 'mid_veg': 45,
+            'late_veg': 90, 'early_flower': 150, 'mid_flower': 90, 'late_flower': 120
+          } %}
+          {% set helpers = {
+            'keimung': 'input_number.plantinator_bewasserung_crop_start_nach_licht_an_keimung_minuten',
+            'steckling': 'input_number.plantinator_bewasserung_crop_start_nach_licht_an_steckling_minuten',
+            'early_veg': 'input_number.plantinator_bewasserung_crop_start_nach_licht_an_early_veg_minuten',
+            'mid_veg': 'input_number.plantinator_bewasserung_crop_start_nach_licht_an_mid_veg_minuten',
+            'late_veg': 'input_number.plantinator_bewasserung_crop_start_nach_licht_an_late_veg_minuten',
+            'early_flower': 'input_number.plantinator_bewasserung_crop_start_nach_licht_an_early_flower_minuten',
+            'mid_flower': 'input_number.plantinator_bewasserung_crop_start_nach_licht_an_mid_flower_minuten',
+            'late_flower': 'input_number.plantinator_bewasserung_crop_start_nach_licht_an_late_flower_minuten'
+          } %}
+          {% set individuell = is_state('input_boolean.plantinator_bewasserung_crop_individuelle_parameter', 'on')
+                and is_state('sensor.plantinator_bewasserung_crop_einstellungen_status', 'ok') %}
+          {{ states(helpers[stage]) | int(defaults.get(stage, 120))
+             if individuell and stage in helpers else defaults.get(stage, 120) }}
+
+      - name: Plantinator Bewasserung Crop Stop vor Licht aus effektiv
+        unique_id: plantinator_bewasserung_crop_stop_vor_licht_aus_effektiv
+        icon: mdi:weather-night
+        unit_of_measurement: "min"
+        state: >
+          {% set stage = states('sensor.plantinator_bewasserung_crop_stage') %}
+          {% set defaults = {
+            'keimung': 120, 'steckling': 120, 'early_veg': 60, 'mid_veg': 90,
+            'late_veg': 150, 'early_flower': 210, 'mid_flower': 150, 'late_flower': 180
+          } %}
+          {% set helpers = {
+            'keimung': 'input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_keimung_minuten',
+            'steckling': 'input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_steckling_minuten',
+            'early_veg': 'input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_early_veg_minuten',
+            'mid_veg': 'input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_mid_veg_minuten',
+            'late_veg': 'input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_late_veg_minuten',
+            'early_flower': 'input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_early_flower_minuten',
+            'mid_flower': 'input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_mid_flower_minuten',
+            'late_flower': 'input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_late_flower_minuten'
+          } %}
+          {% set individuell = is_state('input_boolean.plantinator_bewasserung_crop_individuelle_parameter', 'on')
+                and is_state('sensor.plantinator_bewasserung_crop_einstellungen_status', 'ok') %}
+          {{ states(helpers[stage]) | int(defaults.get(stage, 180))
+             if individuell and stage in helpers else defaults.get(stage, 180) }}
+
+      - name: Plantinator Bewasserung Crop Dryback Ziel effektiv
+        unique_id: plantinator_bewasserung_crop_dryback_ziel_effektiv
+        icon: mdi:water-percent-alert
+        unit_of_measurement: "%"
+        state: >
+          {% set stage = states('sensor.plantinator_bewasserung_crop_stage') %}
+          {% set defaults = {
+            'keimung': 5.0, 'steckling': 5.0, 'early_veg': 8.0, 'mid_veg': 8.0,
+            'late_veg': 12.0, 'early_flower': 18.0, 'mid_flower': 12.0, 'late_flower': 18.0
+          } %}
+          {% set helpers = {
+            'keimung': 'input_number.plantinator_bewasserung_crop_dryback_ziel_keimung_prozent',
+            'steckling': 'input_number.plantinator_bewasserung_crop_dryback_ziel_steckling_prozent',
+            'early_veg': 'input_number.plantinator_bewasserung_crop_dryback_ziel_early_veg_prozent',
+            'mid_veg': 'input_number.plantinator_bewasserung_crop_dryback_ziel_mid_veg_prozent',
+            'late_veg': 'input_number.plantinator_bewasserung_crop_dryback_ziel_late_veg_prozent',
+            'early_flower': 'input_number.plantinator_bewasserung_crop_dryback_ziel_early_flower_prozent',
+            'mid_flower': 'input_number.plantinator_bewasserung_crop_dryback_ziel_mid_flower_prozent',
+            'late_flower': 'input_number.plantinator_bewasserung_crop_dryback_ziel_late_flower_prozent'
+          } %}
+          {% set individuell = is_state('input_boolean.plantinator_bewasserung_crop_individuelle_parameter', 'on')
+                and is_state('sensor.plantinator_bewasserung_crop_einstellungen_status', 'ok') %}
+          {{ (states(helpers[stage]) | float(defaults.get(stage, 10.0))
+             if individuell and stage in helpers else defaults.get(stage, 10.0)) | round(1) }}
+
+      - name: Plantinator Bewasserung Crop Shot Prozent effektiv
+        unique_id: plantinator_bewasserung_crop_shot_prozent_effektiv
+        icon: mdi:cup-water
+        unit_of_measurement: "%"
+        state: >
+          {% set stage = states('sensor.plantinator_bewasserung_crop_stage') %}
+          {% set defaults = {
+            'keimung': 1.0, 'steckling': 1.5, 'early_veg': 2.0, 'mid_veg': 3.0,
+            'late_veg': 3.5, 'early_flower': 5.0, 'mid_flower': 3.5, 'late_flower': 4.0
+          } %}
+          {% set helpers = {
+            'keimung': 'input_number.plantinator_bewasserung_crop_shot_keimung_prozent',
+            'steckling': 'input_number.plantinator_bewasserung_crop_shot_steckling_prozent',
+            'early_veg': 'input_number.plantinator_bewasserung_crop_shot_early_veg_prozent',
+            'mid_veg': 'input_number.plantinator_bewasserung_crop_shot_mid_veg_prozent',
+            'late_veg': 'input_number.plantinator_bewasserung_crop_shot_late_veg_prozent',
+            'early_flower': 'input_number.plantinator_bewasserung_crop_shot_early_flower_prozent',
+            'mid_flower': 'input_number.plantinator_bewasserung_crop_shot_mid_flower_prozent',
+            'late_flower': 'input_number.plantinator_bewasserung_crop_shot_late_flower_prozent'
+          } %}
+          {% set individuell = is_state('input_boolean.plantinator_bewasserung_crop_individuelle_parameter', 'on')
+                and is_state('sensor.plantinator_bewasserung_crop_einstellungen_status', 'ok') %}
+          {{ (states(helpers[stage]) | float(defaults.get(stage, 3.0))
+             if individuell and stage in helpers else defaults.get(stage, 3.0)) | round(1) }}
+
+      - name: Plantinator Bewasserung Crop Ramp Up Shot Faktor effektiv
+        unique_id: plantinator_bewasserung_crop_ramp_up_shot_faktor_effektiv
+        icon: mdi:water-percent
+        unit_of_measurement: "%"
+        state: >
+          {% set tagesphase = states('sensor.plantinator_bewasserung_crop_tagesphase') %}
+          {% set individuell = is_state('input_boolean.plantinator_bewasserung_crop_individuelle_parameter', 'on')
+                and is_state('sensor.plantinator_bewasserung_crop_einstellungen_status', 'ok') %}
+          {% set konfiguriert =
+                states('input_number.plantinator_bewasserung_crop_ramp_up_shot_faktor_prozent') | float(60)
+                if individuell else 60 %}
+          {{ (konfiguriert if tagesphase == 'ramp_up' else 100) | round(0) }}
+        attributes:
+          tagesphase: "{{ states('sensor.plantinator_bewasserung_crop_tagesphase') }}"
+          konfigurierter_ramp_up_faktor_prozent: >
+            {{ states('input_number.plantinator_bewasserung_crop_ramp_up_shot_faktor_prozent') }}
+          hinweis: >
+            Der konfigurierte Faktor wird nur während ramp_up angewendet.
+            In allen anderen Tagesphasen beträgt der effektive Faktor 100 Prozent.
+
+      - name: Plantinator Bewasserung Crop Shot ml effektiv
+        unique_id: plantinator_bewasserung_crop_shot_ml_effektiv
+        icon: mdi:cup-water
+        unit_of_measurement: "ml"
+        state: >
+          {% set individuell = is_state('input_boolean.plantinator_bewasserung_crop_individuelle_parameter', 'on')
+                and is_state('sensor.plantinator_bewasserung_crop_einstellungen_status', 'ok') %}
+          {% set volumen = states('input_number.plantinator_bewasserung_crop_substratvolumen_liter') | float(10)
+                if individuell else 10 %}
+          {% set prozent = states('sensor.plantinator_bewasserung_crop_shot_prozent_effektiv') | float(3) %}
+          {% set roh = volumen * 1000 * prozent / 100 %}
+          {% set minimum = states('input_number.plantinator_bewasserung_shot_min_ml') | float(25) %}
+          {% set maximum = states('input_number.plantinator_bewasserung_shot_max_ml') | float(500) %}
+          {% set basis = [[roh, minimum] | max, maximum] | min %}
+          {% set ramp_faktor =
+                states('sensor.plantinator_bewasserung_crop_ramp_up_shot_faktor_effektiv') | float(100) %}
+          {% set nach_ramp = basis * ramp_faktor / 100 %}
+          {{ [[nach_ramp, minimum] | max, maximum] | min | round(0) }}
+        attributes:
+          berechnung: >
+            Stage-Shot aus Substratvolumen und Shot-Prozent, begrenzt durch
+            Shot-Min/Max und während ramp_up anschließend mit dem Ramp-up-Faktor reduziert
+          tagesphase: "{{ states('sensor.plantinator_bewasserung_crop_tagesphase') }}"
+          stage_shot_prozent: "{{ states('sensor.plantinator_bewasserung_crop_shot_prozent_effektiv') }}"
+          ramp_up_faktor_effektiv_prozent: >
+            {{ states('sensor.plantinator_bewasserung_crop_ramp_up_shot_faktor_effektiv') }}
+          shot_vor_ramp_up_ml: >
+            {% set individuell = is_state('input_boolean.plantinator_bewasserung_crop_individuelle_parameter', 'on')
+                  and is_state('sensor.plantinator_bewasserung_crop_einstellungen_status', 'ok') %}
+            {% set volumen = states('input_number.plantinator_bewasserung_crop_substratvolumen_liter') | float(10)
+                  if individuell else 10 %}
+            {% set prozent = states('sensor.plantinator_bewasserung_crop_shot_prozent_effektiv') | float(3) %}
+            {% set roh = volumen * 1000 * prozent / 100 %}
+            {% set minimum = states('input_number.plantinator_bewasserung_shot_min_ml') | float(25) %}
+            {% set maximum = states('input_number.plantinator_bewasserung_shot_max_ml') | float(500) %}
+            {{ [[roh, minimum] | max, maximum] | min | round(0) }}
+          begrenzung_min_ml: "{{ states('input_number.plantinator_bewasserung_shot_min_ml') }}"
+          begrenzung_max_ml: "{{ states('input_number.plantinator_bewasserung_shot_max_ml') }}"
+
+      - name: Plantinator Bewasserung Crop Giessschwelle effektiv
+        unique_id: plantinator_bewasserung_crop_giessschwelle_effektiv
+        icon: mdi:water-percent
+        unit_of_measurement: "%"
+        state: >
+          {% set sicherheitsminimum = states('input_number.plantinator_bewasserung_bodenfeuchte_minimum') | float(32) %}
+          {% set ziel = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(42) %}
+          {% set dryback = states('sensor.plantinator_bewasserung_crop_dryback_ziel_effektiv') | float(10) %}
+          {{ [sicherheitsminimum, ziel - dryback] | max | round(1) }}
+        attributes:
+          sicherheitsminimum: "{{ states('input_number.plantinator_bewasserung_bodenfeuchte_minimum') }}"
+          feuchte_ziel: "{{ states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') }}"
+          dryback_ziel: "{{ states('sensor.plantinator_bewasserung_crop_dryback_ziel_effektiv') }}"
+          berechnung: max(Sicherheitsminimum, Feuchteziel minus Dryback-Ziel)
+
+      - name: Plantinator Bewasserung Crop Aktive Rezeptur
+        unique_id: plantinator_bewasserung_crop_aktive_rezeptur
+        icon: mdi:book-open-variant
+        state: "{{ states('sensor.plantinator_bewasserung_crop_stage') }}"
+        attributes:
+          substratprofil: "{{ states('input_select.plantinator_bewasserung_crop_substratprofil') }}"
+          substratvolumen_liter: >
+            {{ states('input_number.plantinator_bewasserung_crop_substratvolumen_liter')
+               if is_state('input_boolean.plantinator_bewasserung_crop_individuelle_parameter', 'on')
+               and is_state('sensor.plantinator_bewasserung_crop_einstellungen_status', 'ok')
+               else 10 }}
+          parameterquelle: >
+            {{ 'individuell'
+               if is_state('input_boolean.plantinator_bewasserung_crop_individuelle_parameter', 'on')
+               and is_state('sensor.plantinator_bewasserung_crop_einstellungen_status', 'ok')
+               else 'standard' }}
+          crop_faktor: "{{ states('sensor.plantinator_bewasserung_crop_steering_faktor') }}"
+          start_nach_licht_an_minuten: "{{ states('sensor.plantinator_bewasserung_crop_start_nach_licht_an_effektiv') }}"
+          stop_vor_licht_aus_minuten: "{{ states('sensor.plantinator_bewasserung_crop_stop_vor_licht_aus_effektiv') }}"
+          dryback_ziel_prozentpunkte: "{{ states('sensor.plantinator_bewasserung_crop_dryback_ziel_effektiv') }}"
+          shot_prozent_substratvolumen: "{{ states('sensor.plantinator_bewasserung_crop_shot_prozent_effektiv') }}"
+          ramp_up_dauer_minuten: >
+            {{ states('input_number.plantinator_bewasserung_crop_ramp_up_dauer_minuten') }}
+          ramp_up_shot_faktor_effektiv_prozent: >
+            {{ states('sensor.plantinator_bewasserung_crop_ramp_up_shot_faktor_effektiv') }}
+          shot_ml: "{{ states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') }}"
+          giessschwelle_prozent: "{{ states('sensor.plantinator_bewasserung_crop_giessschwelle_effektiv') }}"
+
+      - name: Plantinator Bewasserung Crop Stage Gruppe
+        unique_id: plantinator_bewasserung_crop_stage_gruppe
+        icon: mdi:leaf-circle
+        state: >
+          {% set stage = states('sensor.plantinator_bewasserung_crop_stage') %}
+          {% if stage in ['keimung', 'steckling'] %}
+            propagation
+          {% elif stage in ['early_veg', 'mid_veg', 'late_veg'] %}
+            vegetativ
+          {% elif stage in ['early_flower', 'mid_flower', 'late_flower'] %}
+            generativ
+          {% else %}
+            unbekannt
+          {% endif %}
+        attributes:
+          crop_stage: "{{ states('sensor.plantinator_bewasserung_crop_stage') }}"
+          source_raw: "{{ states('sensor.plantinator_bewasserung_plant_stage_roh') }}"
+
+      - name: Plantinator Bewasserung Crop Steering Modus
+        unique_id: plantinator_bewasserung_crop_steering_modus
+        icon: mdi:leaf
+        state: >
+          {% set stage = states('sensor.plantinator_bewasserung_crop_stage') %}
+          {% set modi = {
+            'keimung': 'keimung_schonend',
+            'steckling': 'steckling_schonend',
+            'early_veg': 'vegetativ_schonend',
+            'mid_veg': 'vegetativ_aktiv',
+            'late_veg': 'vegetativ_spaet',
+            'early_flower': 'generativ_mild',
+            'mid_flower': 'generativ',
+            'late_flower': 'generativ_spaet'
+          } %}
+          {{ modi.get(stage, 'neutral_sicher') }}
+        attributes:
+          crop_stage: "{{ states('sensor.plantinator_bewasserung_crop_stage') }}"
+          crop_stage_gruppe: "{{ states('sensor.plantinator_bewasserung_crop_stage_gruppe') }}"
+          source_raw: "{{ states('sensor.plantinator_bewasserung_plant_stage_roh') }}"
+          bedeutung: >
+            keimung_schonend = nur sehr kleine Wassergaben, keine Drain-Automatik.
+            steckling_schonend = kleine Wassergaben, keine starken Drybacks.
+            vegetativ_schonend = langsam aktiver werden, Zielbereich vorsichtig anfahren.
+            vegetativ_aktiv = Zielbereich aktiver halten.
+            vegetativ_spaet = Zielbereich halten, aber etwas mehr Dryback zulassen.
+            generativ_mild = mehr Dryback zulassen, keine Zieljagd.
+            generativ = deutlicher Dryback, abends vorsichtig.
+            generativ_spaet = Overnight-Dryback streng, normale Güsse kleiner.
+            neutral_sicher = Fallback bei unbekannter Stage.
+
+      - name: Plantinator Bewasserung Crop Steering Faktor
+        unique_id: plantinator_bewasserung_crop_steering_faktor
+        icon: mdi:tune-variant
+        unit_of_measurement: "x"
+        state: >
+          {% set stage = states('sensor.plantinator_bewasserung_crop_stage') %}
+          {% set defaults = {
+            'keimung': 0.45,
+            'steckling': 0.70,
+            'early_veg': 0.90,
+            'mid_veg': 1.00,
+            'late_veg': 1.00,
+            'early_flower': 1.00,
+            'mid_flower': 1.00,
+            'late_flower': 0.90
+          } %}
+          {% set helpers = {
+            'keimung': 'input_number.plantinator_bewasserung_crop_faktor_keimung',
+            'steckling': 'input_number.plantinator_bewasserung_crop_faktor_steckling',
+            'early_veg': 'input_number.plantinator_bewasserung_crop_faktor_early_veg',
+            'mid_veg': 'input_number.plantinator_bewasserung_crop_faktor_mid_veg',
+            'late_veg': 'input_number.plantinator_bewasserung_crop_faktor_late_veg',
+            'early_flower': 'input_number.plantinator_bewasserung_crop_faktor_early_flower',
+            'mid_flower': 'input_number.plantinator_bewasserung_crop_faktor_mid_flower',
+            'late_flower': 'input_number.plantinator_bewasserung_crop_faktor_late_flower'
+          } %}
+          {% set individuell = is_state('input_boolean.plantinator_bewasserung_crop_individuelle_parameter', 'on')
+                and is_state('sensor.plantinator_bewasserung_crop_einstellungen_status', 'ok') %}
+          {% if individuell and stage in helpers %}
+            {{ states(helpers[stage]) | float(defaults.get(stage, 1.00)) | round(2) }}
+          {% else %}
+            {{ defaults.get(stage, 1.00) | round(2) }}
+          {% endif %}
+        attributes:
+          modus: "{{ states('sensor.plantinator_bewasserung_crop_steering_modus') }}"
+          crop_stage: "{{ states('sensor.plantinator_bewasserung_crop_stage') }}"
+          parameterquelle: >
+            {{ 'individuell'
+               if is_state('input_boolean.plantinator_bewasserung_crop_individuelle_parameter', 'on')
+               and is_state('sensor.plantinator_bewasserung_crop_einstellungen_status', 'ok')
+               else 'standard' }}
+          hinweis: >
+            Der Faktor darf Max-Feuchte, Max-Gussmenge, Max-Tagesmenge,
+            Wasserstand, Sensorfehler und Sicherheitslogik niemals überschreiben.
+
+      - name: Plantinator Bewasserung Crop Steering Strategie
+        unique_id: plantinator_bewasserung_crop_steering_strategie
+        icon: mdi:strategy
+        state: >
+          {% set modus = states('sensor.plantinator_bewasserung_crop_steering_modus') %}
+          {% set strategien = {
+            'keimung_schonend': 'minimal_wasser',
+            'steckling_schonend': 'sehr_vorsichtig',
+            'vegetativ_schonend': 'vorsichtig_aufbauen',
+            'vegetativ_aktiv': 'zielbereich_halten',
+            'vegetativ_spaet': 'zielbereich_mit_dryback',
+            'generativ_mild': 'dryback_mild',
+            'generativ': 'dryback_deutlich',
+            'generativ_spaet': 'dryback_streng'
+          } %}
+          {{ strategien.get(modus, 'sicherheitsmodus') }}
+        attributes:
+          empfehlung: >
+            {% set modus = states('sensor.plantinator_bewasserung_crop_steering_modus') %}
+            {% if modus == 'keimung_schonend' %}
+              Nur minimal feucht halten. Keine aggressiven Shots, keine Mess-Drain-Automatik.
+            {% elif modus == 'steckling_schonend' %}
+              Kleine Einzelshots, keine großen Wassermengen, keine starken Drybacks.
+            {% elif modus == 'vegetativ_schonend' %}
+              Substrat langsam in den Arbeitsbereich bringen. Vorsichtige Ramp-Up-Shots.
+            {% elif modus == 'vegetativ_aktiv' %}
+              Bodenfeuchte eher Richtung Zielwert halten. Dryback kleiner halten.
+            {% elif modus == 'vegetativ_spaet' %}
+              Zielbereich halten, aber bereits etwas mehr Dryback zulassen.
+            {% elif modus == 'generativ_mild' %}
+              Zielwert nicht erzwingen. Leichten Dryback fördern.
+            {% elif modus == 'generativ' %}
+              Deutlicheren Dryback zulassen. Späte Bewässerung reduzieren.
+            {% elif modus == 'generativ_spaet' %}
+              Overnight-Dryback streng beachten. Normale Güsse kleiner und später vorsichtiger.
+            {% else %}
+              Fallback: konservativ gießen und keine aggressiven Crop-Steering-Eingriffe.
+            {% endif %}
+          crop_stage: "{{ states('sensor.plantinator_bewasserung_crop_stage') }}"
+          crop_stage_gruppe: "{{ states('sensor.plantinator_bewasserung_crop_stage_gruppe') }}"
+          faktor: "{{ states('sensor.plantinator_bewasserung_crop_steering_faktor') }}"
+
+      - name: Plantinator Bewasserung Lichtstatus
+        unique_id: plantinator_bewasserung_lichtstatus
+        icon: mdi:white-balance-sunny
+        state: >
+          {% set on_raw = states('sensor.plantinator_bewasserung_licht_an_roh') %}
+          {% set off_raw = states('sensor.plantinator_bewasserung_licht_aus_roh') %}
+          {% set leer = ['unknown', 'unavailable', 'none', ''] %}
+          {% set on_p = on_raw.split(':') %}
+          {% set off_p = off_raw.split(':') %}
+          {% set gueltig = on_raw not in leer and off_raw not in leer
+                and on_p | count >= 2 and off_p | count >= 2
+                and is_number(on_p[0]) and is_number(on_p[1])
+                and is_number(off_p[0]) and is_number(off_p[1]) %}
+          {% if not gueltig %}
+            unbekannt
+          {% else %}
+            {% set on_m = (on_p[0] | int(0)) * 60 + (on_p[1] | int(0)) %}
+            {% set off_m = (off_p[0] | int(0)) * 60 + (off_p[1] | int(0)) %}
+            {% set now_m = now().hour * 60 + now().minute %}
+            {% if on_m < off_m %}
+              {{ 'tag' if now_m >= on_m and now_m < off_m else 'nacht' }}
+            {% elif on_m > off_m %}
+              {{ 'tag' if now_m >= on_m or now_m < off_m else 'nacht' }}
+            {% else %}
+              unbekannt
+            {% endif %}
+          {% endif %}
+        attributes:
+          light_on: "{{ states('sensor.plantinator_bewasserung_licht_an_roh') }}"
+          light_off: "{{ states('sensor.plantinator_bewasserung_licht_aus_roh') }}"
+
+      - name: Plantinator Bewasserung Minuten seit Licht an
+        unique_id: plantinator_bewasserung_minuten_seit_licht_an
+        icon: mdi:timer-play-outline
+        unit_of_measurement: "min"
+        state: >
+          {% set licht = states('sensor.plantinator_bewasserung_lichtstatus') %}
+          {% set on_raw = states('sensor.plantinator_bewasserung_licht_an_roh') %}
+          {% if licht != 'tag' or on_raw in ['unknown', 'unavailable', 'none', ''] %}
+            unknown
+          {% else %}
+            {% set on_p = on_raw.split(':') %}
+            {% set on_m = (on_p[0] | int(0)) * 60 + (on_p[1] | int(0)) %}
+            {% set now_m = now().hour * 60 + now().minute %}
+            {{ now_m - on_m if now_m >= on_m else now_m + 1440 - on_m }}
+          {% endif %}
+
+      - name: Plantinator Bewasserung Minuten bis Licht aus
+        unique_id: plantinator_bewasserung_minuten_bis_licht_aus
+        icon: mdi:timer-stop-outline
+        unit_of_measurement: "min"
+        state: >
+          {% set licht = states('sensor.plantinator_bewasserung_lichtstatus') %}
+          {% set off_raw = states('sensor.plantinator_bewasserung_licht_aus_roh') %}
+          {% if licht != 'tag' or off_raw in ['unknown', 'unavailable', 'none', ''] %}
+            unknown
+          {% else %}
+            {% set off_p = off_raw.split(':') %}
+            {% set off_m = (off_p[0] | int(0)) * 60 + (off_p[1] | int(0)) %}
+            {% set now_m = now().hour * 60 + now().minute %}
+            {{ off_m - now_m if off_m > now_m else off_m + 1440 - now_m }}
+          {% endif %}
+
+      - name: Plantinator Bewasserung Crop Tagesphase
+        unique_id: plantinator_bewasserung_crop_tagesphase
+        icon: mdi:sun-clock
+        state: >
+          {% set licht = states('sensor.plantinator_bewasserung_lichtstatus') %}
+          {% set seit = states('sensor.plantinator_bewasserung_minuten_seit_licht_an') | int(-1) %}
+          {% set bis = states('sensor.plantinator_bewasserung_minuten_bis_licht_aus') | int(-1) %}
+          {% set start = states('sensor.plantinator_bewasserung_crop_start_nach_licht_an_effektiv') | int(120) %}
+          {% set stop = states('sensor.plantinator_bewasserung_crop_stop_vor_licht_aus_effektiv') | int(180) %}
+          {% set individuell = is_state('input_boolean.plantinator_bewasserung_crop_individuelle_parameter', 'on')
+                and is_state('sensor.plantinator_bewasserung_crop_einstellungen_status', 'ok') %}
+          {% set ramp_dauer = states('input_number.plantinator_bewasserung_crop_ramp_up_dauer_minuten') | int(120)
+                if individuell else 120 %}
+          {% set ramp_ende = start + ramp_dauer %}
+          {% if licht == 'nacht' %}
+            nacht
+          {% elif licht != 'tag' or seit < 0 or bis < 0 %}
+            unbekannt
+          {% elif seit < start %}
+            morgen_dryback
+          {% elif bis <= stop %}
+            overnight_dryback
+          {% elif seit < ramp_ende %}
+            ramp_up
+          {% else %}
+            maintenance
+          {% endif %}
+        attributes:
+          lichtstatus: "{{ states('sensor.plantinator_bewasserung_lichtstatus') }}"
+          minuten_seit_licht_an: "{{ states('sensor.plantinator_bewasserung_minuten_seit_licht_an') }}"
+          minuten_bis_licht_aus: "{{ states('sensor.plantinator_bewasserung_minuten_bis_licht_aus') }}"
+          start_nach_licht_an_minuten: "{{ states('sensor.plantinator_bewasserung_crop_start_nach_licht_an_effektiv') }}"
+          stop_vor_licht_aus_minuten: "{{ states('sensor.plantinator_bewasserung_crop_stop_vor_licht_aus_effektiv') }}"
+          steuerung: >
+            morgen_dryback = nur Notguss.
+            ramp_up = kleine adaptive Shots Richtung Zielbereich.
+            maintenance = Bedarfskorrektur.
+            overnight_dryback = normal nicht mehr gießen.
+            nacht = nur Notguss.
+
+      - name: Plantinator Bewasserung Crop Normalguss Erlaubnis
+        unique_id: plantinator_bewasserung_crop_normalguss_erlaubnis
+        icon: mdi:water-sync
+        state: >
+          {% set modus = states('sensor.plantinator_bewasserung_crop_steering_modus') %}
+          {% set tagesphase = states('sensor.plantinator_bewasserung_crop_tagesphase') %}
+          {% set stage = states('sensor.plantinator_bewasserung_crop_stage') %}
+          {% set quellen = states('sensor.plantinator_bewasserung_crop_quellen_status') %}
+          {% set einstellungen = states('sensor.plantinator_bewasserung_crop_einstellungen_status') %}
+          {% if quellen.startswith('fehler_') or einstellungen.startswith('fehler_') %}
+            nur_manuell
+          {% elif stage == 'unbekannt' or modus == 'neutral_sicher' %}
+            nur_manuell
+          {% elif modus == 'keimung_schonend' %}
+            nur_manuell
+          {% elif tagesphase == 'nacht' %}
+            nur_notguss
+          {% elif tagesphase == 'overnight_dryback' %}
+            stark_begrenzt
+          {% elif tagesphase == 'morgen_dryback' %}
+            notguss_oder_stark_trocken
+          {% elif tagesphase in ['ramp_up', 'maintenance'] %}
+            erlaubt
+          {% else %}
+            sicherheitsmodus
+          {% endif %}
+        attributes:
+          crop_quellen_status: "{{ states('sensor.plantinator_bewasserung_crop_quellen_status') }}"
+          crop_einstellungen_status: "{{ states('sensor.plantinator_bewasserung_crop_einstellungen_status') }}"
+          crop_steering_modus: "{{ states('sensor.plantinator_bewasserung_crop_steering_modus') }}"
+          crop_tagesphase: "{{ states('sensor.plantinator_bewasserung_crop_tagesphase') }}"
+          hinweis: >
+            Diese Erlaubnis ist nur ein Strategie-Signal.
+            EXEC und Controller prüfen zusätzlich Wasserstand, Sensorwerte,
+            Tageslimit, Max-Gussmenge und Hauptschalter.
+
+script:
+  plantinator_bewasserung_crop_steering_standardwerte_setzen:
+    alias: Plantinator Bewasserung Crop Steering Standardwerte setzen
+    icon: mdi:database-import
+    mode: single
+    sequence:
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.plantinator_bewasserung_crop_stage_manuell
+        data:
+          option: mid_veg
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.plantinator_bewasserung_crop_substratprofil
+        data:
+          option: coco
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.plantinator_bewasserung_licht_an_manuell
+        data:
+          time: "06:00:00"
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.plantinator_bewasserung_licht_aus_manuell
+        data:
+          time: "18:00:00"
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_faktor_keimung
+        data:
+          value: 0.45
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_faktor_steckling
+        data:
+          value: 0.70
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_faktor_early_veg
+        data:
+          value: 0.90
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_faktor_mid_veg
+        data:
+          value: 1.00
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_faktor_late_veg
+        data:
+          value: 1.00
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_faktor_early_flower
+        data:
+          value: 1.00
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_faktor_mid_flower
+        data:
+          value: 1.00
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_faktor_late_flower
+        data:
+          value: 0.90
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_substratvolumen_liter
+        data:
+          value: 10
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_ramp_up_dauer_minuten
+        data:
+          value: 120
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_ramp_up_shot_faktor_prozent
+        data:
+          value: 60
+
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_start_nach_licht_an_keimung_minuten
+        data:
+          value: 0
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_keimung_minuten
+        data:
+          value: 120
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_dryback_ziel_keimung_prozent
+        data:
+          value: 5
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_shot_keimung_prozent
+        data:
+          value: 1
+
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_start_nach_licht_an_steckling_minuten
+        data:
+          value: 0
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_steckling_minuten
+        data:
+          value: 120
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_dryback_ziel_steckling_prozent
+        data:
+          value: 5
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_shot_steckling_prozent
+        data:
+          value: 1.5
+
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_start_nach_licht_an_early_veg_minuten
+        data:
+          value: 30
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_early_veg_minuten
+        data:
+          value: 60
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_dryback_ziel_early_veg_prozent
+        data:
+          value: 8
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_shot_early_veg_prozent
+        data:
+          value: 2
+
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_start_nach_licht_an_mid_veg_minuten
+        data:
+          value: 45
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_mid_veg_minuten
+        data:
+          value: 90
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_dryback_ziel_mid_veg_prozent
+        data:
+          value: 8
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_shot_mid_veg_prozent
+        data:
+          value: 3
+
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_start_nach_licht_an_late_veg_minuten
+        data:
+          value: 90
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_late_veg_minuten
+        data:
+          value: 150
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_dryback_ziel_late_veg_prozent
+        data:
+          value: 12
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_shot_late_veg_prozent
+        data:
+          value: 3.5
+
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_start_nach_licht_an_early_flower_minuten
+        data:
+          value: 150
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_early_flower_minuten
+        data:
+          value: 210
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_dryback_ziel_early_flower_prozent
+        data:
+          value: 18
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_shot_early_flower_prozent
+        data:
+          value: 5
+
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_start_nach_licht_an_mid_flower_minuten
+        data:
+          value: 90
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_mid_flower_minuten
+        data:
+          value: 150
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_dryback_ziel_mid_flower_prozent
+        data:
+          value: 12
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_shot_mid_flower_prozent
+        data:
+          value: 3.5
+
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_start_nach_licht_an_late_flower_minuten
+        data:
+          value: 120
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_late_flower_minuten
+        data:
+          value: 180
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_dryback_ziel_late_flower_prozent
+        data:
+          value: 18
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_shot_late_flower_prozent
+        data:
+          value: 4
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_crop_alias_keimung
+        data:
+          value: keimung,germination,seed,seedling
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_crop_alias_steckling
+        data:
+          value: steckling,stecklinge,clone,clones,cutting,cuttings
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_crop_alias_early_veg
+        data:
+          value: early_veg,earlyveg,veg_1,vegetative_1,vegetation_1,wachstum_1
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_crop_alias_mid_veg
+        data:
+          value: mid_veg,midveg,veg_2,vegetative_2,vegetation_2,wachstum_2
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_crop_alias_late_veg
+        data:
+          value: late_veg,lateveg,veg_3,vegetative_3,vegetation_3,wachstum_3
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_crop_alias_early_flower
+        data:
+          value: early_flower,earlyflower,flower_1,bloom_1,bluete_1,blüte_1,stretch
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_crop_alias_mid_flower
+        data:
+          value: mid_flower,midflower,flower_2,bloom_2,bluete_2,blüte_2
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_crop_alias_late_flower
+        data:
+          value: late_flower,lateflower,flower_3,bloom_3,bluete_3,blüte_3,ripening
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.plantinator_bewasserung_crop_individuelle_parameter

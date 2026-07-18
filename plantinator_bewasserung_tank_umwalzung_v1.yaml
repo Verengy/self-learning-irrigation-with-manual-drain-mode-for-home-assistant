@@ -1,0 +1,488 @@
+############################################################
+# PLANTINATOR BEWASSERUNG - TANK UMWALZUNG V1
+# Datei: plantinator_bewasserung_tank_umwalzung_v1.yaml
+#
+# Zweck:
+# - Zyklische Umwaelzung des Giesswassers
+# - Pre-Guss-Umwaelzung wenn laenger nicht gelaufen
+# - Kombiniert beides als Variante C
+#
+# Sicherheitsprinzip:
+# - Guss hat Vorrang vor Umwaelzung
+# - Umwaelzung startet NIE waehrend laufendem EXEC oder Shot EXEC
+# - Laufende Umwaelzung wird sofort gestoppt wenn ein Guss startet
+# - Bei Hauptschalter aus, Sperre an oder HA-Neustart: Umwaelzung aus
+#
+# Benoetigt:
+# - plantinator_bewasserung_mapping_v4.yaml
+#   (input_text.plantinator_bewasserung_tank_umwalzung_entity
+#    und input_boolean.plantinator_bewasserung_tank_umwalzung_verwenden)
+#
+# Wichtig:
+# - Pumpe und Ventile werden NICHT angefasst
+# - Nur der gemappte Umwaelz-Schaltaktor wird geschaltet
+############################################################
+
+input_boolean:
+  plantinator_bewasserung_tank_umwalzung_zyklisch_aktiv:
+    name: Plantinator Bewasserung Tank-Umwalzung zyklisch aktiv
+    icon: mdi:autorenew
+
+  plantinator_bewasserung_tank_umwalzung_pre_guss_aktiv:
+    name: Plantinator Bewasserung Tank-Umwalzung pre Guss aktiv
+    icon: mdi:water-sync
+
+  plantinator_bewasserung_tank_umwalzung_laeuft:
+    name: Plantinator Bewasserung Tank-Umwalzung laeuft
+    icon: mdi:autorenew
+
+  plantinator_bewasserung_tank_umwalzung_stop_anforderung:
+    name: Plantinator Bewasserung Tank-Umwalzung Stop-Anforderung
+    icon: mdi:stop-circle-outline
+
+input_number:
+  plantinator_bewasserung_tank_umwalzung_intervall_minuten:
+    name: Plantinator Bewasserung Tank-Umwalzung Intervall Minuten
+    icon: mdi:timer-refresh
+    min: 15
+    max: 1440
+    step: 15
+    mode: box
+    unit_of_measurement: "min"
+
+  plantinator_bewasserung_tank_umwalzung_dauer_sekunden:
+    name: Plantinator Bewasserung Tank-Umwalzung Dauer Sekunden
+    icon: mdi:timer-outline
+    min: 10
+    max: 600
+    step: 5
+    mode: box
+    unit_of_measurement: "s"
+
+  plantinator_bewasserung_tank_umwalzung_pre_guss_dauer_sekunden:
+    name: Plantinator Bewasserung Tank-Umwalzung pre Guss Dauer Sekunden
+    icon: mdi:timer-outline
+    min: 10
+    max: 600
+    step: 5
+    mode: box
+    unit_of_measurement: "s"
+
+  plantinator_bewasserung_tank_umwalzung_pre_guss_min_pause_minuten:
+    name: Plantinator Bewasserung Tank-Umwalzung pre Guss Mindestpause Minuten
+    icon: mdi:timer-sand
+    min: 5
+    max: 240
+    step: 5
+    mode: box
+    unit_of_measurement: "min"
+
+input_text:
+  plantinator_bewasserung_tank_umwalzung_status:
+    name: Plantinator Bewasserung Tank-Umwalzung Status
+    icon: mdi:information-outline
+    max: 255
+
+input_datetime:
+  plantinator_bewasserung_tank_umwalzung_letzter_lauf:
+    name: Plantinator Bewasserung Tank-Umwalzung letzter Lauf
+    has_date: true
+    has_time: true
+
+input_button:
+  plantinator_bewasserung_tank_umwalzung_manuell_start:
+    name: Plantinator Bewasserung Tank-Umwalzung manuell Start
+    icon: mdi:play-circle
+
+  plantinator_bewasserung_tank_umwalzung_manuell_stop:
+    name: Plantinator Bewasserung Tank-Umwalzung manuell Stop
+    icon: mdi:stop-circle
+
+template:
+  - sensor:
+      - name: Plantinator Bewasserung Tank-Umwalzung Freigabe
+        unique_id: plantinator_bewasserung_tank_umwalzung_freigabe
+        icon: mdi:shield-check
+        state: >
+          {% set ent = states('input_text.plantinator_bewasserung_tank_umwalzung_entity') | trim %}
+          {% if not is_state('input_boolean.plantinator_bewasserung_tank_umwalzung_verwenden', 'on') %}
+            nicht_verwenden
+          {% elif not ent.startswith('switch.') or not has_value(ent) %}
+            mapping_fehlt
+          {% elif not is_state('input_boolean.plantinator_bewasserung_aktiv', 'on') %}
+            hauptschalter_aus
+          {% elif is_state('input_boolean.plantinator_bewasserung_sperre', 'on') %}
+            gesperrt
+          {% elif is_state('input_boolean.plantinator_bewasserung_alarm_verriegelt', 'on') %}
+            alarm_verriegelt
+          {% elif is_state('input_boolean.plantinator_bewasserung_exec_laeuft', 'on') %}
+            exec_laeuft
+          {% elif is_state('input_boolean.plantinator_bewasserung_mess_drain_laeuft', 'on') %}
+            mess_drain_laeuft
+          {% elif is_state('input_boolean.plantinator_bewasserung_shot_exec_laeuft', 'on') %}
+            shot_exec_laeuft
+          {% elif is_state('input_boolean.plantinator_bewasserung_tank_umwalzung_laeuft', 'on') %}
+            laeuft
+          {% else %}
+            frei
+          {% endif %}
+        attributes:
+          umwalzung_entity: "{{ states('input_text.plantinator_bewasserung_tank_umwalzung_entity') }}"
+          verwenden: "{{ states('input_boolean.plantinator_bewasserung_tank_umwalzung_verwenden') }}"
+          hauptschalter: "{{ states('input_boolean.plantinator_bewasserung_aktiv') }}"
+          sperre: "{{ states('input_boolean.plantinator_bewasserung_sperre') }}"
+          alarm_verriegelt: "{{ states('input_boolean.plantinator_bewasserung_alarm_verriegelt') }}"
+          exec_laeuft: "{{ states('input_boolean.plantinator_bewasserung_exec_laeuft') }}"
+          mess_drain_laeuft: "{{ states('input_boolean.plantinator_bewasserung_mess_drain_laeuft') }}"
+          shot_exec_laeuft: "{{ states('input_boolean.plantinator_bewasserung_shot_exec_laeuft') }}"
+          letzter_lauf: "{{ states('input_datetime.plantinator_bewasserung_tank_umwalzung_letzter_lauf') }}"
+
+      - name: Plantinator Bewasserung Tank-Umwalzung Minuten seit letztem Lauf
+        unique_id: plantinator_bewasserung_tank_umwalzung_minuten_seit_letztem_lauf
+        icon: mdi:timer-sand-complete
+        unit_of_measurement: "min"
+        state: >
+          {% set letzte = states('input_datetime.plantinator_bewasserung_tank_umwalzung_letzter_lauf') %}
+          {% if letzte in ['unknown', 'unavailable', 'none', ''] %}
+            99999
+          {% else %}
+            {{ ((as_timestamp(now()) - as_timestamp(letzte)) / 60) | round(0) | int }}
+          {% endif %}
+
+      - name: Plantinator Bewasserung Tank-Umwalzung Pre-Guss noetig
+        unique_id: plantinator_bewasserung_tank_umwalzung_pre_guss_noetig
+        icon: mdi:water-sync
+        state: >
+          {% set min_pause = states('input_number.plantinator_bewasserung_tank_umwalzung_pre_guss_min_pause_minuten') | int(30) %}
+          {% set seit = states('sensor.plantinator_bewasserung_tank_umwalzung_minuten_seit_letztem_lauf') | int(99999) %}
+          {% if not is_state('input_boolean.plantinator_bewasserung_tank_umwalzung_pre_guss_aktiv', 'on') %}
+            nein_deaktiviert
+          {% elif not is_state('input_boolean.plantinator_bewasserung_tank_umwalzung_verwenden', 'on') %}
+            nein_nicht_verwenden
+          {% elif seit >= min_pause %}
+            ja
+          {% else %}
+            nein_kuerzlich_gelaufen
+          {% endif %}
+
+script:
+  plantinator_bewasserung_tank_umwalzung_standardwerte_setzen:
+    alias: Plantinator Bewasserung Tank-Umwalzung Standardwerte setzen
+    icon: mdi:database-import
+    mode: single
+    sequence:
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_tank_umwalzung_intervall_minuten
+        data:
+          value: 180
+
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_tank_umwalzung_dauer_sekunden
+        data:
+          value: 120
+
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_tank_umwalzung_pre_guss_dauer_sekunden
+        data:
+          value: 60
+
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_tank_umwalzung_pre_guss_min_pause_minuten
+        data:
+          value: 30
+
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_tank_umwalzung_status
+        data:
+          value: bereit
+
+  plantinator_bewasserung_tank_umwalzung_aus:
+    alias: Plantinator Bewasserung Tank-Umwalzung aus
+    icon: mdi:autorenew-off
+    mode: single
+    sequence:
+      - variables:
+          ent: "{{ states('input_text.plantinator_bewasserung_tank_umwalzung_entity') | trim }}"
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.plantinator_bewasserung_tank_umwalzung_stop_anforderung
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ ent.startswith('switch.') and has_value(ent) }}"
+            sequence:
+              - service: switch.turn_off
+                continue_on_error: true
+                target:
+                  entity_id: "{{ ent }}"
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.plantinator_bewasserung_tank_umwalzung_laeuft
+
+  plantinator_bewasserung_tank_umwalzung_lauf:
+    alias: Plantinator Bewasserung Tank-Umwalzung Lauf
+    icon: mdi:autorenew
+    mode: single
+    fields:
+      dauer_sekunden:
+        name: Dauer Sekunden
+        required: true
+        selector:
+          number:
+            min: 5
+            max: 600
+            step: 5
+      anlass:
+        name: Anlass
+        description: zyklisch, pre_guss oder manuell
+        required: true
+        selector:
+          text:
+    sequence:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.plantinator_bewasserung_tank_umwalzung_stop_anforderung
+
+      - variables:
+          ent: "{{ states('input_text.plantinator_bewasserung_tank_umwalzung_entity') | trim }}"
+          freigabe: "{{ states('sensor.plantinator_bewasserung_tank_umwalzung_freigabe') }}"
+
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ freigabe != 'frei'
+                     or (anlass != 'pre_guss'
+                         and is_state('input_boolean.plantinator_bewasserung_shot_exec_reserviert', 'on')) }}
+            sequence:
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.plantinator_bewasserung_tank_umwalzung_status
+                data:
+                  value: >
+                    {{ 'blockiert_shot_exec_reserviert_' ~ anlass
+                       if anlass != 'pre_guss'
+                          and is_state('input_boolean.plantinator_bewasserung_shot_exec_reserviert', 'on')
+                       else 'blockiert_' ~ freigabe ~ '_' ~ anlass }}
+              - stop: "Umwaelzung blockiert."
+
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.plantinator_bewasserung_tank_umwalzung_laeuft
+
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_tank_umwalzung_status
+        data:
+          value: "{{ anlass }}_start_{{ dauer_sekunden | int }}s"
+
+      - service: switch.turn_on
+        continue_on_error: true
+        target:
+          entity_id: "{{ ent }}"
+
+      - wait_template: >
+          {{ is_state(ent, 'on')
+             or is_state('input_boolean.plantinator_bewasserung_tank_umwalzung_stop_anforderung', 'on') }}
+        timeout: "00:00:02"
+        continue_on_timeout: true
+
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ not is_state(ent, 'on') }}"
+            sequence:
+              - service: input_boolean.turn_off
+                target:
+                  entity_id: input_boolean.plantinator_bewasserung_tank_umwalzung_laeuft
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.plantinator_bewasserung_tank_umwalzung_status
+                data:
+                  value: "hardwarefehler_aktor_{{ anlass }}"
+              - stop: "Umwälzaktor konnte nicht eingeschaltet werden."
+
+      # Lauf unterbrechbar: eigener Stop, Hauptschalter, Sperre oder Guss-Start
+      - wait_template: >
+          {{ is_state('input_boolean.plantinator_bewasserung_tank_umwalzung_stop_anforderung', 'on')
+             or (anlass == 'pre_guss'
+                 and (is_state('input_boolean.plantinator_bewasserung_shot_exec_stop_anforderung', 'on')
+                      or is_state('input_boolean.plantinator_bewasserung_exec_abort', 'on')))
+             or is_state('input_boolean.plantinator_bewasserung_aktiv', 'off')
+             or is_state('input_boolean.plantinator_bewasserung_sperre', 'on')
+             or is_state('input_boolean.plantinator_bewasserung_exec_laeuft', 'on')
+             or is_state('input_boolean.plantinator_bewasserung_mess_drain_laeuft', 'on')
+             or is_state('input_boolean.plantinator_bewasserung_shot_exec_laeuft', 'on') }}
+        timeout: "{{ dauer_sekunden | int }}"
+        continue_on_timeout: true
+
+      - service: switch.turn_off
+        continue_on_error: true
+        target:
+          entity_id: "{{ ent }}"
+
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.plantinator_bewasserung_tank_umwalzung_laeuft
+
+      - choose:
+          # wait.completed == true bedeutet: eine Abbruchbedingung wurde
+          # erfüllt. Nur ein Timeout ist ein vollständig absolvierter Lauf.
+          - conditions:
+              - condition: template
+                value_template: "{{ wait.completed }}"
+            sequence:
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.plantinator_bewasserung_tank_umwalzung_status
+                data:
+                  value: "{{ anlass }}_abgebrochen_{{ now().timestamp() | int }}"
+              - stop: "Umwälzung wurde vorzeitig beendet."
+        default:
+          - service: input_datetime.set_datetime
+            target:
+              entity_id: input_datetime.plantinator_bewasserung_tank_umwalzung_letzter_lauf
+            data:
+              datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+          - service: input_text.set_value
+            target:
+              entity_id: input_text.plantinator_bewasserung_tank_umwalzung_status
+            data:
+              value: "{{ anlass }}_fertig_{{ dauer_sekunden | int }}s"
+
+  plantinator_bewasserung_tank_umwalzung_zyklisch_lauf:
+    alias: Plantinator Bewasserung Tank-Umwalzung zyklischer Lauf
+    icon: mdi:autorenew
+    mode: single
+    sequence:
+      - service: script.plantinator_bewasserung_tank_umwalzung_lauf
+        data:
+          dauer_sekunden: "{{ states('input_number.plantinator_bewasserung_tank_umwalzung_dauer_sekunden') | int(120) }}"
+          anlass: zyklisch
+
+  plantinator_bewasserung_tank_umwalzung_pre_guss_lauf:
+    alias: Plantinator Bewasserung Tank-Umwalzung pre Guss Lauf
+    icon: mdi:water-sync
+    mode: single
+    sequence:
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ states('sensor.plantinator_bewasserung_tank_umwalzung_pre_guss_noetig') == 'ja' }}"
+            sequence:
+              - service: script.plantinator_bewasserung_tank_umwalzung_lauf
+                data:
+                  dauer_sekunden: "{{ states('input_number.plantinator_bewasserung_tank_umwalzung_pre_guss_dauer_sekunden') | int(60) }}"
+                  anlass: pre_guss
+        default:
+          - service: input_text.set_value
+            target:
+              entity_id: input_text.plantinator_bewasserung_tank_umwalzung_status
+            data:
+              value: "pre_guss_nicht_noetig"
+
+  plantinator_bewasserung_tank_umwalzung_manuell_lauf:
+    alias: Plantinator Bewasserung Tank-Umwalzung manueller Lauf
+    icon: mdi:play-circle
+    mode: single
+    sequence:
+      - service: script.plantinator_bewasserung_tank_umwalzung_lauf
+        data:
+          dauer_sekunden: "{{ states('input_number.plantinator_bewasserung_tank_umwalzung_dauer_sekunden') | int(120) }}"
+          anlass: manuell
+
+automation:
+  - id: plantinator_bewasserung_tank_umwalzung_zyklisch_check
+    alias: Plantinator Bewasserung Tank-Umwalzung - zyklischer Check
+    mode: single
+    trigger:
+      - platform: time_pattern
+        minutes: "/5"
+    condition:
+      - condition: template
+        value_template: >
+          {{ is_state('input_boolean.plantinator_bewasserung_tank_umwalzung_zyklisch_aktiv', 'on')
+             and is_state('input_boolean.plantinator_bewasserung_tank_umwalzung_verwenden', 'on')
+             and is_state('sensor.plantinator_bewasserung_tank_umwalzung_freigabe', 'frei')
+             and is_state('input_boolean.plantinator_bewasserung_mess_drain_laeuft', 'off')
+             and is_state('input_boolean.plantinator_bewasserung_shot_exec_reserviert', 'off') }}
+      - condition: template
+        value_template: >
+          {% set intervall = states('input_number.plantinator_bewasserung_tank_umwalzung_intervall_minuten') | int(180) %}
+          {% set seit = states('sensor.plantinator_bewasserung_tank_umwalzung_minuten_seit_letztem_lauf') | int(99999) %}
+          {{ seit >= intervall }}
+    action:
+      - service: script.plantinator_bewasserung_tank_umwalzung_zyklisch_lauf
+
+  - id: plantinator_bewasserung_tank_umwalzung_manuell_start_button
+    alias: Plantinator Bewasserung Tank-Umwalzung - manueller Start Button
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_button.plantinator_bewasserung_tank_umwalzung_manuell_start
+    action:
+      - service: script.plantinator_bewasserung_tank_umwalzung_manuell_lauf
+
+  - id: plantinator_bewasserung_tank_umwalzung_manuell_stop_button
+    alias: Plantinator Bewasserung Tank-Umwalzung - manueller Stop Button
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: input_button.plantinator_bewasserung_tank_umwalzung_manuell_stop
+    action:
+      - service: script.plantinator_bewasserung_tank_umwalzung_aus
+
+  - id: plantinator_bewasserung_tank_umwalzung_hauptschalter_aus
+    alias: Plantinator Bewasserung Tank-Umwalzung - Hauptschalter aus oder Sperre
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: input_boolean.plantinator_bewasserung_aktiv
+        to: "off"
+      - platform: state
+        entity_id: input_boolean.plantinator_bewasserung_sperre
+        to: "on"
+    action:
+      - service: script.plantinator_bewasserung_tank_umwalzung_aus
+
+  # WICHTIG: Stoppt laufende Umwaelzung sofort, wenn ein Guss startet.
+  # Guss hat Vorrang. Funktioniert in Kombination mit dem wait_template
+  # im Lauf-Skript, das ebenfalls auf diese Flags reagiert.
+  - id: plantinator_bewasserung_tank_umwalzung_stop_bei_guss_start
+    alias: Plantinator Bewasserung Tank-Umwalzung - Stop bei Guss-Start
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: input_boolean.plantinator_bewasserung_exec_laeuft
+        to: "on"
+      - platform: state
+        entity_id: input_boolean.plantinator_bewasserung_shot_exec_laeuft
+        to: "on"
+      - platform: state
+        entity_id: input_boolean.plantinator_bewasserung_mess_drain_laeuft
+        to: "on"
+    condition:
+      - condition: state
+        entity_id: input_boolean.plantinator_bewasserung_tank_umwalzung_laeuft
+        state: "on"
+    action:
+      - service: script.plantinator_bewasserung_tank_umwalzung_aus
+
+  - id: plantinator_bewasserung_tank_umwalzung_startup_aus
+    alias: Plantinator Bewasserung Tank-Umwalzung - Startup aus
+    mode: single
+    trigger:
+      - platform: homeassistant
+        event: start
+    action:
+      - delay:
+          seconds: 25
+      - service: script.plantinator_bewasserung_tank_umwalzung_aus
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.plantinator_bewasserung_tank_umwalzung_stop_anforderung

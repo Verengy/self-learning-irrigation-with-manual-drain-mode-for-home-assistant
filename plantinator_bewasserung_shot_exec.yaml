@@ -1,0 +1,654 @@
+############################################################
+# PLANTINATOR BEWASSERUNG - SHOT EXEC V1.2 (Fixed + Tank-Umwaelzung + Race Fix)
+# Datei: plantinator_bewasserung_shot_exec_v1.yaml
+#
+# Aenderungen gegenueber vorheriger Version:
+# - NEU: Pre-Guss-Tank-Umwaelzung wird vor jedem Shot-Plan aufgerufen
+#   (laeuft nur wenn pre_guss_aktiv UND Mindestpause ueberschritten)
+# - Pre-Guss-Aufruf erfolgt VOR dem Setzen von shot_exec_laeuft,
+#   damit die Umwaelzung-Freigabe das Flag noch nicht sieht
+#
+# Behalten:
+# - Pause zwischen Shots als wait_template (unterbrechbar)
+# - Feedback-Wartezeit als wait_template (unterbrechbar)
+# - Stop-Automations setzen Anforderungsflag VOR sicher_stop
+# - Status mit Timestamp-Suffix (Doppelzaehl-Schutz)
+# - "abgebrochen" Status klar getrennt von "fertig"
+# - Feedback wird nur bei tatsaechlich fertigem Guss ausgewertet
+# - Sichtbarer Restzeit-Timer fuer Shot-Pausen und Feedback-Wartezeit
+#
+# NEU in V1.1 (Race-Fix):
+# - input_boolean.plantinator_bewasserung_shot_exec_reserviert wird
+#   direkt nach den Freigabe-/Bedarfs-Checks gesetzt, NOCH VOR der
+#   Pre-Guss-Umwaelzung (die bis zu 60s dauern kann und waehrend der
+#   shot_exec_laeuft noch "off" ist). Ohne dieses Flag konnte der Auto
+#   Controller in genau diesem Fenster einen neuen auto_check ausloesen
+#   und via mode:restart die gerade erst gestartete Kette killen, bevor
+#   der Guss ueberhaupt begonnen hatte - ohne jeden Fehler-/Abbruch-Log.
+# - reserviert wird zusammen mit dem Setzen von shot_exec_laeuft wieder
+#   zurueckgesetzt (die beiden Flags decken zusammen luckenlos die
+#   gesamte Laufzeit ab, inkl. Pre-Guss-Phase).
+# - Shot EXEC Freigabe-Sensor und sicher_stop beruecksichtigen das
+#   neue Flag mit.
+# - auto_controller_v3.yaml (V3.1) prueft dieses Flag zusaetzlich in
+#   seinen Guard-Bedingungen.
+############################################################
+
+input_boolean:
+  plantinator_bewasserung_shot_exec_laeuft:
+    name: Plantinator Bewasserung Shot EXEC läuft
+    icon: mdi:play-circle
+
+  plantinator_bewasserung_shot_exec_reserviert:
+    name: Plantinator Bewasserung Shot EXEC reserviert
+    icon: mdi:timer-lock-outline
+
+  plantinator_bewasserung_shot_exec_stop_anforderung:
+    name: Plantinator Bewasserung Shot EXEC Stop-Anforderung
+    icon: mdi:stop-circle
+
+timer:
+  plantinator_bewasserung_shot_exec_wartezeit:
+    name: Plantinator Bewasserung Shot EXEC Restzeit
+    icon: mdi:timer-sand
+    duration: "00:01:00"
+    restore: false
+
+input_text:
+  plantinator_bewasserung_shot_exec_status:
+    name: Plantinator Bewasserung Shot EXEC Status
+    icon: mdi:information-outline
+    max: 255
+
+  plantinator_bewasserung_shot_exec_letzte_pflanze:
+    name: Plantinator Bewasserung Shot EXEC letzte Pflanze
+    icon: mdi:sprout
+    max: 80
+
+input_button:
+  plantinator_bewasserung_p1_shot_plan_start:
+    name: Plantinator Bewasserung P1 Shot-Plan Start
+    icon: mdi:format-list-numbered
+
+  plantinator_bewasserung_p2_shot_plan_start:
+    name: Plantinator Bewasserung P2 Shot-Plan Start
+    icon: mdi:format-list-numbered
+
+  plantinator_bewasserung_p3_shot_plan_start:
+    name: Plantinator Bewasserung P3 Shot-Plan Start
+    icon: mdi:format-list-numbered
+
+  plantinator_bewasserung_p4_shot_plan_start:
+    name: Plantinator Bewasserung P4 Shot-Plan Start
+    icon: mdi:format-list-numbered
+
+  plantinator_bewasserung_shot_plan_stop:
+    name: Plantinator Bewasserung Shot-Plan Stop
+    icon: mdi:stop-circle
+
+input_datetime:
+  plantinator_bewasserung_shot_exec_letzter_start:
+    name: Plantinator Bewasserung Shot EXEC letzter Start
+    has_date: true
+    has_time: true
+
+  plantinator_bewasserung_shot_exec_letztes_ende:
+    name: Plantinator Bewasserung Shot EXEC letztes Ende
+    has_date: true
+    has_time: true
+
+template:
+  - sensor:
+      - name: Plantinator Bewasserung Shot EXEC Status
+        unique_id: plantinator_bewasserung_shot_exec_status_sensor
+        icon: mdi:state-machine
+        state: "{{ states('input_text.plantinator_bewasserung_shot_exec_status') }}"
+        attributes:
+          shot_exec_laeuft: "{{ states('input_boolean.plantinator_bewasserung_shot_exec_laeuft') }}"
+          shot_exec_reserviert: "{{ states('input_boolean.plantinator_bewasserung_shot_exec_reserviert') }}"
+          stop_anforderung: "{{ states('input_boolean.plantinator_bewasserung_shot_exec_stop_anforderung') }}"
+          exec_abort: "{{ states('input_boolean.plantinator_bewasserung_exec_abort') }}"
+          letzte_pflanze: "{{ states('input_text.plantinator_bewasserung_shot_exec_letzte_pflanze') }}"
+          letzter_start: "{{ states('input_datetime.plantinator_bewasserung_shot_exec_letzter_start') }}"
+          letztes_ende: "{{ states('input_datetime.plantinator_bewasserung_shot_exec_letztes_ende') }}"
+
+      - name: Plantinator Bewasserung Shot EXEC Freigabe
+        unique_id: plantinator_bewasserung_shot_exec_freigabe
+        icon: mdi:shield-check
+        state: >
+          {% if not is_state('input_boolean.plantinator_bewasserung_aktiv', 'on') %}
+            hauptschalter_aus
+          {% elif is_state('input_boolean.plantinator_bewasserung_sperre', 'on') %}
+            gesperrt
+          {% elif states('sensor.plantinator_bewasserung_sensoralter_status') != 'ok' %}
+            sensorwerte_nicht_aktuell
+          {% elif states('sensor.plantinator_bewasserung_exec_freigabe') not in ['frei'] %}
+            exec_nicht_frei
+          {% elif is_state('input_boolean.plantinator_bewasserung_shot_exec_laeuft', 'on') %}
+            shot_exec_laeuft
+          {% elif is_state('input_boolean.plantinator_bewasserung_shot_exec_reserviert', 'on') %}
+            shot_exec_reserviert
+          {% else %}
+            frei
+          {% endif %}
+        attributes:
+          hauptschalter: "{{ states('input_boolean.plantinator_bewasserung_aktiv') }}"
+          sperre: "{{ states('input_boolean.plantinator_bewasserung_sperre') }}"
+          sensoralter_status: "{{ states('sensor.plantinator_bewasserung_sensoralter_status') }}"
+          exec_freigabe: "{{ states('sensor.plantinator_bewasserung_exec_freigabe') }}"
+          mess_drain_laeuft: "{{ states('input_boolean.plantinator_bewasserung_mess_drain_laeuft') }}"
+          shot_exec_laeuft: "{{ states('input_boolean.plantinator_bewasserung_shot_exec_laeuft') }}"
+          shot_exec_reserviert: "{{ states('input_boolean.plantinator_bewasserung_shot_exec_reserviert') }}"
+
+script:
+  plantinator_bewasserung_shot_exec_sicher_stop:
+    alias: Plantinator Bewasserung Shot EXEC sicher Stop
+    icon: mdi:stop-circle
+    mode: restart
+    sequence:
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.plantinator_bewasserung_shot_exec_stop_anforderung
+
+      - service: script.plantinator_bewasserung_sicher_stop
+
+      - service: input_boolean.turn_off
+        target:
+          entity_id:
+            - input_boolean.plantinator_bewasserung_shot_exec_laeuft
+            - input_boolean.plantinator_bewasserung_shot_exec_reserviert
+
+      - service: timer.cancel
+        target:
+          entity_id: timer.plantinator_bewasserung_shot_exec_wartezeit
+
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_shot_exec_status
+        data:
+          value: "sicher_stop_{{ now().timestamp() | int }}"
+
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.plantinator_bewasserung_shot_exec_letztes_ende
+        data:
+          datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+
+  plantinator_bewasserung_shot_plan_ausfuehren:
+    alias: Plantinator Bewasserung Shot-Plan ausführen
+    icon: mdi:format-list-numbered
+    mode: single
+    fields:
+      pflanze:
+        name: Pflanze
+        required: true
+        selector:
+          number:
+            min: 1
+            max: 4
+            step: 1
+    sequence:
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_boolean.plantinator_bewasserung_mess_drain_laeuft
+                state: "on"
+            sequence:
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.plantinator_bewasserung_shot_exec_status
+                data:
+                  value: blockiert_mess_drain_laeuft
+              - stop: "Mess-Drain ist aktiv."
+
+      - service: script.plantinator_bewasserung_neuen_lauf_vorbereiten
+
+      - variables:
+          p: "{{ pflanze | int }}"
+          run_generation: "{{ states('counter.plantinator_bewasserung_stop_generation') | int(0) }}"
+          bedarf: "{{ states('sensor.plantinator_bewasserung_p' ~ (pflanze | int) ~ '_gussbedarf') }}"
+          plan: "{{ states('sensor.plantinator_bewasserung_p' ~ (pflanze | int) ~ '_shot_plan') }}"
+          empfehlung_ml: "{{ states('sensor.plantinator_bewasserung_p' ~ (pflanze | int) ~ '_empfehlung_normalguss_ml') | float(0) }}"
+          shot_anzahl: "{{ state_attr('sensor.plantinator_bewasserung_p' ~ (pflanze | int) ~ '_shot_plan', 'shot_anzahl') | int(0) }}"
+          shot_max_anzahl: "{{ states('input_number.plantinator_bewasserung_shot_max_anzahl') | int(10) }}"
+          shot_max_ml: "{{ states('input_number.plantinator_bewasserung_shot_max_ml') | float(200) }}"
+          last_shot_ml: "{{ state_attr('sensor.plantinator_bewasserung_p' ~ (pflanze | int) ~ '_shot_plan', 'shot_ml') | float(0) }}"
+          pause_s: "{{ state_attr('sensor.plantinator_bewasserung_p' ~ (pflanze | int) ~ '_shot_plan', 'pause_sekunden') | float(180) }}"
+          max_normal: "{{ states('input_number.plantinator_bewasserung_max_ml_pro_normalguss') | float(0) }}"
+          feedback_wait: "{{ states('input_number.plantinator_bewasserung_feedback_wartezeit_minuten') | int(4) }}"
+          pre_guss_noetig: "{{ states('sensor.plantinator_bewasserung_tank_umwalzung_pre_guss_noetig') == 'ja' }}"
+          p_innerhalb_anzahl: "{{ (pflanze | int) <= (states('input_number.plantinator_bewasserung_anzahl_pflanzen') | int(4)) }}"
+          feedback_pending: "{{ is_state('input_boolean.plantinator_bewasserung_p' ~ (pflanze | int) ~ '_feedback_ausstehend', 'on') }}"
+
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ is_state('input_boolean.plantinator_bewasserung_exec_abort', 'on')
+                     or (states('counter.plantinator_bewasserung_stop_generation') | int(0)) != (run_generation | int(0)) }}
+            sequence:
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.plantinator_bewasserung_shot_exec_status
+                data:
+                  value: "blockiert_stop_aktiv_p{{ p }}"
+              - stop: "Stop-Anforderung ist aktiv."
+
+          - conditions:
+              - condition: template
+                value_template: "{{ states('sensor.plantinator_bewasserung_shot_exec_freigabe') != 'frei' }}"
+            sequence:
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.plantinator_bewasserung_shot_exec_status
+                data:
+                  value: "blockiert_{{ states('sensor.plantinator_bewasserung_shot_exec_freigabe') }}"
+              - stop: "Shot EXEC nicht frei."
+
+          - conditions:
+              - condition: template
+                value_template: "{{ bedarf not in ['ja', 'notguss'] or plan == 'kein_guss' or empfehlung_ml <= 0 }}"
+            sequence:
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.plantinator_bewasserung_shot_exec_status
+                data:
+                  value: "blockiert_kein_gussbedarf_p{{ p }}"
+              - stop: "Kein Gussbedarf."
+
+          - conditions:
+              - condition: template
+                value_template: "{{ not p_innerhalb_anzahl or feedback_pending }}"
+            sequence:
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.plantinator_bewasserung_shot_exec_status
+                data:
+                  value: >
+                    {{ 'blockiert_pflanzenzahl_p' ~ p if not p_innerhalb_anzahl
+                       else 'blockiert_feedback_ausstehend_p' ~ p }}
+              - stop: "Pflanze außerhalb der Konfiguration oder Feedback noch ausstehend."
+
+          - conditions:
+              - condition: template
+                value_template: "{{ shot_anzahl <= 0 or last_shot_ml <= 0 }}"
+            sequence:
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.plantinator_bewasserung_shot_exec_status
+                data:
+                  value: "blockiert_shot_plan_ungueltig_p{{ p }}"
+              - stop: "Shot-Plan ungueltig."
+
+          - conditions:
+              - condition: template
+                value_template: "{{ shot_max_anzahl > 0 and shot_anzahl > shot_max_anzahl }}"
+            sequence:
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.plantinator_bewasserung_shot_exec_status
+                data:
+                  value: "blockiert_zu_viele_shots_p{{ p }}_{{ shot_anzahl }}von{{ shot_max_anzahl }}"
+              - stop: "Shot-Plan ueberschreitet maximale Shot-Anzahl."
+
+          - conditions:
+              - condition: template
+                value_template: "{{ max_normal > 0 and empfehlung_ml > max_normal }}"
+            sequence:
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.plantinator_bewasserung_shot_exec_status
+                data:
+                  value: "blockiert_ueber_max_normalguss_p{{ p }}"
+              - stop: "Empfehlung ueber Max-Normalguss."
+
+      # RACE-FIX: Reservierung SOFORT setzen, nachdem alle Freigabe-/Bedarfs-
+      # Checks bestanden sind - noch VOR der Pre-Guss-Umwaelzung. Damit ist
+      # das Zeitfenster geschlossen, in dem der Auto Controller faelschlich
+      # annehmen koennte, es laeuft noch nichts (shot_exec_laeuft ist hier
+      # naemlich noch "off").
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.plantinator_bewasserung_shot_exec_reserviert
+
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_boolean.plantinator_bewasserung_tank_umwalzung_laeuft
+                state: "on"
+            sequence:
+              - service: script.plantinator_bewasserung_tank_umwalzung_aus
+                continue_on_error: true
+              - wait_template: >
+                  {{ is_state('input_boolean.plantinator_bewasserung_tank_umwalzung_laeuft', 'off')
+                     or is_state('input_boolean.plantinator_bewasserung_shot_exec_stop_anforderung', 'on')
+                     or is_state('input_boolean.plantinator_bewasserung_exec_abort', 'on')
+                     or (states('counter.plantinator_bewasserung_stop_generation') | int(0)) != (run_generation | int(0)) }}
+                timeout: "00:00:05"
+                continue_on_timeout: true
+
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ is_state('input_boolean.plantinator_bewasserung_shot_exec_stop_anforderung', 'on')
+                     or is_state('input_boolean.plantinator_bewasserung_exec_abort', 'on')
+                     or (states('counter.plantinator_bewasserung_stop_generation') | int(0)) != (run_generation | int(0)) }}
+            sequence:
+              - service: script.plantinator_bewasserung_shot_exec_sicher_stop
+              - stop: "Stop vor der Pre-Guss-Umwälzung."
+
+      # PRE-GUSS-UMWAELZUNG: Laeuft nur, wenn aktiviert UND Mindestpause ueberschritten.
+      # MUSS vor dem Setzen von shot_exec_laeuft erfolgen, weil die Umwaelzung
+      # ihre Freigabe sonst als "shot_exec_laeuft" sieht und blockiert.
+      # (reserviert ist ein eigenes Flag, das die Umwaelzung nicht prueft -
+      # dadurch bleibt sie unbeeinflusst, waehrend der Auto Controller
+      # trotzdem korrekt blockiert wird.)
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_shot_exec_status
+        data:
+          value: "p{{ p }}_pre_guss_umwaelzung_pruefen"
+
+      - service: script.plantinator_bewasserung_tank_umwalzung_pre_guss_lauf
+
+      # Ein Stop während der blockierenden Pre-Guss-Umwälzung darf nicht
+      # durch den danach fortgesetzten Elternablauf aufgehoben werden.
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ is_state('input_boolean.plantinator_bewasserung_shot_exec_stop_anforderung', 'on')
+                     or is_state('input_boolean.plantinator_bewasserung_exec_abort', 'on')
+                     or (states('counter.plantinator_bewasserung_stop_generation') | int(0)) != (run_generation | int(0))
+                     or ((pre_guss_noetig | bool)
+                         and not states('input_text.plantinator_bewasserung_tank_umwalzung_status').startswith('pre_guss_fertig_')) }}
+            sequence:
+              - service: script.plantinator_bewasserung_shot_exec_sicher_stop
+              - stop: "Stop oder Fehler während der Pre-Guss-Umwälzung."
+
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.plantinator_bewasserung_shot_exec_laeuft
+
+      # reserviert wird jetzt nicht mehr gebraucht - shot_exec_laeuft deckt
+      # den Rest der Laufzeit ab
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.plantinator_bewasserung_shot_exec_reserviert
+
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_shot_exec_letzte_pflanze
+        data:
+          value: "Pflanze {{ p }}"
+
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.plantinator_bewasserung_shot_exec_letzter_start
+        data:
+          datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_shot_exec_status
+        data:
+          value: "start_p{{ p }}_{{ empfehlung_ml | round(0) | int }}ml_{{ shot_anzahl }}shots"
+
+      - service: script.plantinator_bewasserung_feedback_vor_guss_speichern
+        data:
+          pflanze: "{{ p }}"
+          menge_ml: "{{ empfehlung_ml }}"
+
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ not is_state('input_boolean.plantinator_bewasserung_p' ~ p ~ '_feedback_ausstehend', 'on') }}"
+            sequence:
+              - service: script.plantinator_bewasserung_shot_exec_sicher_stop
+              - stop: "Bodenfeuchte vor dem Guss ist ungültig."
+
+      - repeat:
+          count: "{{ shot_anzahl }}"
+          sequence:
+            # Stop-Check vor jedem Shot
+            - choose:
+                - conditions:
+                    - condition: template
+                      value_template: >
+                        {{ is_state('input_boolean.plantinator_bewasserung_shot_exec_stop_anforderung', 'on')
+                           or is_state('input_boolean.plantinator_bewasserung_exec_abort', 'on')
+                           or (states('counter.plantinator_bewasserung_stop_generation') | int(0)) != (run_generation | int(0)) }}
+                  sequence:
+                    - service: script.plantinator_bewasserung_shot_exec_sicher_stop
+                    - stop: "Shot EXEC Stop-Anforderung oder Abort."
+
+            - variables:
+                current_shot_ml: >
+                  {% if repeat.index < (shot_anzahl | int) %}
+                    {{ shot_max_ml }}
+                  {% else %}
+                    {{ last_shot_ml }}
+                  {% endif %}
+
+            - service: input_text.set_value
+              target:
+                entity_id: input_text.plantinator_bewasserung_shot_exec_status
+              data:
+                value: "p{{ p }}_shot_{{ repeat.index }}von{{ shot_anzahl }}_{{ current_shot_ml | float(0) | round(0) }}ml"
+
+            - service: script.plantinator_bewasserung_exec_guss_ml
+              data:
+                pflanze: "{{ p }}"
+                menge_ml: "{{ current_shot_ml | float(0) }}"
+                vorgang: shot_plan
+                stop_generation: "{{ run_generation }}"
+
+            # Pause zwischen Shots (unterbrechbar)
+            - choose:
+                - conditions:
+                    - condition: template
+                      value_template: "{{ repeat.index < (shot_anzahl | int) }}"
+                  sequence:
+                    - service: input_text.set_value
+                      target:
+                        entity_id: input_text.plantinator_bewasserung_shot_exec_status
+                      data:
+                        value: "p{{ p }}_pause_nach_shot_{{ repeat.index }}_{{ pause_s | round(0) }}s"
+
+                    - service: timer.start
+                      target:
+                        entity_id: timer.plantinator_bewasserung_shot_exec_wartezeit
+                      data:
+                        duration: "{{ pause_s | int(0) }}"
+
+                    - wait_template: >
+                        {{ is_state('input_boolean.plantinator_bewasserung_shot_exec_stop_anforderung', 'on')
+                           or is_state('input_boolean.plantinator_bewasserung_exec_abort', 'on')
+                           or (states('counter.plantinator_bewasserung_stop_generation') | int(0)) != (run_generation | int(0)) }}
+                      timeout: "{{ pause_s }}"
+                      continue_on_timeout: true
+
+                    - service: timer.cancel
+                      target:
+                        entity_id: timer.plantinator_bewasserung_shot_exec_wartezeit
+
+      # Feedback-Wartezeit nur, wenn nicht abgebrochen
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ is_state('input_boolean.plantinator_bewasserung_shot_exec_stop_anforderung', 'off')
+                     and is_state('input_boolean.plantinator_bewasserung_exec_abort', 'off')
+                     and (states('counter.plantinator_bewasserung_stop_generation') | int(0)) == (run_generation | int(0)) }}
+            sequence:
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.plantinator_bewasserung_shot_exec_status
+                data:
+                  value: "p{{ p }}_warte_feedback_{{ feedback_wait }}min"
+
+              - service: timer.start
+                target:
+                  entity_id: timer.plantinator_bewasserung_shot_exec_wartezeit
+                data:
+                  duration: "{{ (feedback_wait | int(0)) * 60 }}"
+
+              - wait_template: >
+                  {{ is_state('input_boolean.plantinator_bewasserung_shot_exec_stop_anforderung', 'on')
+                     or is_state('input_boolean.plantinator_bewasserung_exec_abort', 'on')
+                     or (states('counter.plantinator_bewasserung_stop_generation') | int(0)) != (run_generation | int(0)) }}
+                timeout:
+                  minutes: "{{ feedback_wait }}"
+                continue_on_timeout: true
+
+              - service: timer.cancel
+                target:
+                  entity_id: timer.plantinator_bewasserung_shot_exec_wartezeit
+
+              # Feedback auswerten nur wenn immer noch nicht abgebrochen
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: >
+                          {{ is_state('input_boolean.plantinator_bewasserung_shot_exec_stop_anforderung', 'off')
+                             and is_state('input_boolean.plantinator_bewasserung_exec_abort', 'off')
+                             and (states('counter.plantinator_bewasserung_stop_generation') | int(0)) == (run_generation | int(0)) }}
+                    sequence:
+                      - service: script.plantinator_bewasserung_feedback_nach_guss_auswerten
+                        data:
+                          pflanze: "{{ p }}"
+
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.plantinator_bewasserung_shot_exec_laeuft
+
+      # Status differenzieren mit Timestamp-Suffix (Doppelzaehl-Schutz)
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_shot_exec_status
+        data:
+          value: >
+            {% if is_state('input_boolean.plantinator_bewasserung_shot_exec_stop_anforderung', 'on')
+                  or is_state('input_boolean.plantinator_bewasserung_exec_abort', 'on')
+                  or (states('counter.plantinator_bewasserung_stop_generation') | int(0)) != (run_generation | int(0)) %}
+              abgebrochen_p{{ p }}_{{ empfehlung_ml | round(0) | int }}ml_{{ shot_anzahl }}shots_{{ now().timestamp() | int }}
+            {% else %}
+              fertig_p{{ p }}_{{ empfehlung_ml | round(0) | int }}ml_{{ shot_anzahl }}shots_{{ now().timestamp() | int }}
+            {% endif %}
+
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.plantinator_bewasserung_shot_exec_letztes_ende
+        data:
+          datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+
+  plantinator_bewasserung_p1_shot_plan_ausfuehren:
+    alias: Plantinator Bewasserung P1 Shot-Plan ausführen
+    icon: mdi:format-list-numbered
+    mode: single
+    sequence:
+      - service: script.plantinator_bewasserung_shot_plan_ausfuehren
+        data:
+          pflanze: 1
+
+  plantinator_bewasserung_p2_shot_plan_ausfuehren:
+    alias: Plantinator Bewasserung P2 Shot-Plan ausführen
+    icon: mdi:format-list-numbered
+    mode: single
+    sequence:
+      - service: script.plantinator_bewasserung_shot_plan_ausfuehren
+        data:
+          pflanze: 2
+
+  plantinator_bewasserung_p3_shot_plan_ausfuehren:
+    alias: Plantinator Bewasserung P3 Shot-Plan ausführen
+    icon: mdi:format-list-numbered
+    mode: single
+    sequence:
+      - service: script.plantinator_bewasserung_shot_plan_ausfuehren
+        data:
+          pflanze: 3
+
+  plantinator_bewasserung_p4_shot_plan_ausfuehren:
+    alias: Plantinator Bewasserung P4 Shot-Plan ausführen
+    icon: mdi:format-list-numbered
+    mode: single
+    sequence:
+      - service: script.plantinator_bewasserung_shot_plan_ausfuehren
+        data:
+          pflanze: 4
+
+automation:
+  - id: plantinator_bewasserung_shot_exec_p1_button
+    alias: Plantinator Bewasserung Shot EXEC - P1 Button
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_button.plantinator_bewasserung_p1_shot_plan_start
+    action:
+      - service: script.plantinator_bewasserung_p1_shot_plan_ausfuehren
+
+  - id: plantinator_bewasserung_shot_exec_p2_button
+    alias: Plantinator Bewasserung Shot EXEC - P2 Button
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_button.plantinator_bewasserung_p2_shot_plan_start
+    action:
+      - service: script.plantinator_bewasserung_p2_shot_plan_ausfuehren
+
+  - id: plantinator_bewasserung_shot_exec_p3_button
+    alias: Plantinator Bewasserung Shot EXEC - P3 Button
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_button.plantinator_bewasserung_p3_shot_plan_start
+    action:
+      - service: script.plantinator_bewasserung_p3_shot_plan_ausfuehren
+
+  - id: plantinator_bewasserung_shot_exec_p4_button
+    alias: Plantinator Bewasserung Shot EXEC - P4 Button
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_button.plantinator_bewasserung_p4_shot_plan_start
+    action:
+      - service: script.plantinator_bewasserung_p4_shot_plan_ausfuehren
+
+  - id: plantinator_bewasserung_shot_exec_stop_button
+    alias: Plantinator Bewasserung Shot EXEC - Stop Button
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: input_button.plantinator_bewasserung_shot_plan_stop
+    action:
+      - service: script.plantinator_bewasserung_shot_exec_sicher_stop
+
+  - id: plantinator_bewasserung_shot_exec_hauptschalter_aus_stop
+    alias: Plantinator Bewasserung Shot EXEC - Hauptschalter aus Stop
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: input_boolean.plantinator_bewasserung_aktiv
+        to: "off"
+    action:
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.plantinator_bewasserung_shot_exec_stop_anforderung
+
+      - service: script.plantinator_bewasserung_shot_exec_sicher_stop
+
+  - id: plantinator_bewasserung_shot_exec_sperre_an_stop
+    alias: Plantinator Bewasserung Shot EXEC - Sperre an Stop
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: input_boolean.plantinator_bewasserung_sperre
+        to: "on"
+    action:
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.plantinator_bewasserung_shot_exec_stop_anforderung
+
+      - service: script.plantinator_bewasserung_shot_exec_sicher_stop

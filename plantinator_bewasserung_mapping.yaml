@@ -1,0 +1,693 @@
+############################################################
+# PLANTINATOR BEWASSERUNG - UNIVERSAL MAPPING
+# Datei: plantinator_bewasserung_mapping_v4.yaml
+#
+# Zweck:
+# - Zentrale Entity-Zuordnung für universelle Bewasserung
+# - Keine Pumpen-/Ventilsteuerung
+# - Keine initial:-Werte
+############################################################
+
+input_boolean:
+  plantinator_bewasserung_aktiv:
+    name: Plantinator Bewasserung aktiv
+    icon: mdi:water-pump
+  plantinator_bewasserung_automatik:
+    name: Plantinator Bewasserung Automatik
+    icon: mdi:auto-mode
+  plantinator_bewasserung_sperre:
+    name: Plantinator Bewasserung Sperre
+    icon: mdi:water-off
+  plantinator_bewasserung_p1_aktiv:
+    name: Plantinator Bewasserung Pflanze 1 aktiv
+    icon: mdi:sprout
+  plantinator_bewasserung_p2_aktiv:
+    name: Plantinator Bewasserung Pflanze 2 aktiv
+    icon: mdi:sprout
+  plantinator_bewasserung_p3_aktiv:
+    name: Plantinator Bewasserung Pflanze 3 aktiv
+    icon: mdi:sprout
+  plantinator_bewasserung_p4_aktiv:
+    name: Plantinator Bewasserung Pflanze 4 aktiv
+    icon: mdi:sprout
+  plantinator_bewasserung_wasserstand_verwenden:
+    name: Plantinator Bewasserung Wasserstand verwenden
+    icon: mdi:waves-arrow-up
+  plantinator_bewasserung_tank_umwalzung_verwenden:
+    name: Plantinator Bewasserung Tank-Umwälzung verwenden
+    icon: mdi:autorenew
+
+input_number:
+  plantinator_bewasserung_anzahl_pflanzen:
+    name: Plantinator Bewasserung Anzahl Pflanzen
+    icon: mdi:numeric
+    min: 1
+    max: 4
+    step: 1
+    mode: box
+
+input_select:
+  plantinator_bewasserung_wasserstand_sicherer_zustand:
+    name: Plantinator Bewasserung Wasserstand sicherer Zustand
+    icon: mdi:list-status
+    options:
+      - "off"
+      - "on"
+
+input_text:
+  plantinator_bewasserung_pumpe_entity:
+    name: Plantinator Bewasserung Pumpe Entity
+    icon: mdi:pump
+    max: 255
+  plantinator_bewasserung_hauptventil_entity:
+    name: Plantinator Bewasserung Hauptventil Entity optional
+    icon: mdi:valve
+    max: 255
+  plantinator_bewasserung_wasserstand_entity:
+    name: Plantinator Bewasserung Wasserstand Entity
+    icon: mdi:waves-arrow-up
+    max: 255
+  plantinator_bewasserung_tank_umwalzung_entity:
+    name: Plantinator Bewasserung Tank-Umwälzung Entity
+    icon: mdi:autorenew
+    max: 255
+  plantinator_bewasserung_zulauf_ec_entity:
+    name: Plantinator Bewasserung Zulauf EC Entity optional
+    icon: mdi:flash
+    max: 255
+  plantinator_bewasserung_zulauf_ph_entity:
+    name: Plantinator Bewasserung Zulauf pH Entity optional
+    icon: mdi:ph
+    max: 255
+  plantinator_bewasserung_zulauf_temperatur_entity:
+    name: Plantinator Bewasserung Zulauf Temperatur Entity optional
+    icon: mdi:thermometer-water
+    max: 255
+  plantinator_bewasserung_lufttemperatur_entity:
+    name: Plantinator Bewasserung Lufttemperatur Entity optional
+    icon: mdi:thermometer
+    max: 255
+  plantinator_bewasserung_luftfeuchtigkeit_entity:
+    name: Plantinator Bewasserung Luftfeuchtigkeit Entity optional
+    icon: mdi:water-percent
+    max: 255
+  plantinator_bewasserung_ppfd_entity:
+    name: Plantinator Bewasserung PPFD Entity optional
+    icon: mdi:white-balance-sunny
+    max: 255
+
+  plantinator_bewasserung_p1_name:
+    name: Plantinator Bewasserung Pflanze 1 Name
+    icon: mdi:rename
+    max: 80
+  plantinator_bewasserung_p2_name:
+    name: Plantinator Bewasserung Pflanze 2 Name
+    icon: mdi:rename
+    max: 80
+  plantinator_bewasserung_p3_name:
+    name: Plantinator Bewasserung Pflanze 3 Name
+    icon: mdi:rename
+    max: 80
+  plantinator_bewasserung_p4_name:
+    name: Plantinator Bewasserung Pflanze 4 Name
+    icon: mdi:rename
+    max: 80
+
+  plantinator_bewasserung_p1_ventil_entity:
+    name: Plantinator Bewasserung Pflanze 1 Ventil Entity
+    icon: mdi:valve
+    max: 255
+  plantinator_bewasserung_p2_ventil_entity:
+    name: Plantinator Bewasserung Pflanze 2 Ventil Entity
+    icon: mdi:valve
+    max: 255
+  plantinator_bewasserung_p3_ventil_entity:
+    name: Plantinator Bewasserung Pflanze 3 Ventil Entity
+    icon: mdi:valve
+    max: 255
+  plantinator_bewasserung_p4_ventil_entity:
+    name: Plantinator Bewasserung Pflanze 4 Ventil Entity
+    icon: mdi:valve
+    max: 255
+
+  plantinator_bewasserung_p1_bodenfeuchte_entity:
+    name: Plantinator Bewasserung Pflanze 1 Bodenfeuchte Entity
+    icon: mdi:water-percent
+    max: 255
+  plantinator_bewasserung_p2_bodenfeuchte_entity:
+    name: Plantinator Bewasserung Pflanze 2 Bodenfeuchte Entity
+    icon: mdi:water-percent
+    max: 255
+  plantinator_bewasserung_p3_bodenfeuchte_entity:
+    name: Plantinator Bewasserung Pflanze 3 Bodenfeuchte Entity
+    icon: mdi:water-percent
+    max: 255
+  plantinator_bewasserung_p4_bodenfeuchte_entity:
+    name: Plantinator Bewasserung Pflanze 4 Bodenfeuchte Entity
+    icon: mdi:water-percent
+    max: 255
+
+  plantinator_bewasserung_p1_bodentemperatur_entity:
+    name: Plantinator Bewasserung Pflanze 1 Bodentemperatur Entity
+    icon: mdi:thermometer
+    max: 255
+  plantinator_bewasserung_p2_bodentemperatur_entity:
+    name: Plantinator Bewasserung Pflanze 2 Bodentemperatur Entity
+    icon: mdi:thermometer
+    max: 255
+  plantinator_bewasserung_p3_bodentemperatur_entity:
+    name: Plantinator Bewasserung Pflanze 3 Bodentemperatur Entity
+    icon: mdi:thermometer
+    max: 255
+  plantinator_bewasserung_p4_bodentemperatur_entity:
+    name: Plantinator Bewasserung Pflanze 4 Bodentemperatur Entity
+    icon: mdi:thermometer
+    max: 255
+
+template:
+  - sensor:
+      - name: Plantinator Bewasserung Mapping Status
+        unique_id: plantinator_bewasserung_mapping_status
+        icon: mdi:map-check
+        state: >
+          {% set ns = namespace(fehler=0) %}
+          {% set pumpe = states('input_text.plantinator_bewasserung_pumpe_entity') | trim %}
+          {% if not pumpe.startswith('switch.') or not has_value(pumpe) %}
+            {% set ns.fehler = ns.fehler + 1 %}
+          {% endif %}
+          {% set hauptventil = states('input_text.plantinator_bewasserung_hauptventil_entity') | trim %}
+          {% set hauptventil_nicht_verwendet = hauptventil in ['', 'unknown', 'unavailable', 'none'] %}
+          {% if not hauptventil_nicht_verwendet and (not hauptventil.startswith('switch.') or not has_value(hauptventil)) %}
+            {% set ns.fehler = ns.fehler + 1 %}
+          {% endif %}
+          {% set anzahl = states('input_number.plantinator_bewasserung_anzahl_pflanzen') | int(4) %}
+          {% for i in range(1, anzahl + 1) %}
+            {% if is_state('input_boolean.plantinator_bewasserung_p' ~ i ~ '_aktiv', 'on') %}
+              {% set ventil = states('input_text.plantinator_bewasserung_p' ~ i ~ '_ventil_entity') | trim %}
+              {% set feuchte = states('input_text.plantinator_bewasserung_p' ~ i ~ '_bodenfeuchte_entity') | trim %}
+              {% set bodentemp = states('input_text.plantinator_bewasserung_p' ~ i ~ '_bodentemperatur_entity') | trim %}
+              {% if not ventil.startswith('switch.') or not has_value(ventil) %}
+                {% set ns.fehler = ns.fehler + 1 %}
+              {% endif %}
+              {% if not feuchte.startswith('sensor.') or not has_value(feuchte) or not is_number(states(feuchte)) %}
+                {% set ns.fehler = ns.fehler + 1 %}
+              {% endif %}
+              {% if not bodentemp.startswith('sensor.') or not has_value(bodentemp) or not is_number(states(bodentemp)) %}
+                {% set ns.fehler = ns.fehler + 1 %}
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+          {% if is_state('input_boolean.plantinator_bewasserung_wasserstand_verwenden', 'on') %}
+            {% set wasserstand = states('input_text.plantinator_bewasserung_wasserstand_entity') | trim %}
+            {% if not (wasserstand.startswith('binary_sensor.') or wasserstand.startswith('input_boolean.'))
+                  or not has_value(wasserstand) %}
+              {% set ns.fehler = ns.fehler + 1 %}
+            {% endif %}
+          {% endif %}
+          {% if is_state('input_boolean.plantinator_bewasserung_tank_umwalzung_verwenden', 'on') %}
+            {% set umwalzung = states('input_text.plantinator_bewasserung_tank_umwalzung_entity') | trim %}
+            {% if not umwalzung.startswith('switch.') or not has_value(umwalzung) %}
+              {% set ns.fehler = ns.fehler + 1 %}
+            {% endif %}
+          {% endif %}
+          {{ 'ok' if ns.fehler == 0 else 'fehler' }}
+        attributes:
+          pumpe_entity: "{{ states('input_text.plantinator_bewasserung_pumpe_entity') }}"
+          hauptventil_entity: "{{ states('input_text.plantinator_bewasserung_hauptventil_entity') }}"
+          wasserstand_entity: "{{ states('input_text.plantinator_bewasserung_wasserstand_entity') }}"
+          wasserstand_sicherer_zustand: "{{ states('input_select.plantinator_bewasserung_wasserstand_sicherer_zustand') }}"
+          pflanzen_anzahl: "{{ states('input_number.plantinator_bewasserung_anzahl_pflanzen') }}"
+
+      - name: Plantinator Bewasserung Pumpe Status Gemappt
+        unique_id: plantinator_bewasserung_pumpe_status_gemappt
+        icon: mdi:pump
+        state: >
+          {% set ent = states('input_text.plantinator_bewasserung_pumpe_entity') | trim %}
+          {% if ent in ['', 'unknown', 'unavailable', 'none'] %}
+            unknown
+          {% else %}
+            {{ states(ent) }}
+          {% endif %}
+        attributes:
+          source_entity: "{{ states('input_text.plantinator_bewasserung_pumpe_entity') | trim }}"
+
+      - name: Plantinator Bewasserung Hauptventil Status Gemappt
+        unique_id: plantinator_bewasserung_hauptventil_status_gemappt
+        icon: mdi:valve
+        state: >
+          {% set ent = states('input_text.plantinator_bewasserung_hauptventil_entity') | trim %}
+          {% if ent in ['', 'unknown', 'unavailable', 'none'] %}
+            nicht_verwendet
+          {% elif not ent.startswith('switch.') or not has_value(ent) %}
+            unknown
+          {% else %}
+            {{ states(ent) }}
+          {% endif %}
+        attributes:
+          source_entity: "{{ states('input_text.plantinator_bewasserung_hauptventil_entity') | trim }}"
+
+      - name: Plantinator Bewasserung Wasserstand Status Gemappt
+        unique_id: plantinator_bewasserung_wasserstand_status_gemappt
+        icon: mdi:waves-arrow-up
+        state: >
+          {% set ent = states('input_text.plantinator_bewasserung_wasserstand_entity') | trim %}
+          {% if ent in ['', 'unknown', 'unavailable', 'none'] %}
+            unknown
+          {% else %}
+            {{ states(ent) }}
+          {% endif %}
+        attributes:
+          source_entity: "{{ states('input_text.plantinator_bewasserung_wasserstand_entity') | trim }}"
+
+      - name: Plantinator Bewasserung Tank Umwalzung Status Gemappt
+        unique_id: plantinator_bewasserung_tank_umwalzung_status_gemappt
+        icon: mdi:autorenew
+        state: >
+          {% set ent = states('input_text.plantinator_bewasserung_tank_umwalzung_entity') | trim %}
+          {% if ent in ['', 'unknown', 'unavailable', 'none'] %}
+            unknown
+          {% else %}
+            {{ states(ent) }}
+          {% endif %}
+        attributes:
+          source_entity: "{{ states('input_text.plantinator_bewasserung_tank_umwalzung_entity') | trim }}"
+
+      - name: Plantinator Bewasserung Beobachtung Mapping Status
+        unique_id: plantinator_bewasserung_beobachtung_mapping_status
+        icon: mdi:chart-box-outline
+        state: >
+          {% set ns = namespace(fehler=[]) %}
+          {% set felder = [
+            'zulauf_ec',
+            'zulauf_ph',
+            'zulauf_temperatur',
+            'lufttemperatur',
+            'luftfeuchtigkeit',
+            'ppfd'
+          ] %}
+          {% for feld in felder %}
+            {% set ent = states('input_text.plantinator_bewasserung_' ~ feld ~ '_entity') | trim %}
+            {% if ent != '' and (not ent.startswith('sensor.') or not has_value(ent) or not is_number(states(ent))) %}
+              {% set ns.fehler = ns.fehler + [feld] %}
+            {% endif %}
+          {% endfor %}
+          {{ 'ok' if ns.fehler | count == 0 else 'fehler_' ~ (ns.fehler | join('_')) }}
+        attributes:
+          hinweis: >
+            Diese optionalen Sensoren werden protokolliert. Klima, Licht
+            und Zulauf wirken erst bei einem Einflusswert über 0 Prozent;
+            fehlende Werte bleiben neutral.
+          zulauf_ec_entity: "{{ states('input_text.plantinator_bewasserung_zulauf_ec_entity') | trim }}"
+          zulauf_ph_entity: "{{ states('input_text.plantinator_bewasserung_zulauf_ph_entity') | trim }}"
+          zulauf_temperatur_entity: "{{ states('input_text.plantinator_bewasserung_zulauf_temperatur_entity') | trim }}"
+          lufttemperatur_entity: "{{ states('input_text.plantinator_bewasserung_lufttemperatur_entity') | trim }}"
+          luftfeuchtigkeit_entity: "{{ states('input_text.plantinator_bewasserung_luftfeuchtigkeit_entity') | trim }}"
+          ppfd_entity: "{{ states('input_text.plantinator_bewasserung_ppfd_entity') | trim }}"
+
+      - name: Plantinator Bewasserung Zulauf EC
+        unique_id: plantinator_bewasserung_zulauf_ec
+        icon: mdi:flash
+        unit_of_measurement: "mS/cm"
+        state_class: measurement
+        state: >
+          {% set ent = states('input_text.plantinator_bewasserung_zulauf_ec_entity') | trim %}
+          {% set val = states(ent) if ent.startswith('sensor.') and has_value(ent) else 'unknown' %}
+          {{ (val | float | round(2)) if is_number(val) else 'unknown' }}
+        attributes:
+          source_entity: "{{ states('input_text.plantinator_bewasserung_zulauf_ec_entity') | trim }}"
+          verwendung: protokollierung_und_optional_umweltfaktor
+
+      - name: Plantinator Bewasserung Zulauf pH
+        unique_id: plantinator_bewasserung_zulauf_ph
+        icon: mdi:ph
+        state_class: measurement
+        state: >
+          {% set ent = states('input_text.plantinator_bewasserung_zulauf_ph_entity') | trim %}
+          {% set val = states(ent) if ent.startswith('sensor.') and has_value(ent) else 'unknown' %}
+          {{ (val | float | round(2)) if is_number(val) else 'unknown' }}
+        attributes:
+          source_entity: "{{ states('input_text.plantinator_bewasserung_zulauf_ph_entity') | trim }}"
+          verwendung: protokollierung_und_optional_umweltfaktor
+
+      - name: Plantinator Bewasserung Zulauf Temperatur
+        unique_id: plantinator_bewasserung_zulauf_temperatur
+        icon: mdi:thermometer-water
+        device_class: temperature
+        unit_of_measurement: "°C"
+        state_class: measurement
+        state: >
+          {% set ent = states('input_text.plantinator_bewasserung_zulauf_temperatur_entity') | trim %}
+          {% set val = states(ent) if ent.startswith('sensor.') and has_value(ent) else 'unknown' %}
+          {{ (val | float | round(1)) if is_number(val) else 'unknown' }}
+        attributes:
+          source_entity: "{{ states('input_text.plantinator_bewasserung_zulauf_temperatur_entity') | trim }}"
+          verwendung: protokollierung_und_optional_umweltfaktor
+
+      - name: Plantinator Bewasserung Lufttemperatur
+        unique_id: plantinator_bewasserung_lufttemperatur
+        icon: mdi:thermometer
+        device_class: temperature
+        unit_of_measurement: "°C"
+        state_class: measurement
+        state: >
+          {% set ent = states('input_text.plantinator_bewasserung_lufttemperatur_entity') | trim %}
+          {% set val = states(ent) if ent.startswith('sensor.') and has_value(ent) else 'unknown' %}
+          {{ (val | float | round(1)) if is_number(val) else 'unknown' }}
+        attributes:
+          source_entity: "{{ states('input_text.plantinator_bewasserung_lufttemperatur_entity') | trim }}"
+          verwendung: protokollierung_und_optional_umweltfaktor
+
+      - name: Plantinator Bewasserung Luftfeuchtigkeit
+        unique_id: plantinator_bewasserung_luftfeuchtigkeit
+        icon: mdi:water-percent
+        device_class: humidity
+        unit_of_measurement: "%"
+        state_class: measurement
+        state: >
+          {% set ent = states('input_text.plantinator_bewasserung_luftfeuchtigkeit_entity') | trim %}
+          {% set val = states(ent) if ent.startswith('sensor.') and has_value(ent) else 'unknown' %}
+          {{ (val | float | round(1)) if is_number(val) else 'unknown' }}
+        attributes:
+          source_entity: "{{ states('input_text.plantinator_bewasserung_luftfeuchtigkeit_entity') | trim }}"
+          verwendung: protokollierung_und_optional_umweltfaktor
+
+      - name: Plantinator Bewasserung PPFD
+        unique_id: plantinator_bewasserung_ppfd
+        icon: mdi:white-balance-sunny
+        unit_of_measurement: "µmol/m²/s"
+        state_class: measurement
+        state: >
+          {% set ent = states('input_text.plantinator_bewasserung_ppfd_entity') | trim %}
+          {% set val = states(ent) if ent.startswith('sensor.') and has_value(ent) else 'unknown' %}
+          {{ (val | float | round(1)) if is_number(val) else 'unknown' }}
+        attributes:
+          source_entity: "{{ states('input_text.plantinator_bewasserung_ppfd_entity') | trim }}"
+          verwendung: protokollierung_und_optional_umweltfaktor
+
+      - name: Plantinator Bewasserung P1 Ventil Status Gemappt
+        unique_id: plantinator_bewasserung_p1_ventil_status_gemappt
+        icon: mdi:valve
+        state: >
+          {% set ent = states('input_text.plantinator_bewasserung_p1_ventil_entity') | trim %}
+          {% if ent in ['', 'unknown', 'unavailable', 'none'] %}
+            unknown
+          {% else %}
+            {{ states(ent) }}
+          {% endif %}
+        attributes:
+          source_entity: "{{ states('input_text.plantinator_bewasserung_p1_ventil_entity') | trim }}"
+
+      - name: Plantinator Bewasserung P1 Bodenfeuchte Wert
+        unique_id: plantinator_bewasserung_p1_bodenfeuchte_wert
+        icon: mdi:water-percent
+        unit_of_measurement: "%"
+        state_class: measurement
+        state: >
+          {% set ent = states('input_text.plantinator_bewasserung_p1_bodenfeuchte_entity') | trim %}
+          {% set val = states(ent) if ent not in ['', 'unknown', 'unavailable', 'none'] else 'unknown' %}
+          {% if is_number(val) %}
+            {{ val | float | round(1) }}
+          {% else %}
+            unknown
+          {% endif %}
+        attributes:
+          source_entity: "{{ states('input_text.plantinator_bewasserung_p1_bodenfeuchte_entity') | trim }}"
+          source_state: >
+            {% set ent = states('input_text.plantinator_bewasserung_p1_bodenfeuchte_entity') | trim %}
+            {{ states(ent) if ent not in ['', 'unknown', 'unavailable', 'none'] else 'unknown' }}
+
+      - name: Plantinator Bewasserung P1 Bodentemperatur Wert
+        unique_id: plantinator_bewasserung_p1_bodentemperatur_wert
+        icon: mdi:thermometer
+        device_class: temperature
+        unit_of_measurement: "°C"
+        state_class: measurement
+        state: >
+          {% set ent = states('input_text.plantinator_bewasserung_p1_bodentemperatur_entity') | trim %}
+          {% set val = states(ent) if ent not in ['', 'unknown', 'unavailable', 'none'] else 'unknown' %}
+          {% if is_number(val) %}
+            {{ val | float | round(1) }}
+          {% else %}
+            unknown
+          {% endif %}
+        attributes:
+          source_entity: "{{ states('input_text.plantinator_bewasserung_p1_bodentemperatur_entity') | trim }}"
+          source_state: >
+            {% set ent = states('input_text.plantinator_bewasserung_p1_bodentemperatur_entity') | trim %}
+            {{ states(ent) if ent not in ['', 'unknown', 'unavailable', 'none'] else 'unknown' }}
+
+      - name: Plantinator Bewasserung P2 Ventil Status Gemappt
+        unique_id: plantinator_bewasserung_p2_ventil_status_gemappt
+        icon: mdi:valve
+        state: >
+          {% set ent = states('input_text.plantinator_bewasserung_p2_ventil_entity') | trim %}
+          {% if ent in ['', 'unknown', 'unavailable', 'none'] %}
+            unknown
+          {% else %}
+            {{ states(ent) }}
+          {% endif %}
+        attributes:
+          source_entity: "{{ states('input_text.plantinator_bewasserung_p2_ventil_entity') | trim }}"
+
+      - name: Plantinator Bewasserung P2 Bodenfeuchte Wert
+        unique_id: plantinator_bewasserung_p2_bodenfeuchte_wert
+        icon: mdi:water-percent
+        unit_of_measurement: "%"
+        state_class: measurement
+        state: >
+          {% set ent = states('input_text.plantinator_bewasserung_p2_bodenfeuchte_entity') | trim %}
+          {% set val = states(ent) if ent not in ['', 'unknown', 'unavailable', 'none'] else 'unknown' %}
+          {% if is_number(val) %}
+            {{ val | float | round(1) }}
+          {% else %}
+            unknown
+          {% endif %}
+        attributes:
+          source_entity: "{{ states('input_text.plantinator_bewasserung_p2_bodenfeuchte_entity') | trim }}"
+          source_state: >
+            {% set ent = states('input_text.plantinator_bewasserung_p2_bodenfeuchte_entity') | trim %}
+            {{ states(ent) if ent not in ['', 'unknown', 'unavailable', 'none'] else 'unknown' }}
+
+      - name: Plantinator Bewasserung P2 Bodentemperatur Wert
+        unique_id: plantinator_bewasserung_p2_bodentemperatur_wert
+        icon: mdi:thermometer
+        device_class: temperature
+        unit_of_measurement: "°C"
+        state_class: measurement
+        state: >
+          {% set ent = states('input_text.plantinator_bewasserung_p2_bodentemperatur_entity') | trim %}
+          {% set val = states(ent) if ent not in ['', 'unknown', 'unavailable', 'none'] else 'unknown' %}
+          {% if is_number(val) %}
+            {{ val | float | round(1) }}
+          {% else %}
+            unknown
+          {% endif %}
+        attributes:
+          source_entity: "{{ states('input_text.plantinator_bewasserung_p2_bodentemperatur_entity') | trim }}"
+          source_state: >
+            {% set ent = states('input_text.plantinator_bewasserung_p2_bodentemperatur_entity') | trim %}
+            {{ states(ent) if ent not in ['', 'unknown', 'unavailable', 'none'] else 'unknown' }}
+
+      - name: Plantinator Bewasserung P3 Ventil Status Gemappt
+        unique_id: plantinator_bewasserung_p3_ventil_status_gemappt
+        icon: mdi:valve
+        state: >
+          {% set ent = states('input_text.plantinator_bewasserung_p3_ventil_entity') | trim %}
+          {% if ent in ['', 'unknown', 'unavailable', 'none'] %}
+            unknown
+          {% else %}
+            {{ states(ent) }}
+          {% endif %}
+        attributes:
+          source_entity: "{{ states('input_text.plantinator_bewasserung_p3_ventil_entity') | trim }}"
+
+      - name: Plantinator Bewasserung P3 Bodenfeuchte Wert
+        unique_id: plantinator_bewasserung_p3_bodenfeuchte_wert
+        icon: mdi:water-percent
+        unit_of_measurement: "%"
+        state_class: measurement
+        state: >
+          {% set ent = states('input_text.plantinator_bewasserung_p3_bodenfeuchte_entity') | trim %}
+          {% set val = states(ent) if ent not in ['', 'unknown', 'unavailable', 'none'] else 'unknown' %}
+          {% if is_number(val) %}
+            {{ val | float | round(1) }}
+          {% else %}
+            unknown
+          {% endif %}
+        attributes:
+          source_entity: "{{ states('input_text.plantinator_bewasserung_p3_bodenfeuchte_entity') | trim }}"
+          source_state: >
+            {% set ent = states('input_text.plantinator_bewasserung_p3_bodenfeuchte_entity') | trim %}
+            {{ states(ent) if ent not in ['', 'unknown', 'unavailable', 'none'] else 'unknown' }}
+
+      - name: Plantinator Bewasserung P3 Bodentemperatur Wert
+        unique_id: plantinator_bewasserung_p3_bodentemperatur_wert
+        icon: mdi:thermometer
+        device_class: temperature
+        unit_of_measurement: "°C"
+        state_class: measurement
+        state: >
+          {% set ent = states('input_text.plantinator_bewasserung_p3_bodentemperatur_entity') | trim %}
+          {% set val = states(ent) if ent not in ['', 'unknown', 'unavailable', 'none'] else 'unknown' %}
+          {% if is_number(val) %}
+            {{ val | float | round(1) }}
+          {% else %}
+            unknown
+          {% endif %}
+        attributes:
+          source_entity: "{{ states('input_text.plantinator_bewasserung_p3_bodentemperatur_entity') | trim }}"
+          source_state: >
+            {% set ent = states('input_text.plantinator_bewasserung_p3_bodentemperatur_entity') | trim %}
+            {{ states(ent) if ent not in ['', 'unknown', 'unavailable', 'none'] else 'unknown' }}
+
+      - name: Plantinator Bewasserung P4 Ventil Status Gemappt
+        unique_id: plantinator_bewasserung_p4_ventil_status_gemappt
+        icon: mdi:valve
+        state: >
+          {% set ent = states('input_text.plantinator_bewasserung_p4_ventil_entity') | trim %}
+          {% if ent in ['', 'unknown', 'unavailable', 'none'] %}
+            unknown
+          {% else %}
+            {{ states(ent) }}
+          {% endif %}
+        attributes:
+          source_entity: "{{ states('input_text.plantinator_bewasserung_p4_ventil_entity') | trim }}"
+
+      - name: Plantinator Bewasserung P4 Bodenfeuchte Wert
+        unique_id: plantinator_bewasserung_p4_bodenfeuchte_wert
+        icon: mdi:water-percent
+        unit_of_measurement: "%"
+        state_class: measurement
+        state: >
+          {% set ent = states('input_text.plantinator_bewasserung_p4_bodenfeuchte_entity') | trim %}
+          {% set val = states(ent) if ent not in ['', 'unknown', 'unavailable', 'none'] else 'unknown' %}
+          {% if is_number(val) %}
+            {{ val | float | round(1) }}
+          {% else %}
+            unknown
+          {% endif %}
+        attributes:
+          source_entity: "{{ states('input_text.plantinator_bewasserung_p4_bodenfeuchte_entity') | trim }}"
+          source_state: >
+            {% set ent = states('input_text.plantinator_bewasserung_p4_bodenfeuchte_entity') | trim %}
+            {{ states(ent) if ent not in ['', 'unknown', 'unavailable', 'none'] else 'unknown' }}
+
+      - name: Plantinator Bewasserung P4 Bodentemperatur Wert
+        unique_id: plantinator_bewasserung_p4_bodentemperatur_wert
+        icon: mdi:thermometer
+        device_class: temperature
+        unit_of_measurement: "°C"
+        state_class: measurement
+        state: >
+          {% set ent = states('input_text.plantinator_bewasserung_p4_bodentemperatur_entity') | trim %}
+          {% set val = states(ent) if ent not in ['', 'unknown', 'unavailable', 'none'] else 'unknown' %}
+          {% if is_number(val) %}
+            {{ val | float | round(1) }}
+          {% else %}
+            unknown
+          {% endif %}
+        attributes:
+          source_entity: "{{ states('input_text.plantinator_bewasserung_p4_bodentemperatur_entity') | trim }}"
+          source_state: >
+            {% set ent = states('input_text.plantinator_bewasserung_p4_bodentemperatur_entity') | trim %}
+            {{ states(ent) if ent not in ['', 'unknown', 'unavailable', 'none'] else 'unknown' }}
+
+script:
+  plantinator_bewasserung_mapping_standardwerte_setzen:
+    alias: Plantinator Bewasserung Mapping Standardwerte setzen
+    icon: mdi:database-import
+    mode: single
+    sequence:
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_anzahl_pflanzen
+        data:
+          value: 4
+      - service: input_boolean.turn_on
+        target:
+          entity_id:
+            - input_boolean.plantinator_bewasserung_p1_aktiv
+            - input_boolean.plantinator_bewasserung_p2_aktiv
+            - input_boolean.plantinator_bewasserung_p3_aktiv
+            - input_boolean.plantinator_bewasserung_p4_aktiv
+            - input_boolean.plantinator_bewasserung_wasserstand_verwenden
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.plantinator_bewasserung_wasserstand_sicherer_zustand
+        data:
+          option: "off"
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_pumpe_entity
+        data:
+          value: switch.pumpe_wasser
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_wasserstand_entity
+        data:
+          value: binary_sensor.plantinator_bewasserung_wasserstand_giesswasser
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_tank_umwalzung_entity
+        data:
+          value: switch.pool_switch_0
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_p1_ventil_entity
+        data:
+          value: switch.ventil_pflanze_1
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_p2_ventil_entity
+        data:
+          value: switch.ventil_pflanze_2
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_p3_ventil_entity
+        data:
+          value: switch.ventil_pflanze_3
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_p4_ventil_entity
+        data:
+          value: switch.ventil_pflanze_4
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_p1_bodenfeuchte_entity
+        data:
+          value: sensor.pflanze1_moisture
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_p2_bodenfeuchte_entity
+        data:
+          value: sensor.pflanze2_moisture
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_p3_bodenfeuchte_entity
+        data:
+          value: sensor.pflanze3_moisture
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_p4_bodenfeuchte_entity
+        data:
+          value: sensor.pflanze4_moisture
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_p1_bodentemperatur_entity
+        data:
+          value: sensor.plantinator_bewasserung_bodentemperatur_pflanze_1
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_p2_bodentemperatur_entity
+        data:
+          value: sensor.plantinator_bewasserung_bodentemperatur_pflanze_2
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_p3_bodentemperatur_entity
+        data:
+          value: sensor.plantinator_bewasserung_2_bodentemperatur_pflanze_3
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_p4_bodentemperatur_entity
+        data:
+          value: sensor.plantinator_bewasserung_2_bodentemperatur_pflanze_4

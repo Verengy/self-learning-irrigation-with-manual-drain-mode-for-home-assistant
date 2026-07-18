@@ -1,0 +1,1146 @@
+############################################################
+# PLANTINATOR BEWASSERUNG - AUTO CONTROLLER V3.3
+# Datei: plantinator_bewasserung_auto_controller_v3.yaml
+#
+# Aenderungen gegenueber V2:
+# - Alle Aufruf-Skripte auf mode: restart (verhindert Zombie-States)
+# - State-Trigger blockiert, wenn EXEC oder Shot EXEC schon laufen
+# - Aufrufe an shot_plan_ausfuehren im Hintergrund (fire and forget)
+#   damit auto_check nicht 10+ Minuten haengt und Timeouts erzeugt
+# - choose:-Reihenfolge in auto_check (spezifisch vor allgemein)
+# - Tageszaehler-Regex mit Timestamp-Suffix
+#
+# Aenderungen V3 -> V3.1:
+# - ECHTES Fire-and-Forget: script.turn_on statt direktem
+#   service: script.xxx Aufruf. Der alte Weg (auch mit
+#   continue_on_error: true) war weiterhin blockierend, dadurch
+#   hing auto_check trotzdem waehrend des gesamten Gussvorgangs.
+# - Guard-Bedingungen pruefen jetzt zusaetzlich
+#   input_boolean.plantinator_bewasserung_shot_exec_reserviert
+#   (siehe plantinator_bewasserung_shot_exec.yaml). Das schliesst
+#   das Race-Window waehrend der Pre-Guss-Umwaelzung, in dem
+#   shot_exec_laeuft noch "off" ist, obwohl ein Guss faktisch
+#   schon gestartet wurde.
+#
+# Aenderungen V3.1 -> V3.2:
+# - Wochen-, Monats- und Gesamtverbrauch je Pflanze
+# - Erfolgreiche Guesse je Pflanze
+# - Gesamte Pumpenlaufzeit aus dem gemappten Pumpenzustand
+# - Gesamtzaehler fuer Abbrueche, Hardwarefehler und Mess-Drain-Laeufe
+#
+# Aenderungen V3.2 -> V3.3:
+# - Einheit ml fuer Wochen- und Monatsverbrauch fest gesetzt
+############################################################
+
+homeassistant:
+  customize:
+    sensor.plantinator_bewasserung_p1_woche:
+      unit_of_measurement: "ml"
+    sensor.plantinator_bewasserung_p2_woche:
+      unit_of_measurement: "ml"
+    sensor.plantinator_bewasserung_p3_woche:
+      unit_of_measurement: "ml"
+    sensor.plantinator_bewasserung_p4_woche:
+      unit_of_measurement: "ml"
+    sensor.plantinator_bewasserung_p1_monat:
+      unit_of_measurement: "ml"
+    sensor.plantinator_bewasserung_p2_monat:
+      unit_of_measurement: "ml"
+    sensor.plantinator_bewasserung_p3_monat:
+      unit_of_measurement: "ml"
+    sensor.plantinator_bewasserung_p4_monat:
+      unit_of_measurement: "ml"
+
+input_boolean:
+  plantinator_bewasserung_auto_controller_aktiv:
+    name: Plantinator Bewasserung Auto Controller aktiv
+    icon: mdi:robot
+
+counter:
+  plantinator_bewasserung_p1_erfolgreiche_guesse:
+    name: Plantinator Bewasserung P1 erfolgreiche Güsse
+    icon: mdi:counter
+    initial: 0
+    step: 1
+    restore: true
+
+  plantinator_bewasserung_p2_erfolgreiche_guesse:
+    name: Plantinator Bewasserung P2 erfolgreiche Güsse
+    icon: mdi:counter
+    initial: 0
+    step: 1
+    restore: true
+
+  plantinator_bewasserung_p3_erfolgreiche_guesse:
+    name: Plantinator Bewasserung P3 erfolgreiche Güsse
+    icon: mdi:counter
+    initial: 0
+    step: 1
+    restore: true
+
+  plantinator_bewasserung_p4_erfolgreiche_guesse:
+    name: Plantinator Bewasserung P4 erfolgreiche Güsse
+    icon: mdi:counter
+    initial: 0
+    step: 1
+    restore: true
+
+  plantinator_bewasserung_abbrueche_gesamt:
+    name: Plantinator Bewasserung Abbrüche gesamt
+    icon: mdi:cancel
+    initial: 0
+    step: 1
+    restore: true
+
+  plantinator_bewasserung_hardwarefehler_gesamt:
+    name: Plantinator Bewasserung Hardwarefehler gesamt
+    icon: mdi:alert-octagon
+    initial: 0
+    step: 1
+    restore: true
+
+  plantinator_bewasserung_mess_drain_laeufe_gesamt:
+    name: Plantinator Bewasserung Mess-Drain-Läufe gesamt
+    icon: mdi:water-check
+    initial: 0
+    step: 1
+    restore: true
+
+input_number:
+  plantinator_bewasserung_auto_check_intervall_minuten:
+    name: Plantinator Bewasserung Auto Check Intervall Minuten
+    icon: mdi:timer-refresh
+    min: 1
+    max: 60
+    step: 1
+    mode: box
+    unit_of_measurement: "min"
+
+  plantinator_bewasserung_auto_mindestpause_pflanze_minuten:
+    name: Plantinator Bewasserung Auto Mindestpause pro Pflanze Minuten
+    icon: mdi:timer-lock-outline
+    min: 5
+    max: 360
+    step: 5
+    mode: box
+    unit_of_measurement: "min"
+
+  plantinator_bewasserung_p1_heute_ml:
+    name: Plantinator Bewasserung P1 heute ml
+    icon: mdi:calendar-today
+    min: 0
+    max: 50000
+    step: 1
+    mode: box
+    unit_of_measurement: "ml"
+
+  plantinator_bewasserung_p2_heute_ml:
+    name: Plantinator Bewasserung P2 heute ml
+    icon: mdi:calendar-today
+    min: 0
+    max: 50000
+    step: 1
+    mode: box
+    unit_of_measurement: "ml"
+
+  plantinator_bewasserung_p3_heute_ml:
+    name: Plantinator Bewasserung P3 heute ml
+    icon: mdi:calendar-today
+    min: 0
+    max: 50000
+    step: 1
+    mode: box
+    unit_of_measurement: "ml"
+
+  plantinator_bewasserung_p4_heute_ml:
+    name: Plantinator Bewasserung P4 heute ml
+    icon: mdi:calendar-today
+    min: 0
+    max: 50000
+    step: 1
+    mode: box
+    unit_of_measurement: "ml"
+
+  plantinator_bewasserung_p1_gesamt_ml:
+    name: Plantinator Bewasserung P1 Gesamtverbrauch
+    icon: mdi:water
+    min: 0
+    max: 100000000
+    step: 1
+    mode: box
+    unit_of_measurement: "ml"
+
+  plantinator_bewasserung_p2_gesamt_ml:
+    name: Plantinator Bewasserung P2 Gesamtverbrauch
+    icon: mdi:water
+    min: 0
+    max: 100000000
+    step: 1
+    mode: box
+    unit_of_measurement: "ml"
+
+  plantinator_bewasserung_p3_gesamt_ml:
+    name: Plantinator Bewasserung P3 Gesamtverbrauch
+    icon: mdi:water
+    min: 0
+    max: 100000000
+    step: 1
+    mode: box
+    unit_of_measurement: "ml"
+
+  plantinator_bewasserung_p4_gesamt_ml:
+    name: Plantinator Bewasserung P4 Gesamtverbrauch
+    icon: mdi:water
+    min: 0
+    max: 100000000
+    step: 1
+    mode: box
+    unit_of_measurement: "ml"
+
+  plantinator_bewasserung_pumpenlaufzeit_gesamt_sekunden:
+    name: Plantinator Bewasserung Pumpenlaufzeit gesamt
+    icon: mdi:timer-outline
+    min: 0
+    max: 1000000000
+    step: 0.1
+    mode: box
+    unit_of_measurement: "s"
+
+input_datetime:
+  plantinator_bewasserung_auto_letzter_check:
+    name: Plantinator Bewasserung Auto letzter Check
+    has_date: true
+    has_time: true
+
+  plantinator_bewasserung_auto_p1_letzter_start:
+    name: Plantinator Bewasserung Auto P1 letzter Start
+    has_date: true
+    has_time: true
+
+  plantinator_bewasserung_auto_p2_letzter_start:
+    name: Plantinator Bewasserung Auto P2 letzter Start
+    has_date: true
+    has_time: true
+
+  plantinator_bewasserung_auto_p3_letzter_start:
+    name: Plantinator Bewasserung Auto P3 letzter Start
+    has_date: true
+    has_time: true
+
+  plantinator_bewasserung_auto_p4_letzter_start:
+    name: Plantinator Bewasserung Auto P4 letzter Start
+    has_date: true
+    has_time: true
+
+input_text:
+  plantinator_bewasserung_auto_status:
+    name: Plantinator Bewasserung Auto Status
+    icon: mdi:information-outline
+    max: 255
+
+  plantinator_bewasserung_auto_letzte_pflanze:
+    name: Plantinator Bewasserung Auto letzte Pflanze
+    icon: mdi:sprout
+    max: 80
+
+  plantinator_bewasserung_auto_letzter_gezaehlter_status:
+    name: Plantinator Bewasserung Auto letzter gezählter Status
+    icon: mdi:counter
+    max: 255
+
+  plantinator_bewasserung_auto_tageszaehler_datum:
+    name: Plantinator Bewasserung Auto Tageszähler Datum
+    icon: mdi:calendar
+    max: 10
+
+utility_meter:
+  plantinator_bewasserung_p1_woche_ml:
+    name: Plantinator Bewasserung P1 Woche
+    unique_id: plantinator_bewasserung_p1_woche_ml
+    source: sensor.plantinator_bewasserung_p1_gesamt_ml
+    cycle: weekly
+    periodically_resetting: false
+
+  plantinator_bewasserung_p2_woche_ml:
+    name: Plantinator Bewasserung P2 Woche
+    unique_id: plantinator_bewasserung_p2_woche_ml
+    source: sensor.plantinator_bewasserung_p2_gesamt_ml
+    cycle: weekly
+    periodically_resetting: false
+
+  plantinator_bewasserung_p3_woche_ml:
+    name: Plantinator Bewasserung P3 Woche
+    unique_id: plantinator_bewasserung_p3_woche_ml
+    source: sensor.plantinator_bewasserung_p3_gesamt_ml
+    cycle: weekly
+    periodically_resetting: false
+
+  plantinator_bewasserung_p4_woche_ml:
+    name: Plantinator Bewasserung P4 Woche
+    unique_id: plantinator_bewasserung_p4_woche_ml
+    source: sensor.plantinator_bewasserung_p4_gesamt_ml
+    cycle: weekly
+    periodically_resetting: false
+
+  plantinator_bewasserung_p1_monat_ml:
+    name: Plantinator Bewasserung P1 Monat
+    unique_id: plantinator_bewasserung_p1_monat_ml
+    source: sensor.plantinator_bewasserung_p1_gesamt_ml
+    cycle: monthly
+    periodically_resetting: false
+
+  plantinator_bewasserung_p2_monat_ml:
+    name: Plantinator Bewasserung P2 Monat
+    unique_id: plantinator_bewasserung_p2_monat_ml
+    source: sensor.plantinator_bewasserung_p2_gesamt_ml
+    cycle: monthly
+    periodically_resetting: false
+
+  plantinator_bewasserung_p3_monat_ml:
+    name: Plantinator Bewasserung P3 Monat
+    unique_id: plantinator_bewasserung_p3_monat_ml
+    source: sensor.plantinator_bewasserung_p3_gesamt_ml
+    cycle: monthly
+    periodically_resetting: false
+
+  plantinator_bewasserung_p4_monat_ml:
+    name: Plantinator Bewasserung P4 Monat
+    unique_id: plantinator_bewasserung_p4_monat_ml
+    source: sensor.plantinator_bewasserung_p4_gesamt_ml
+    cycle: monthly
+    periodically_resetting: false
+
+template:
+  - sensor:
+      - name: Plantinator Bewasserung P1 Gesamt ml
+        unique_id: plantinator_bewasserung_p1_gesamt_ml
+        icon: mdi:water
+        unit_of_measurement: "ml"
+        state_class: total_increasing
+        state: "{{ states('input_number.plantinator_bewasserung_p1_gesamt_ml') | float(0) }}"
+
+      - name: Plantinator Bewasserung P2 Gesamt ml
+        unique_id: plantinator_bewasserung_p2_gesamt_ml
+        icon: mdi:water
+        unit_of_measurement: "ml"
+        state_class: total_increasing
+        state: "{{ states('input_number.plantinator_bewasserung_p2_gesamt_ml') | float(0) }}"
+
+      - name: Plantinator Bewasserung P3 Gesamt ml
+        unique_id: plantinator_bewasserung_p3_gesamt_ml
+        icon: mdi:water
+        unit_of_measurement: "ml"
+        state_class: total_increasing
+        state: "{{ states('input_number.plantinator_bewasserung_p3_gesamt_ml') | float(0) }}"
+
+      - name: Plantinator Bewasserung P4 Gesamt ml
+        unique_id: plantinator_bewasserung_p4_gesamt_ml
+        icon: mdi:water
+        unit_of_measurement: "ml"
+        state_class: total_increasing
+        state: "{{ states('input_number.plantinator_bewasserung_p4_gesamt_ml') | float(0) }}"
+
+      - name: Plantinator Bewasserung Pumpenlaufzeit gesamt
+        unique_id: plantinator_bewasserung_pumpenlaufzeit_gesamt
+        icon: mdi:timer-outline
+        unit_of_measurement: "h"
+        device_class: duration
+        state_class: total_increasing
+        state: >
+          {{ (states('input_number.plantinator_bewasserung_pumpenlaufzeit_gesamt_sekunden')
+              | float(0) / 3600) | round(2) }}
+
+      - name: Plantinator Bewasserung Auto Status
+        unique_id: plantinator_bewasserung_auto_status_sensor
+        icon: mdi:robot
+        state: "{{ states('input_text.plantinator_bewasserung_auto_status') }}"
+        attributes:
+          auto_controller_aktiv: "{{ states('input_boolean.plantinator_bewasserung_auto_controller_aktiv') }}"
+          hauptschalter: "{{ states('input_boolean.plantinator_bewasserung_aktiv') }}"
+          automatik: "{{ states('input_boolean.plantinator_bewasserung_automatik') }}"
+          sperre: "{{ states('input_boolean.plantinator_bewasserung_sperre') }}"
+          exec_freigabe: "{{ states('sensor.plantinator_bewasserung_exec_freigabe') }}"
+          shot_exec_freigabe: "{{ states('sensor.plantinator_bewasserung_shot_exec_freigabe') }}"
+          crop_erlaubnis: "{{ states('sensor.plantinator_bewasserung_crop_normalguss_erlaubnis') }}"
+          gesamt_gussbedarf: "{{ states('sensor.plantinator_bewasserung_gesamt_gussbedarf') }}"
+          letzte_pflanze: "{{ states('input_text.plantinator_bewasserung_auto_letzte_pflanze') }}"
+          letzter_check: "{{ states('input_datetime.plantinator_bewasserung_auto_letzter_check') }}"
+          tageszaehler_datum: "{{ states('input_text.plantinator_bewasserung_auto_tageszaehler_datum') }}"
+
+      - name: Plantinator Bewasserung Auto Grundfreigabe
+        unique_id: plantinator_bewasserung_auto_grundfreigabe
+        icon: mdi:shield-check
+        state: >
+          {% if not is_state('input_boolean.plantinator_bewasserung_auto_controller_aktiv', 'on') %}
+            auto_controller_aus
+          {% elif not is_state('input_boolean.plantinator_bewasserung_aktiv', 'on') %}
+            hauptschalter_aus
+          {% elif not is_state('input_boolean.plantinator_bewasserung_automatik', 'on') %}
+            automatik_aus
+          {% elif is_state('input_boolean.plantinator_bewasserung_sperre', 'on') %}
+            gesperrt
+          {% elif is_state('input_boolean.plantinator_bewasserung_alarm_verriegelt', 'on') %}
+            alarm_verriegelt
+          {% elif states('sensor.plantinator_bewasserung_sensoralter_status') != 'ok' %}
+            sensorwerte_nicht_aktuell
+          {% elif states('sensor.plantinator_bewasserung_exec_freigabe') != 'frei' %}
+            exec_nicht_frei
+          {% elif states('sensor.plantinator_bewasserung_shot_exec_freigabe') != 'frei' %}
+            shot_exec_nicht_frei
+          {% else %}
+            frei
+          {% endif %}
+
+      - name: Plantinator Bewasserung Auto Crop Freigabe
+        unique_id: plantinator_bewasserung_auto_crop_freigabe
+        icon: mdi:leaf
+        state: >
+          {% set erlaubnis = states('sensor.plantinator_bewasserung_crop_normalguss_erlaubnis') %}
+          {% if erlaubnis == 'erlaubt' %}
+            normal_erlaubt
+          {% elif erlaubnis in ['notguss_oder_stark_trocken', 'nur_notguss', 'stark_begrenzt'] %}
+            nur_notguss
+          {% elif erlaubnis == 'nur_manuell' %}
+            nur_manuell
+          {% else %}
+            sicherheitsmodus
+          {% endif %}
+
+      - name: Plantinator Bewasserung Auto P1 Freigabe
+        unique_id: plantinator_bewasserung_auto_p1_freigabe
+        icon: mdi:sprout
+        state: >
+          {% set bedarf = states('sensor.plantinator_bewasserung_p1_gussbedarf') %}
+          {% set crop = states('sensor.plantinator_bewasserung_auto_crop_freigabe') %}
+          {% set heute = states('input_number.plantinator_bewasserung_p1_heute_ml') | float(0)
+             if states('input_text.plantinator_bewasserung_auto_tageszaehler_datum') == now().strftime('%Y-%m-%d')
+             else 0 %}
+          {% set max_tag = states('input_number.plantinator_bewasserung_max_ml_pro_tag') | float(1200) %}
+          {% set empfehlung = states('sensor.plantinator_bewasserung_p1_empfehlung_normalguss_ml') | float(0) %}
+          {% set anzahl = states('input_number.plantinator_bewasserung_anzahl_pflanzen') | int(4) %}
+          {% set letzte = states('input_datetime.plantinator_bewasserung_auto_p1_letzter_start') %}
+          {% set pause = states('input_number.plantinator_bewasserung_auto_mindestpause_pflanze_minuten') | int(45) %}
+          {% set diff = 99999 %}
+          {% if letzte not in ['unknown','unavailable','none',''] %}
+            {% set diff = ((as_timestamp(now()) - as_timestamp(letzte)) / 60) | int(99999) %}
+          {% endif %}
+          {% if 1 > anzahl or not is_state('input_boolean.plantinator_bewasserung_p1_aktiv', 'on') %}
+            inaktiv
+          {% elif is_state('input_boolean.plantinator_bewasserung_p1_feedback_ausstehend', 'on') %}
+            feedback_ausstehend
+          {% elif bedarf not in ['ja', 'notguss'] %}
+            kein_bedarf
+          {% elif crop in ['nur_manuell', 'sicherheitsmodus'] %}
+            crop_blockiert
+          {% elif crop == 'nur_notguss' and bedarf != 'notguss' %}
+            nur_notguss_erlaubt
+          {% elif empfehlung <= 0 %}
+            keine_empfehlung
+          {% elif heute + empfehlung > max_tag %}
+            tageslimit
+          {% elif diff < pause %}
+            pause
+          {% else %}
+            frei
+          {% endif %}
+
+      - name: Plantinator Bewasserung Auto P2 Freigabe
+        unique_id: plantinator_bewasserung_auto_p2_freigabe
+        icon: mdi:sprout
+        state: >
+          {% set bedarf = states('sensor.plantinator_bewasserung_p2_gussbedarf') %}
+          {% set crop = states('sensor.plantinator_bewasserung_auto_crop_freigabe') %}
+          {% set heute = states('input_number.plantinator_bewasserung_p2_heute_ml') | float(0)
+             if states('input_text.plantinator_bewasserung_auto_tageszaehler_datum') == now().strftime('%Y-%m-%d')
+             else 0 %}
+          {% set max_tag = states('input_number.plantinator_bewasserung_max_ml_pro_tag') | float(1200) %}
+          {% set empfehlung = states('sensor.plantinator_bewasserung_p2_empfehlung_normalguss_ml') | float(0) %}
+          {% set anzahl = states('input_number.plantinator_bewasserung_anzahl_pflanzen') | int(4) %}
+          {% set letzte = states('input_datetime.plantinator_bewasserung_auto_p2_letzter_start') %}
+          {% set pause = states('input_number.plantinator_bewasserung_auto_mindestpause_pflanze_minuten') | int(45) %}
+          {% set diff = 99999 %}
+          {% if letzte not in ['unknown','unavailable','none',''] %}
+            {% set diff = ((as_timestamp(now()) - as_timestamp(letzte)) / 60) | int(99999) %}
+          {% endif %}
+          {% if 2 > anzahl or not is_state('input_boolean.plantinator_bewasserung_p2_aktiv', 'on') %}
+            inaktiv
+          {% elif is_state('input_boolean.plantinator_bewasserung_p2_feedback_ausstehend', 'on') %}
+            feedback_ausstehend
+          {% elif bedarf not in ['ja', 'notguss'] %}
+            kein_bedarf
+          {% elif crop in ['nur_manuell', 'sicherheitsmodus'] %}
+            crop_blockiert
+          {% elif crop == 'nur_notguss' and bedarf != 'notguss' %}
+            nur_notguss_erlaubt
+          {% elif empfehlung <= 0 %}
+            keine_empfehlung
+          {% elif heute + empfehlung > max_tag %}
+            tageslimit
+          {% elif diff < pause %}
+            pause
+          {% else %}
+            frei
+          {% endif %}
+
+      - name: Plantinator Bewasserung Auto P3 Freigabe
+        unique_id: plantinator_bewasserung_auto_p3_freigabe
+        icon: mdi:sprout
+        state: >
+          {% set bedarf = states('sensor.plantinator_bewasserung_p3_gussbedarf') %}
+          {% set crop = states('sensor.plantinator_bewasserung_auto_crop_freigabe') %}
+          {% set heute = states('input_number.plantinator_bewasserung_p3_heute_ml') | float(0)
+             if states('input_text.plantinator_bewasserung_auto_tageszaehler_datum') == now().strftime('%Y-%m-%d')
+             else 0 %}
+          {% set max_tag = states('input_number.plantinator_bewasserung_max_ml_pro_tag') | float(1200) %}
+          {% set empfehlung = states('sensor.plantinator_bewasserung_p3_empfehlung_normalguss_ml') | float(0) %}
+          {% set anzahl = states('input_number.plantinator_bewasserung_anzahl_pflanzen') | int(4) %}
+          {% set letzte = states('input_datetime.plantinator_bewasserung_auto_p3_letzter_start') %}
+          {% set pause = states('input_number.plantinator_bewasserung_auto_mindestpause_pflanze_minuten') | int(45) %}
+          {% set diff = 99999 %}
+          {% if letzte not in ['unknown','unavailable','none',''] %}
+            {% set diff = ((as_timestamp(now()) - as_timestamp(letzte)) / 60) | int(99999) %}
+          {% endif %}
+          {% if 3 > anzahl or not is_state('input_boolean.plantinator_bewasserung_p3_aktiv', 'on') %}
+            inaktiv
+          {% elif is_state('input_boolean.plantinator_bewasserung_p3_feedback_ausstehend', 'on') %}
+            feedback_ausstehend
+          {% elif bedarf not in ['ja', 'notguss'] %}
+            kein_bedarf
+          {% elif crop in ['nur_manuell', 'sicherheitsmodus'] %}
+            crop_blockiert
+          {% elif crop == 'nur_notguss' and bedarf != 'notguss' %}
+            nur_notguss_erlaubt
+          {% elif empfehlung <= 0 %}
+            keine_empfehlung
+          {% elif heute + empfehlung > max_tag %}
+            tageslimit
+          {% elif diff < pause %}
+            pause
+          {% else %}
+            frei
+          {% endif %}
+
+      - name: Plantinator Bewasserung Auto P4 Freigabe
+        unique_id: plantinator_bewasserung_auto_p4_freigabe
+        icon: mdi:sprout
+        state: >
+          {% set bedarf = states('sensor.plantinator_bewasserung_p4_gussbedarf') %}
+          {% set crop = states('sensor.plantinator_bewasserung_auto_crop_freigabe') %}
+          {% set heute = states('input_number.plantinator_bewasserung_p4_heute_ml') | float(0)
+             if states('input_text.plantinator_bewasserung_auto_tageszaehler_datum') == now().strftime('%Y-%m-%d')
+             else 0 %}
+          {% set max_tag = states('input_number.plantinator_bewasserung_max_ml_pro_tag') | float(1200) %}
+          {% set empfehlung = states('sensor.plantinator_bewasserung_p4_empfehlung_normalguss_ml') | float(0) %}
+          {% set anzahl = states('input_number.plantinator_bewasserung_anzahl_pflanzen') | int(4) %}
+          {% set letzte = states('input_datetime.plantinator_bewasserung_auto_p4_letzter_start') %}
+          {% set pause = states('input_number.plantinator_bewasserung_auto_mindestpause_pflanze_minuten') | int(45) %}
+          {% set diff = 99999 %}
+          {% if letzte not in ['unknown','unavailable','none',''] %}
+            {% set diff = ((as_timestamp(now()) - as_timestamp(letzte)) / 60) | int(99999) %}
+          {% endif %}
+          {% if 4 > anzahl or not is_state('input_boolean.plantinator_bewasserung_p4_aktiv', 'on') %}
+            inaktiv
+          {% elif is_state('input_boolean.plantinator_bewasserung_p4_feedback_ausstehend', 'on') %}
+            feedback_ausstehend
+          {% elif bedarf not in ['ja', 'notguss'] %}
+            kein_bedarf
+          {% elif crop in ['nur_manuell', 'sicherheitsmodus'] %}
+            crop_blockiert
+          {% elif crop == 'nur_notguss' and bedarf != 'notguss' %}
+            nur_notguss_erlaubt
+          {% elif empfehlung <= 0 %}
+            keine_empfehlung
+          {% elif heute + empfehlung > max_tag %}
+            tageslimit
+          {% elif diff < pause %}
+            pause
+          {% else %}
+            frei
+          {% endif %}
+
+      - name: Plantinator Bewasserung Auto Naechste Pflanze
+        unique_id: plantinator_bewasserung_auto_naechste_pflanze
+        icon: mdi:arrow-decision
+        state: >
+          {% set frees = {
+            1: states('sensor.plantinator_bewasserung_auto_p1_freigabe'),
+            2: states('sensor.plantinator_bewasserung_auto_p2_freigabe'),
+            3: states('sensor.plantinator_bewasserung_auto_p3_freigabe'),
+            4: states('sensor.plantinator_bewasserung_auto_p4_freigabe')
+          } %}
+          {% set bedarf = {
+            1: states('sensor.plantinator_bewasserung_p1_gussbedarf'),
+            2: states('sensor.plantinator_bewasserung_p2_gussbedarf'),
+            3: states('sensor.plantinator_bewasserung_p3_gussbedarf'),
+            4: states('sensor.plantinator_bewasserung_p4_gussbedarf')
+          } %}
+          {% if frees[1] == 'frei' and bedarf[1] == 'notguss' %}
+            1
+          {% elif frees[2] == 'frei' and bedarf[2] == 'notguss' %}
+            2
+          {% elif frees[3] == 'frei' and bedarf[3] == 'notguss' %}
+            3
+          {% elif frees[4] == 'frei' and bedarf[4] == 'notguss' %}
+            4
+          {% elif frees[1] == 'frei' %}
+            1
+          {% elif frees[2] == 'frei' %}
+            2
+          {% elif frees[3] == 'frei' %}
+            3
+          {% elif frees[4] == 'frei' %}
+            4
+          {% else %}
+            keine
+          {% endif %}
+
+script:
+  plantinator_bewasserung_auto_standardwerte_setzen:
+    alias: Plantinator Bewasserung Auto Standardwerte setzen
+    icon: mdi:database-import
+    mode: single
+    sequence:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.plantinator_bewasserung_auto_controller_aktiv
+
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_auto_check_intervall_minuten
+        data:
+          value: 5
+
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_auto_mindestpause_pflanze_minuten
+        data:
+          value: 45
+
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_auto_status
+        data:
+          value: bereit
+
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_auto_letzter_gezaehlter_status
+        data:
+          value: keiner
+
+      - service: script.plantinator_bewasserung_auto_tageszaehler_reset
+
+  plantinator_bewasserung_auto_tageszaehler_reset:
+    alias: Plantinator Bewasserung Auto Tageszähler Reset
+    icon: mdi:counter
+    mode: single
+    sequence:
+      - service: input_number.set_value
+        target:
+          entity_id:
+            - input_number.plantinator_bewasserung_p1_heute_ml
+            - input_number.plantinator_bewasserung_p2_heute_ml
+            - input_number.plantinator_bewasserung_p3_heute_ml
+            - input_number.plantinator_bewasserung_p4_heute_ml
+        data:
+          value: 0
+
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_auto_tageszaehler_datum
+        data:
+          value: "{{ now().strftime('%Y-%m-%d') }}"
+
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_auto_letzter_gezaehlter_status
+        data:
+          value: keiner
+
+  plantinator_bewasserung_auto_tageszaehler_datum_pruefen:
+    alias: Plantinator Bewasserung Auto Tageszähler Datum prüfen
+    icon: mdi:calendar-check
+    mode: single
+    sequence:
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ states('input_text.plantinator_bewasserung_auto_tageszaehler_datum')
+                     != now().strftime('%Y-%m-%d') }}
+            sequence:
+              - service: script.plantinator_bewasserung_auto_tageszaehler_reset
+
+  # ====================================================================
+  # FIX: mode: restart statt single
+  # Ein neuer Aufruf killt eine alte Zombie-Instanz sofort
+  #
+  # FIX V3.1: script.turn_on statt direktem service: script.xxx Aufruf.
+  # Ein direkter Skript-Aufruf ist in Home Assistant IMMER blockierend,
+  # egal ob continue_on_error gesetzt ist - das unterdrueckt nur Fehler,
+  # nicht das Warten auf Fertigstellung. script.turn_on startet das
+  # Zielskript und kehrt sofort zurueck (echtes fire-and-forget).
+  # ====================================================================
+  plantinator_bewasserung_auto_pflanze_starten:
+    alias: Plantinator Bewasserung Auto Pflanze starten
+    icon: mdi:robot
+    mode: restart
+    fields:
+      pflanze:
+        name: Pflanze
+        required: true
+        selector:
+          number:
+            min: 1
+            max: 4
+            step: 1
+    sequence:
+      - variables:
+          p: "{{ pflanze | int }}"
+          empfehlung: "{{ states('sensor.plantinator_bewasserung_p' ~ (pflanze | int) ~ '_empfehlung_normalguss_ml') | float(0) }}"
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_auto_status
+        data:
+          value: "starte_p{{ p }}_{{ empfehlung | round(0) | int }}ml"
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_auto_letzte_pflanze
+        data:
+          value: "Pflanze {{ p }}"
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ p == 1 }}"
+            sequence:
+              - service: input_datetime.set_datetime
+                target:
+                  entity_id: input_datetime.plantinator_bewasserung_auto_p1_letzter_start
+                data:
+                  datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+              # FIRE AND FORGET (echt): script.turn_on kehrt sofort zurueck
+              - service: script.turn_on
+                target:
+                  entity_id: script.plantinator_bewasserung_p1_shot_plan_ausfuehren
+          - conditions:
+              - condition: template
+                value_template: "{{ p == 2 }}"
+            sequence:
+              - service: input_datetime.set_datetime
+                target:
+                  entity_id: input_datetime.plantinator_bewasserung_auto_p2_letzter_start
+                data:
+                  datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+              - service: script.turn_on
+                target:
+                  entity_id: script.plantinator_bewasserung_p2_shot_plan_ausfuehren
+          - conditions:
+              - condition: template
+                value_template: "{{ p == 3 }}"
+            sequence:
+              - service: input_datetime.set_datetime
+                target:
+                  entity_id: input_datetime.plantinator_bewasserung_auto_p3_letzter_start
+                data:
+                  datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+              - service: script.turn_on
+                target:
+                  entity_id: script.plantinator_bewasserung_p3_shot_plan_ausfuehren
+          - conditions:
+              - condition: template
+                value_template: "{{ p == 4 }}"
+            sequence:
+              - service: input_datetime.set_datetime
+                target:
+                  entity_id: input_datetime.plantinator_bewasserung_auto_p4_letzter_start
+                data:
+                  datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+              - service: script.turn_on
+                target:
+                  entity_id: script.plantinator_bewasserung_p4_shot_plan_ausfuehren
+
+  plantinator_bewasserung_auto_check:
+    alias: Plantinator Bewasserung Auto Check
+    icon: mdi:robot
+    mode: restart
+    sequence:
+      - service: script.plantinator_bewasserung_auto_tageszaehler_datum_pruefen
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.plantinator_bewasserung_auto_letzter_check
+        data:
+          datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+      - variables:
+          grund: "{{ states('sensor.plantinator_bewasserung_auto_grundfreigabe') }}"
+          nextp: "{{ states('sensor.plantinator_bewasserung_auto_naechste_pflanze') }}"
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ grund == 'shot_exec_nicht_frei' }}"
+            sequence:
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.plantinator_bewasserung_auto_status
+                data:
+                  value: "warte_shot_exec_laeuft"
+
+          - conditions:
+              - condition: template
+                value_template: "{{ grund != 'frei' and grund != 'shot_exec_nicht_frei' }}"
+            sequence:
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.plantinator_bewasserung_auto_status
+                data:
+                  value: "blockiert_{{ grund }}"
+
+          - conditions:
+              - condition: template
+                value_template: "{{ nextp | int(0) == 1 }}"
+            sequence:
+              - service: script.plantinator_bewasserung_auto_pflanze_starten
+                data:
+                  pflanze: 1
+
+          - conditions:
+              - condition: template
+                value_template: "{{ nextp | int(0) == 2 }}"
+            sequence:
+              - service: script.plantinator_bewasserung_auto_pflanze_starten
+                data:
+                  pflanze: 2
+
+          - conditions:
+              - condition: template
+                value_template: "{{ nextp | int(0) == 3 }}"
+            sequence:
+              - service: script.plantinator_bewasserung_auto_pflanze_starten
+                data:
+                  pflanze: 3
+
+          - conditions:
+              - condition: template
+                value_template: "{{ nextp | int(0) == 4 }}"
+            sequence:
+              - service: script.plantinator_bewasserung_auto_pflanze_starten
+                data:
+                  pflanze: 4
+        default:
+          - service: input_text.set_value
+            target:
+              entity_id: input_text.plantinator_bewasserung_auto_status
+            data:
+              value: "kein_guss_faellig"
+
+automation:
+  - id: plantinator_bewasserung_auto_periodischer_check
+    alias: Plantinator Bewasserung Auto - periodischer Check
+    mode: single
+    trigger:
+      - platform: time_pattern
+        minutes: "/1"
+    condition:
+      - condition: template
+        value_template: "{{ is_state('input_boolean.plantinator_bewasserung_auto_controller_aktiv', 'on') }}"
+      # Nicht triggern wenn EXEC oder Shot EXEC gerade laufen ODER ein Guss
+      # gerade reserviert ist (Pre-Guss-Phase, shot_exec_laeuft noch off)
+      - condition: template
+        value_template: >
+          {{ is_state('input_boolean.plantinator_bewasserung_shot_exec_laeuft', 'off')
+             and is_state('input_boolean.plantinator_bewasserung_exec_laeuft', 'off')
+             and is_state('input_boolean.plantinator_bewasserung_shot_exec_reserviert', 'off') }}
+      - condition: template
+        value_template: >
+          {% set intervall = states('input_number.plantinator_bewasserung_auto_check_intervall_minuten') | int(5) %}
+          {% set intervall = 5 if intervall < 1 else intervall %}
+          {% set letzter = states('input_datetime.plantinator_bewasserung_auto_letzter_check') %}
+          {{ letzter in ['unknown', 'unavailable', 'none', '']
+             or (as_timestamp(now()) - as_timestamp(letzter)) >= (intervall * 60) }}
+    action:
+      - service: script.plantinator_bewasserung_auto_check
+
+  - id: plantinator_bewasserung_auto_gussbedarf_check
+    alias: Plantinator Bewasserung Auto - Check bei Gussbedarf
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id:
+          - sensor.plantinator_bewasserung_gesamt_gussbedarf
+          - sensor.plantinator_bewasserung_auto_naechste_pflanze
+    condition:
+      - condition: template
+        value_template: "{{ is_state('input_boolean.plantinator_bewasserung_auto_controller_aktiv', 'on') }}"
+      # Nicht triggern wenn EXEC oder Shot EXEC gerade laufen ODER reserviert ist.
+      # Verhindert Deadlock/Race zwischen Auto Controller und laufendem Guss
+      # (inkl. Pre-Guss-Umwaelzungsphase, bevor shot_exec_laeuft gesetzt wird)
+      - condition: template
+        value_template: >
+          {{ is_state('input_boolean.plantinator_bewasserung_shot_exec_laeuft', 'off')
+             and is_state('input_boolean.plantinator_bewasserung_exec_laeuft', 'off')
+             and is_state('input_boolean.plantinator_bewasserung_shot_exec_reserviert', 'off') }}
+    action:
+      - delay:
+          seconds: 15
+      # Nach 15s nochmal pruefen ob nicht doch gerade was gestartet ist
+      - condition: template
+        value_template: >
+          {{ is_state('input_boolean.plantinator_bewasserung_shot_exec_laeuft', 'off')
+             and is_state('input_boolean.plantinator_bewasserung_exec_laeuft', 'off')
+             and is_state('input_boolean.plantinator_bewasserung_shot_exec_reserviert', 'off') }}
+      - service: script.plantinator_bewasserung_auto_check
+
+  # Trigger nach Ende eines Gusses - direkter Check ob naechste Pflanze dran ist
+  - id: plantinator_bewasserung_auto_check_nach_guss
+    alias: Plantinator Bewasserung Auto - Check nach Gussende
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: input_boolean.plantinator_bewasserung_shot_exec_laeuft
+        from: "on"
+        to: "off"
+    condition:
+      - condition: template
+        value_template: "{{ is_state('input_boolean.plantinator_bewasserung_auto_controller_aktiv', 'on') }}"
+    action:
+      # Kurz warten damit sich alle States setzen koennen
+      - delay:
+          seconds: 30
+      - service: script.plantinator_bewasserung_auto_check
+
+  - id: plantinator_bewasserung_auto_heute_ml_zaehlen
+    alias: Plantinator Bewasserung Auto - heute ml zählen
+    mode: queued
+    trigger:
+      - platform: state
+        entity_id: input_text.plantinator_bewasserung_exec_status
+    condition:
+      - condition: template
+        value_template: >
+          {{ trigger.to_state.state is match(
+            '^(normalguss|mess_drain|shot_plan)_(fertig|abgebrochen_nach_pumpenstart)_p[1-4]_[0-9]+ml_[0-9]+$'
+          ) }}
+    action:
+      - service: script.plantinator_bewasserung_auto_tageszaehler_datum_pruefen
+      - variables:
+          status: "{{ trigger.to_state.state }}"
+          p: "{{ status.split('_')[-3].replace('p','') | int }}"
+          ml: "{{ status.split('_')[-2].replace('ml','') | float(0) }}"
+          last_counted: "{{ states('input_text.plantinator_bewasserung_auto_letzter_gezaehlter_status') }}"
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ status == last_counted }}"
+            sequence:
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.plantinator_bewasserung_auto_status
+                data:
+                  value: "zaehler_ignoriert_doppelt_{{ status }}"
+              - stop: "Dieser Fertig-Status wurde bereits gezaehlt."
+
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_auto_letzter_gezaehlter_status
+        data:
+          value: "{{ status }}"
+
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ p == 1 }}"
+            sequence:
+              - service: input_number.set_value
+                target:
+                  entity_id: input_number.plantinator_bewasserung_p1_heute_ml
+                data:
+                  value: "{{ states('input_number.plantinator_bewasserung_p1_heute_ml') | float(0) + ml }}"
+              - service: input_number.set_value
+                target:
+                  entity_id: input_number.plantinator_bewasserung_p1_gesamt_ml
+                data:
+                  value: "{{ states('input_number.plantinator_bewasserung_p1_gesamt_ml') | float(0) + ml }}"
+          - conditions:
+              - condition: template
+                value_template: "{{ p == 2 }}"
+            sequence:
+              - service: input_number.set_value
+                target:
+                  entity_id: input_number.plantinator_bewasserung_p2_heute_ml
+                data:
+                  value: "{{ states('input_number.plantinator_bewasserung_p2_heute_ml') | float(0) + ml }}"
+              - service: input_number.set_value
+                target:
+                  entity_id: input_number.plantinator_bewasserung_p2_gesamt_ml
+                data:
+                  value: "{{ states('input_number.plantinator_bewasserung_p2_gesamt_ml') | float(0) + ml }}"
+          - conditions:
+              - condition: template
+                value_template: "{{ p == 3 }}"
+            sequence:
+              - service: input_number.set_value
+                target:
+                  entity_id: input_number.plantinator_bewasserung_p3_heute_ml
+                data:
+                  value: "{{ states('input_number.plantinator_bewasserung_p3_heute_ml') | float(0) + ml }}"
+              - service: input_number.set_value
+                target:
+                  entity_id: input_number.plantinator_bewasserung_p3_gesamt_ml
+                data:
+                  value: "{{ states('input_number.plantinator_bewasserung_p3_gesamt_ml') | float(0) + ml }}"
+          - conditions:
+              - condition: template
+                value_template: "{{ p == 4 }}"
+            sequence:
+              - service: input_number.set_value
+                target:
+                  entity_id: input_number.plantinator_bewasserung_p4_heute_ml
+                data:
+                  value: "{{ states('input_number.plantinator_bewasserung_p4_heute_ml') | float(0) + ml }}"
+              - service: input_number.set_value
+                target:
+                  entity_id: input_number.plantinator_bewasserung_p4_gesamt_ml
+                data:
+                  value: "{{ states('input_number.plantinator_bewasserung_p4_gesamt_ml') | float(0) + ml }}"
+
+  - id: plantinator_bewasserung_erfolgreiche_guesse_zaehlen
+    alias: Plantinator Bewasserung - erfolgreiche Güsse zählen
+    mode: queued
+    trigger:
+      - platform: state
+        entity_id:
+          - input_text.plantinator_bewasserung_exec_status
+          - input_text.plantinator_bewasserung_shot_exec_status
+    condition:
+      - condition: template
+        value_template: >
+          {% set status = trigger.to_state.state %}
+          {{ (trigger.entity_id == 'input_text.plantinator_bewasserung_exec_status'
+              and status is match('^normalguss_fertig_p[1-4]_[0-9]+ml_[0-9]+$'))
+             or
+             (trigger.entity_id == 'input_text.plantinator_bewasserung_shot_exec_status'
+              and status is match('^fertig_p[1-4]_[0-9]+ml_[0-9]+shots_[0-9]+$')) }}
+    action:
+      - variables:
+          status: "{{ trigger.to_state.state }}"
+          p: "{{ status.split('_p')[1].split('_')[0] | int(0) }}"
+      - service: counter.increment
+        target:
+          entity_id: "counter.plantinator_bewasserung_p{{ p }}_erfolgreiche_guesse"
+
+  - id: plantinator_bewasserung_pumpenlaufzeit_gesamt_zaehlen
+    alias: Plantinator Bewasserung - Pumpenlaufzeit gesamt zählen
+    mode: queued
+    trigger:
+      - platform: state
+        entity_id: sensor.plantinator_bewasserung_pumpe_status_gemappt
+        from: "on"
+        to: "off"
+    action:
+      - variables:
+          dauer_s: >
+            {{ (as_timestamp(trigger.to_state.last_changed)
+                - as_timestamp(trigger.from_state.last_changed)) | round(1) }}
+      - condition: template
+        value_template: "{{ dauer_s | float(0) > 0 and dauer_s | float(0) < 86400 }}"
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_pumpenlaufzeit_gesamt_sekunden
+        data:
+          value: >
+            {{ states('input_number.plantinator_bewasserung_pumpenlaufzeit_gesamt_sekunden')
+               | float(0) + (dauer_s | float(0)) }}
+
+  - id: plantinator_bewasserung_abbrueche_gesamt_zaehlen
+    alias: Plantinator Bewasserung - Abbrüche gesamt zählen
+    mode: queued
+    trigger:
+      - platform: state
+        entity_id:
+          - input_text.plantinator_bewasserung_exec_status
+          - input_text.plantinator_bewasserung_shot_exec_status
+          - input_text.plantinator_bewasserung_mess_drain_lauf_status
+          - input_text.plantinator_bewasserung_tank_umwalzung_status
+    condition:
+      - condition: template
+        value_template: >
+          {% set status = trigger.to_state.state %}
+          {{ (trigger.entity_id == 'input_text.plantinator_bewasserung_exec_status'
+              and status is match('^normalguss_abgebrochen_'))
+             or
+             (trigger.entity_id == 'input_text.plantinator_bewasserung_shot_exec_status'
+              and status is match('^abgebrochen_p[1-4]_'))
+             or
+             (trigger.entity_id == 'input_text.plantinator_bewasserung_mess_drain_lauf_status'
+              and status is match('^mess_drain_abgebrochen'))
+             or
+             (trigger.entity_id == 'input_text.plantinator_bewasserung_tank_umwalzung_status'
+              and '_abgebrochen_' in status) }}
+    action:
+      - service: counter.increment
+        target:
+          entity_id: counter.plantinator_bewasserung_abbrueche_gesamt
+
+  - id: plantinator_bewasserung_hardwarefehler_gesamt_zaehlen
+    alias: Plantinator Bewasserung - Hardwarefehler gesamt zählen
+    mode: queued
+    trigger:
+      - platform: state
+        entity_id:
+          - input_text.plantinator_bewasserung_exec_status
+          - input_text.plantinator_bewasserung_tank_umwalzung_status
+    condition:
+      - condition: template
+        value_template: "{{ trigger.to_state.state is match('^hardwarefehler_') }}"
+    action:
+      - service: counter.increment
+        target:
+          entity_id: counter.plantinator_bewasserung_hardwarefehler_gesamt
+
+  - id: plantinator_bewasserung_mess_drain_laeufe_gesamt_zaehlen
+    alias: Plantinator Bewasserung - Mess-Drain-Läufe gesamt zählen
+    mode: queued
+    trigger:
+      - platform: state
+        entity_id: input_boolean.plantinator_bewasserung_mess_drain_laeuft
+        from: "off"
+        to: "on"
+    action:
+      - service: counter.increment
+        target:
+          entity_id: counter.plantinator_bewasserung_mess_drain_laeufe_gesamt
+
+  - id: plantinator_bewasserung_auto_tagesreset
+    alias: Plantinator Bewasserung Auto - Tageszähler Reset
+    mode: single
+    trigger:
+      - platform: time
+        at: "00:05:00"
+    action:
+      - service: script.plantinator_bewasserung_auto_tageszaehler_reset
+
+  - id: plantinator_bewasserung_auto_stop_bei_sperre
+    alias: Plantinator Bewasserung Auto - Stop bei Sperre
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id:
+          - input_boolean.plantinator_bewasserung_aktiv
+          - input_boolean.plantinator_bewasserung_automatik
+          - input_boolean.plantinator_bewasserung_auto_controller_aktiv
+          - input_boolean.plantinator_bewasserung_sperre
+    condition:
+      - condition: template
+        value_template: >
+          {{
+            is_state('input_boolean.plantinator_bewasserung_aktiv', 'off')
+            or is_state('input_boolean.plantinator_bewasserung_automatik', 'off')
+            or is_state('input_boolean.plantinator_bewasserung_auto_controller_aktiv', 'off')
+            or is_state('input_boolean.plantinator_bewasserung_sperre', 'on')
+          }}
+    action:
+      - service: script.plantinator_bewasserung_shot_exec_sicher_stop
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_auto_status
+        data:
+          value: sicher_stop_durch_freigabe
