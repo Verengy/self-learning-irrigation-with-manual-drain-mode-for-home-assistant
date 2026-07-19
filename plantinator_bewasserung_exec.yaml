@@ -1,5 +1,5 @@
 ############################################################
-# PLANTINATOR BEWASSERUNG - EXEC V1 (Fixed)
+# PLANTINATOR BEWASSERUNG - EXEC V2
 # Datei: plantinator_bewasserung_exec.yaml
 #
 # Änderungen gegenüber Original:
@@ -7,6 +7,10 @@
 # - sicher_stop setzt exec_abort=on ZUERST
 # - exec_guss_ml nutzt wait_template statt delay (unterbrechbar)
 # - Status differenziert zwischen "fertig" und "abgebrochen"
+# - Pumpenlaufzeit beginnt mit dem Einschaltbefehl und wartet nicht auf
+#   verzögerte WLAN-Zustandsrückmeldungen
+# - Einstellbare Aktor-Bestätigungszeit für Ventile und sichere
+#   Pumpen-AUS-Rückmeldung
 ############################################################
 
 input_boolean:
@@ -65,6 +69,15 @@ input_number:
     min: 0
     max: 10
     step: 0.5
+    mode: box
+    unit_of_measurement: "s"
+
+  plantinator_bewasserung_aktor_bestaetigungszeit_sekunden:
+    name: Plantinator Bewasserung Aktor Bestätigungszeit Sekunden
+    icon: mdi:timer-check-outline
+    min: 2
+    max: 30
+    step: 1
     mode: box
     unit_of_measurement: "s"
 
@@ -258,6 +271,12 @@ script:
         data:
           value: 1
 
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_aktor_bestaetigungszeit_sekunden
+        data:
+          value: 8
+
       - service: input_text.set_value
         target:
           entity_id: input_text.plantinator_bewasserung_exec_status
@@ -334,6 +353,25 @@ script:
                       target:
                         entity_id: "{{ repeat.item }}"
 
+      # Der Serviceaufruf bestätigt nur die Annahme des Schaltbefehls.
+      # Erst weiterlaufen, wenn alle gemappten Ventile ihren Zustand
+      # tatsächlich als "off" zurückgemeldet haben. So bleibt
+      # exec_laeuft während der realen Schließzeit aktiv und die
+      # Aktorüberwachung erzeugt keinen falschen "unerwartet offen"-Alarm.
+      - wait_template: >
+          {% set ns = namespace(alle_geschlossen=true) %}
+          {% for ventil in ventile %}
+            {% if ventil.startswith('switch.')
+                  and (not has_value(ventil) or not is_state(ventil, 'off')) %}
+              {% set ns.alle_geschlossen = false %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.alle_geschlossen }}
+        timeout: >
+          {{ states('input_number.plantinator_bewasserung_aktor_bestaetigungszeit_sekunden')
+             | float(8) }}
+        continue_on_timeout: true
+
   plantinator_bewasserung_sicher_stop:
     alias: Plantinator Bewasserung sicher Stop
     icon: mdi:stop-circle
@@ -353,7 +391,27 @@ script:
             - input_boolean.plantinator_bewasserung_mess_drain_stop_anforderung
             - input_boolean.plantinator_bewasserung_tank_umwalzung_stop_anforderung
 
+      - variables:
+          pumpe: "{{ states('input_text.plantinator_bewasserung_pumpe_entity') | trim }}"
+          pumpen_aus_befehl_ts: "{{ as_timestamp(now()) }}"
+
       - service: script.plantinator_bewasserung_pumpe_aus
+
+      # Auch bei einer noch veralteten WLAN-Anzeige "off" auf eine neue
+      # AUS-Rückmeldung nach dem Abschaltbefehl warten. So bleiben EXEC und
+      # das geöffnete Ventil während verzögerter Zustandsmeldungen aktiv.
+      - wait_template: >
+          {{ not pumpe.startswith('switch.')
+             or not has_value(pumpe)
+             or (
+               is_state(pumpe, 'off')
+               and as_timestamp(states[pumpe].last_updated, 0)
+                   >= (pumpen_aus_befehl_ts | float(0))
+             ) }}
+        timeout: >
+          {{ states('input_number.plantinator_bewasserung_aktor_bestaetigungszeit_sekunden')
+             | float(8) }}
+        continue_on_timeout: true
 
       - service: script.plantinator_bewasserung_tank_umwalzung_aus
         continue_on_error: true
@@ -455,6 +513,7 @@ script:
           dauer: "{{ (menge_ml | float(0) / (states('input_number.plantinator_bewasserung_pumpe_ml_pro_sekunde') | float(1))) | round(2) }}"
           vorlauf: "{{ states('input_number.plantinator_bewasserung_ventil_vorlauf_sekunden') | float(1) }}"
           nachlauf: "{{ states('input_number.plantinator_bewasserung_ventil_nachlauf_sekunden') | float(1) }}"
+          aktor_bestaetigung: "{{ states('input_number.plantinator_bewasserung_aktor_bestaetigungszeit_sekunden') | float(8) }}"
           pumpe: "{{ states('input_text.plantinator_bewasserung_pumpe_entity') | trim }}"
           hauptventil: "{{ states('input_text.plantinator_bewasserung_hauptventil_entity') | trim }}"
           ventil: "{{ states('input_text.plantinator_bewasserung_p' ~ (pflanze | int) ~ '_ventil_entity') | trim }}"
@@ -749,7 +808,7 @@ script:
                   {{ is_state(hauptventil, 'on')
                      or is_state('input_boolean.plantinator_bewasserung_exec_abort', 'on')
                      or (states('counter.plantinator_bewasserung_stop_generation') | int(0)) != (run_generation | int(0)) }}
-                timeout: "00:00:02"
+                timeout: "{{ aktor_bestaetigung }}"
                 continue_on_timeout: true
               - choose:
                   - conditions:
@@ -803,7 +862,7 @@ script:
           {{ is_state(ventil, 'on')
              or is_state('input_boolean.plantinator_bewasserung_exec_abort', 'on')
              or (states('counter.plantinator_bewasserung_stop_generation') | int(0)) != (run_generation | int(0)) }}
-        timeout: "00:00:02"
+        timeout: "{{ aktor_bestaetigung }}"
         continue_on_timeout: true
 
       - choose:
@@ -856,83 +915,55 @@ script:
                   entity_id: input_boolean.plantinator_bewasserung_exec_laeuft
               - stop: "Abort während Vorlauf."
 
+      # Die Soll-Laufzeit beginnt unmittelbar mit dem Einschaltbefehl.
+      # Eine verzögerte WLAN-Rückmeldung darf einen kurzen Shot nicht
+      # verlängern. Darum ist die "on"-Rückmeldung nur Diagnose und keine
+      # Voraussetzung für den Start der Dosierzeit.
+      - variables:
+          pumpen_ende_ts: "{{ as_timestamp(now()) + (dauer | float(0)) }}"
+
       - service: switch.turn_on
         continue_on_error: true
         target:
           entity_id: "{{ pumpe }}"
 
-      - wait_template: >
-          {{ is_state(pumpe, 'on')
-             or is_state('input_boolean.plantinator_bewasserung_exec_abort', 'on')
-             or (states('counter.plantinator_bewasserung_stop_generation') | int(0)) != (run_generation | int(0)) }}
-        timeout: "00:00:02"
-        continue_on_timeout: true
-
-      - choose:
-          - conditions:
-              - condition: template
-                value_template: >
-                  {{ is_state('input_boolean.plantinator_bewasserung_exec_abort', 'on')
-                     or (states('counter.plantinator_bewasserung_stop_generation') | int(0)) != (run_generation | int(0)) }}
-            sequence:
-              - service: script.plantinator_bewasserung_pumpe_aus
-              - service: script.plantinator_bewasserung_alle_ventile_zu
-              - service: input_boolean.turn_off
-                target:
-                  entity_id: input_boolean.plantinator_bewasserung_exec_laeuft
-              - service: input_text.set_value
-                target:
-                  entity_id: input_text.plantinator_bewasserung_exec_status
-                data:
-                  value: "{{ vorgang }}_abgebrochen_vor_pumpenlauf_p{{ p }}_{{ ml | round(0) | int }}ml_{{ now().timestamp() | int }}"
-              - stop: "Stop vor Pumpenlauf."
-
-          - conditions:
-              - condition: template
-                value_template: "{{ not is_state(pumpe, 'on') }}"
-            sequence:
-              - service: script.plantinator_bewasserung_pumpe_aus
-              - service: script.plantinator_bewasserung_alle_ventile_zu
-              - service: input_boolean.turn_off
-                target:
-                  entity_id: input_boolean.plantinator_bewasserung_exec_laeuft
-              - service: input_text.set_value
-                target:
-                  entity_id: input_text.plantinator_bewasserung_exec_status
-                data:
-                  value: "hardwarefehler_pumpe_p{{ p }}"
-              - service: counter.increment
-                target:
-                  entity_id: counter.plantinator_bewasserung_hardwarefehler_gesamt
-              - service: script.plantinator_bewasserung_alarm_ausloesen
-                data:
-                  grund: "hardwarefehler_pumpe_p{{ p }}"
-              - stop: "Pumpe konnte nicht eingeschaltet werden."
-
       # Hauptlauf der Pumpe – bricht bei Abort sofort ab
       - wait_template: >
           {{ is_state('input_boolean.plantinator_bewasserung_exec_abort', 'on')
              or (states('counter.plantinator_bewasserung_stop_generation') | int(0)) != (run_generation | int(0)) }}
-        timeout: "{{ dauer }}"
+        timeout: >
+          {{ [0.01, (pumpen_ende_ts | float(0)) - as_timestamp(now())] | max }}
         continue_on_timeout: true
+
+      - variables:
+          pumpen_aus_befehl_ts: "{{ as_timestamp(now()) }}"
 
       - service: switch.turn_off
         continue_on_error: true
         target:
           entity_id: "{{ pumpe }}"
 
+      # Nicht einen alten "off"-Zustand akzeptieren: Die Rückmeldung muss
+      # nach dem aktuellen Abschaltbefehl aktualisiert worden sein. Während
+      # dieser maximalen Wartezeit bleiben EXEC und Ventil aktiv, die
+      # eigentliche Pumpenlaufzeit wird dadurch aber nicht verlängert.
       - wait_template: >
           {{ is_state(pumpe, 'off')
-             or is_state('input_boolean.plantinator_bewasserung_exec_abort', 'on')
-             or (states('counter.plantinator_bewasserung_stop_generation') | int(0)) != (run_generation | int(0)) }}
-        timeout: "00:00:02"
+             and as_timestamp(states[pumpe].last_updated, 0)
+                 >= (pumpen_aus_befehl_ts | float(0)) }}
+        timeout: "{{ aktor_bestaetigung }}"
         continue_on_timeout: true
 
       # Ventile erst schließen, wenn die Pumpe nachweislich aus ist.
       - choose:
           - conditions:
               - condition: template
-                value_template: "{{ not is_state(pumpe, 'off') }}"
+                value_template: >
+                  {{ not (
+                    is_state(pumpe, 'off')
+                    and as_timestamp(states[pumpe].last_updated, 0)
+                        >= (pumpen_aus_befehl_ts | float(0))
+                  ) }}
             sequence:
               - service: input_text.set_value
                 target:

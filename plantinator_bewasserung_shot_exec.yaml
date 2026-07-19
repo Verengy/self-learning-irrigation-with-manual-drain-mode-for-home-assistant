@@ -158,6 +158,16 @@ script:
             - input_boolean.plantinator_bewasserung_shot_exec_laeuft
             - input_boolean.plantinator_bewasserung_shot_exec_reserviert
 
+      - service: input_text.set_value
+        target:
+          entity_id:
+            - input_text.plantinator_bewasserung_crop_p1_letzter_sequenztyp
+            - input_text.plantinator_bewasserung_crop_p2_letzter_sequenztyp
+            - input_text.plantinator_bewasserung_crop_p3_letzter_sequenztyp
+            - input_text.plantinator_bewasserung_crop_p4_letzter_sequenztyp
+        data:
+          value: keiner
+
       - service: timer.cancel
         target:
           entity_id: timer.plantinator_bewasserung_shot_exec_wartezeit
@@ -187,6 +197,11 @@ script:
             min: 1
             max: 4
             step: 1
+      sequenztyp:
+        name: Sequenztyp
+        required: false
+        selector:
+          text:
     sequence:
       - choose:
           - conditions:
@@ -205,6 +220,7 @@ script:
 
       - variables:
           p: "{{ pflanze | int }}"
+          sequenztyp_lauf: "{{ sequenztyp | default('manuell', true) }}"
           run_generation: "{{ states('counter.plantinator_bewasserung_stop_generation') | int(0) }}"
           bedarf: "{{ states('sensor.plantinator_bewasserung_p' ~ (pflanze | int) ~ '_gussbedarf') }}"
           plan: "{{ states('sensor.plantinator_bewasserung_p' ~ (pflanze | int) ~ '_shot_plan') }}"
@@ -218,10 +234,11 @@ script:
           shot_max_anzahl: "{{ states('input_number.plantinator_bewasserung_shot_max_anzahl') | int(10) }}"
           exec_min_ml: 25
           shot_max_ml: "{{ states('input_number.plantinator_bewasserung_shot_max_ml') | float(0) }}"
-          shot_effektiv_max_ml: "{{ states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(0) }}"
+          shot_effektiv_max_ml: >
+            {{ states('sensor.plantinator_bewasserung_crop_p' ~ (pflanze | int) ~ '_shot_ml_effektiv') | float(0) }}
           pause_s: "{{ state_attr('sensor.plantinator_bewasserung_p' ~ (pflanze | int) ~ '_shot_plan', 'pause_sekunden') | float(180) }}"
           max_normal: "{{ states('input_number.plantinator_bewasserung_max_ml_pro_normalguss') | float(0) }}"
-          feedback_wait: "{{ states('input_number.plantinator_bewasserung_feedback_wartezeit_minuten') | int(4) }}"
+          feedback_wait: "{{ states('input_number.plantinator_bewasserung_feedback_wartezeit_minuten') | int(10) }}"
           pre_guss_noetig: "{{ states('sensor.plantinator_bewasserung_tank_umwalzung_pre_guss_noetig') == 'ja' }}"
           p_innerhalb_anzahl: "{{ (pflanze | int) <= (states('input_number.plantinator_bewasserung_anzahl_pflanzen') | int(4)) }}"
           feedback_pending: "{{ is_state('input_boolean.plantinator_bewasserung_p' ~ (pflanze | int) ~ '_feedback_ausstehend', 'on') }}"
@@ -363,6 +380,18 @@ script:
       - service: input_boolean.turn_on
         target:
           entity_id: input_boolean.plantinator_bewasserung_shot_exec_reserviert
+
+      # Erst nach allen Freigabe- und Planprüfungen wird festgehalten, ob
+      # dieser automatisch gestartete Lauf Ramp-up oder Maintenance gehört.
+      # Manuelle Starts dürfen den Crop-Phasenstatus nicht verändern.
+      - service: input_text.set_value
+        target:
+          entity_id: "input_text.plantinator_bewasserung_crop_p{{ p }}_letzter_sequenztyp"
+        data:
+          value: >
+            {{ sequenztyp_lauf
+               if sequenztyp_lauf in ['ramp_up', 'maintenance', 'notguss']
+               else 'keiner' }}
 
       - choose:
           - conditions:
@@ -625,42 +654,75 @@ script:
           entity_id: input_datetime.plantinator_bewasserung_shot_exec_letztes_ende
         data:
           datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+      - service: input_text.set_value
+        target:
+          entity_id: "input_text.plantinator_bewasserung_crop_p{{ p }}_letzter_sequenztyp"
+        data:
+          value: keiner
 
   plantinator_bewasserung_p1_shot_plan_ausfuehren:
     alias: Plantinator Bewasserung P1 Shot-Plan ausführen
     icon: mdi:format-list-numbered
     mode: single
+    fields:
+      sequenztyp:
+        name: Sequenztyp
+        required: false
+        selector:
+          text:
     sequence:
       - service: script.plantinator_bewasserung_shot_plan_ausfuehren
         data:
           pflanze: 1
+          sequenztyp: "{{ sequenztyp | default('manuell', true) }}"
 
   plantinator_bewasserung_p2_shot_plan_ausfuehren:
     alias: Plantinator Bewasserung P2 Shot-Plan ausführen
     icon: mdi:format-list-numbered
     mode: single
+    fields:
+      sequenztyp:
+        name: Sequenztyp
+        required: false
+        selector:
+          text:
     sequence:
       - service: script.plantinator_bewasserung_shot_plan_ausfuehren
         data:
           pflanze: 2
+          sequenztyp: "{{ sequenztyp | default('manuell', true) }}"
 
   plantinator_bewasserung_p3_shot_plan_ausfuehren:
     alias: Plantinator Bewasserung P3 Shot-Plan ausführen
     icon: mdi:format-list-numbered
     mode: single
+    fields:
+      sequenztyp:
+        name: Sequenztyp
+        required: false
+        selector:
+          text:
     sequence:
       - service: script.plantinator_bewasserung_shot_plan_ausfuehren
         data:
           pflanze: 3
+          sequenztyp: "{{ sequenztyp | default('manuell', true) }}"
 
   plantinator_bewasserung_p4_shot_plan_ausfuehren:
     alias: Plantinator Bewasserung P4 Shot-Plan ausführen
     icon: mdi:format-list-numbered
     mode: single
+    fields:
+      sequenztyp:
+        name: Sequenztyp
+        required: false
+        selector:
+          text:
     sequence:
       - service: script.plantinator_bewasserung_shot_plan_ausfuehren
         data:
           pflanze: 4
+          sequenztyp: "{{ sequenztyp | default('manuell', true) }}"
 
 automation:
   - id: plantinator_bewasserung_shot_exec_p1_button

@@ -6,8 +6,9 @@
 # - Beliebige externe Software über Home-Assistant-Entitäten anbinden
 # - Externe Stage-Namen über frei editierbare Aliase normieren
 # - Manueller Fallback ohne externe Software
-# - Einstellbare Stage-Faktoren, Dryback-Ziele, Zeitfenster und Shot-Größen
-# - Reduzierte Shot-Größe während der einstellbaren Ramp-up-Phase
+# - Einstellbare Stage-Rezepte, Dryback-Ziele, Zeitfenster und Shot-Größen
+# - Pro Pflanze Dryback -> Ramp-up-Sequenz -> Maintenance
+# - Reduzierte Shot-Größe während der vollständigen Ramp-up-Sequenz
 # - Keine Pumpen-/Ventilsteuerung
 ############################################################
 
@@ -15,6 +16,18 @@ input_boolean:
   plantinator_bewasserung_crop_individuelle_parameter:
     name: Plantinator Bewasserung individuelle Crop Parameter
     icon: mdi:tune-vertical
+  plantinator_bewasserung_crop_p1_ramp_up_abgeschlossen:
+    name: Plantinator Bewasserung P1 Ramp Up abgeschlossen
+    icon: mdi:check-circle-outline
+  plantinator_bewasserung_crop_p2_ramp_up_abgeschlossen:
+    name: Plantinator Bewasserung P2 Ramp Up abgeschlossen
+    icon: mdi:check-circle-outline
+  plantinator_bewasserung_crop_p3_ramp_up_abgeschlossen:
+    name: Plantinator Bewasserung P3 Ramp Up abgeschlossen
+    icon: mdi:check-circle-outline
+  plantinator_bewasserung_crop_p4_ramp_up_abgeschlossen:
+    name: Plantinator Bewasserung P4 Ramp Up abgeschlossen
+    icon: mdi:check-circle-outline
 
 input_select:
   plantinator_bewasserung_crop_stage_manuell:
@@ -131,6 +144,46 @@ input_number:
     step: 5
     mode: box
     unit_of_measurement: "%"
+  plantinator_bewasserung_crop_maintenance_dryback_prozent:
+    name: Plantinator Bewasserung Crop Maintenance Dryback Legacy
+    icon: mdi:water-percent-alert
+    min: 0.5
+    max: 20
+    step: 0.5
+    mode: box
+    unit_of_measurement: "%"
+  plantinator_bewasserung_crop_p1_letzter_peak_prozent:
+    name: Plantinator Bewasserung P1 letzter Peak
+    icon: mdi:chart-line
+    min: 0
+    max: 100
+    step: 0.1
+    mode: box
+    unit_of_measurement: "%"
+  plantinator_bewasserung_crop_p2_letzter_peak_prozent:
+    name: Plantinator Bewasserung P2 letzter Peak
+    icon: mdi:chart-line
+    min: 0
+    max: 100
+    step: 0.1
+    mode: box
+    unit_of_measurement: "%"
+  plantinator_bewasserung_crop_p3_letzter_peak_prozent:
+    name: Plantinator Bewasserung P3 letzter Peak
+    icon: mdi:chart-line
+    min: 0
+    max: 100
+    step: 0.1
+    mode: box
+    unit_of_measurement: "%"
+  plantinator_bewasserung_crop_p4_letzter_peak_prozent:
+    name: Plantinator Bewasserung P4 letzter Peak
+    icon: mdi:chart-line
+    min: 0
+    max: 100
+    step: 0.1
+    mode: box
+    unit_of_measurement: "%"
 
   plantinator_bewasserung_crop_start_nach_licht_an_keimung_minuten:
     name: Plantinator Crop Start nach Licht an Keimung
@@ -153,6 +206,14 @@ input_number:
     icon: mdi:water-percent-alert
     min: 0
     max: 35
+    step: 0.5
+    mode: box
+    unit_of_measurement: "%"
+  plantinator_bewasserung_crop_maintenance_dryback_keimung_prozent:
+    name: Plantinator Crop Maintenance Dryback Keimung
+    icon: mdi:water-sync
+    min: 0.5
+    max: 20
     step: 0.5
     mode: box
     unit_of_measurement: "%"
@@ -189,6 +250,14 @@ input_number:
     step: 0.5
     mode: box
     unit_of_measurement: "%"
+  plantinator_bewasserung_crop_maintenance_dryback_steckling_prozent:
+    name: Plantinator Crop Maintenance Dryback Steckling
+    icon: mdi:water-sync
+    min: 0.5
+    max: 20
+    step: 0.5
+    mode: box
+    unit_of_measurement: "%"
   plantinator_bewasserung_crop_shot_steckling_prozent:
     name: Plantinator Crop Shot Steckling
     icon: mdi:cup-water
@@ -219,6 +288,14 @@ input_number:
     icon: mdi:water-percent-alert
     min: 0
     max: 35
+    step: 0.5
+    mode: box
+    unit_of_measurement: "%"
+  plantinator_bewasserung_crop_maintenance_dryback_early_veg_prozent:
+    name: Plantinator Crop Maintenance Dryback Early Veg
+    icon: mdi:water-sync
+    min: 0.5
+    max: 20
     step: 0.5
     mode: box
     unit_of_measurement: "%"
@@ -255,6 +332,14 @@ input_number:
     step: 0.5
     mode: box
     unit_of_measurement: "%"
+  plantinator_bewasserung_crop_maintenance_dryback_mid_veg_prozent:
+    name: Plantinator Crop Maintenance Dryback Mid Veg
+    icon: mdi:water-sync
+    min: 0.5
+    max: 20
+    step: 0.5
+    mode: box
+    unit_of_measurement: "%"
   plantinator_bewasserung_crop_shot_mid_veg_prozent:
     name: Plantinator Crop Shot Mid Veg
     icon: mdi:cup-water
@@ -285,6 +370,14 @@ input_number:
     icon: mdi:water-percent-alert
     min: 0
     max: 35
+    step: 0.5
+    mode: box
+    unit_of_measurement: "%"
+  plantinator_bewasserung_crop_maintenance_dryback_late_veg_prozent:
+    name: Plantinator Crop Maintenance Dryback Late Veg
+    icon: mdi:water-sync
+    min: 0.5
+    max: 20
     step: 0.5
     mode: box
     unit_of_measurement: "%"
@@ -321,6 +414,14 @@ input_number:
     step: 0.5
     mode: box
     unit_of_measurement: "%"
+  plantinator_bewasserung_crop_maintenance_dryback_early_flower_prozent:
+    name: Plantinator Crop Maintenance Dryback Early Flower
+    icon: mdi:water-sync
+    min: 0.5
+    max: 20
+    step: 0.5
+    mode: box
+    unit_of_measurement: "%"
   plantinator_bewasserung_crop_shot_early_flower_prozent:
     name: Plantinator Crop Shot Early Flower
     icon: mdi:cup-water
@@ -354,6 +455,14 @@ input_number:
     step: 0.5
     mode: box
     unit_of_measurement: "%"
+  plantinator_bewasserung_crop_maintenance_dryback_mid_flower_prozent:
+    name: Plantinator Crop Maintenance Dryback Mid Flower
+    icon: mdi:water-sync
+    min: 0.5
+    max: 20
+    step: 0.5
+    mode: box
+    unit_of_measurement: "%"
   plantinator_bewasserung_crop_shot_mid_flower_prozent:
     name: Plantinator Crop Shot Mid Flower
     icon: mdi:cup-water
@@ -384,6 +493,14 @@ input_number:
     icon: mdi:water-percent-alert
     min: 0
     max: 35
+    step: 0.5
+    mode: box
+    unit_of_measurement: "%"
+  plantinator_bewasserung_crop_maintenance_dryback_late_flower_prozent:
+    name: Plantinator Crop Maintenance Dryback Late Flower
+    icon: mdi:water-sync
+    min: 0.5
+    max: 20
     step: 0.5
     mode: box
     unit_of_measurement: "%"
@@ -454,6 +571,26 @@ input_text:
     name: Plantinator Bewasserung Crop Aliase Late Flower
     icon: mdi:format-list-bulleted
     max: 255
+  plantinator_bewasserung_crop_p1_letzter_sequenztyp:
+    name: Plantinator Bewasserung P1 letzter Sequenztyp
+    icon: mdi:state-machine
+    max: 32
+  plantinator_bewasserung_crop_p2_letzter_sequenztyp:
+    name: Plantinator Bewasserung P2 letzter Sequenztyp
+    icon: mdi:state-machine
+    max: 32
+  plantinator_bewasserung_crop_p3_letzter_sequenztyp:
+    name: Plantinator Bewasserung P3 letzter Sequenztyp
+    icon: mdi:state-machine
+    max: 32
+  plantinator_bewasserung_crop_p4_letzter_sequenztyp:
+    name: Plantinator Bewasserung P4 letzter Sequenztyp
+    icon: mdi:state-machine
+    max: 32
+  plantinator_bewasserung_crop_letzter_lichttag:
+    name: Plantinator Bewasserung Crop letzter Lichttag
+    icon: mdi:calendar-sun
+    max: 16
 
 template:
   - sensor:
@@ -644,6 +781,20 @@ template:
             'mid_flower': 'input_number.plantinator_bewasserung_crop_dryback_ziel_mid_flower_prozent',
             'late_flower': 'input_number.plantinator_bewasserung_crop_dryback_ziel_late_flower_prozent'
           } %}
+          {% set maintenance_helpers = {
+            'keimung': 'input_number.plantinator_bewasserung_crop_maintenance_dryback_keimung_prozent',
+            'steckling': 'input_number.plantinator_bewasserung_crop_maintenance_dryback_steckling_prozent',
+            'early_veg': 'input_number.plantinator_bewasserung_crop_maintenance_dryback_early_veg_prozent',
+            'mid_veg': 'input_number.plantinator_bewasserung_crop_maintenance_dryback_mid_veg_prozent',
+            'late_veg': 'input_number.plantinator_bewasserung_crop_maintenance_dryback_late_veg_prozent',
+            'early_flower': 'input_number.plantinator_bewasserung_crop_maintenance_dryback_early_flower_prozent',
+            'mid_flower': 'input_number.plantinator_bewasserung_crop_maintenance_dryback_mid_flower_prozent',
+            'late_flower': 'input_number.plantinator_bewasserung_crop_maintenance_dryback_late_flower_prozent'
+          } %}
+          {% set maintenance_defaults = {
+            'keimung': 2.0, 'steckling': 2.0, 'early_veg': 2.5, 'mid_veg': 3.0,
+            'late_veg': 3.5, 'early_flower': 4.0, 'mid_flower': 3.0, 'late_flower': 4.0
+          } %}
           {% set shot_helpers = {
             'keimung': 'input_number.plantinator_bewasserung_crop_shot_keimung_prozent',
             'steckling': 'input_number.plantinator_bewasserung_crop_shot_steckling_prozent',
@@ -658,15 +809,21 @@ template:
             {% set start = states(start_helpers[stage]) | int(-1) %}
             {% set stop = states(stop_helpers[stage]) | int(-1) %}
             {% set dryback = states(dryback_helpers[stage]) | float(-1) %}
+            {% set maintenance_config = states(maintenance_helpers[stage]) | float(0.5) %}
+            {% set maintenance_legacy = states('input_number.plantinator_bewasserung_crop_maintenance_dryback_prozent') | float(0.5) %}
+            {% set maintenance_dryback =
+                 maintenance_config if maintenance_config > 0.5
+                 else maintenance_legacy if maintenance_legacy > 0.5
+                 else maintenance_defaults[stage] %}
             {% set shot = states(shot_helpers[stage]) | float(-1) %}
           {% else %}
             {% set start = -1 %}
             {% set stop = -1 %}
             {% set dryback = -1 %}
+            {% set maintenance_dryback = -1 %}
             {% set shot = -1 %}
           {% endif %}
           {% set volumen = states('input_number.plantinator_bewasserung_crop_substratvolumen_liter') | float(-1) %}
-          {% set ramp = states('input_number.plantinator_bewasserung_crop_ramp_up_dauer_minuten') | int(-1) %}
           {% set ramp_faktor = states('input_number.plantinator_bewasserung_crop_ramp_up_shot_faktor_prozent') | float(-1) %}
           {% set on_raw = states('sensor.plantinator_bewasserung_licht_an_roh') %}
           {% set off_raw = states('sensor.plantinator_bewasserung_licht_aus_roh') %}
@@ -687,8 +844,11 @@ template:
           {% elif stage not in start_helpers %}
             fehler_stage_unbekannt
           {% elif start < 0 or stop < 0 or dryback < 0 or shot <= 0 or volumen <= 0
-                or ramp < 0 or ramp_faktor < 25 or ramp_faktor > 100 %}
+                or maintenance_dryback <= 0
+                or ramp_faktor < 25 or ramp_faktor > 100 %}
             fehler_ungueltiger_wert
+          {% elif maintenance_dryback > dryback %}
+            fehler_maintenance_groesser_overnight
           {% elif lichtdauer > 0 and (start + stop) >= lichtdauer %}
             fehler_keine_bewaesserungszeit
           {% else %}
@@ -701,6 +861,7 @@ template:
           hinweis: >
             Bei einem Fehler werden die konservativen Standardwerte verwendet.
             Start plus Stop muss kleiner als die Lichtdauer sein.
+            Der Maintenance-Dryback darf nicht größer als der Overnight-Dryback sein.
 
       - name: Plantinator Bewasserung Crop Start nach Licht an effektiv
         unique_id: plantinator_bewasserung_crop_start_nach_licht_an_effektiv
@@ -777,6 +938,47 @@ template:
           {{ (states(helpers[stage]) | float(defaults.get(stage, 10.0))
              if individuell and stage in helpers else defaults.get(stage, 10.0)) | round(1) }}
 
+      - name: Plantinator Bewasserung Crop Maintenance Dryback effektiv
+        unique_id: plantinator_bewasserung_crop_maintenance_dryback_effektiv
+        icon: mdi:water-sync
+        unit_of_measurement: "%"
+        state: >
+          {% set stage = states('sensor.plantinator_bewasserung_crop_stage') %}
+          {% set defaults = {
+            'keimung': 2.0, 'steckling': 2.0, 'early_veg': 2.5, 'mid_veg': 3.0,
+            'late_veg': 3.5, 'early_flower': 4.0, 'mid_flower': 3.0, 'late_flower': 4.0
+          } %}
+          {% set helpers = {
+            'keimung': 'input_number.plantinator_bewasserung_crop_maintenance_dryback_keimung_prozent',
+            'steckling': 'input_number.plantinator_bewasserung_crop_maintenance_dryback_steckling_prozent',
+            'early_veg': 'input_number.plantinator_bewasserung_crop_maintenance_dryback_early_veg_prozent',
+            'mid_veg': 'input_number.plantinator_bewasserung_crop_maintenance_dryback_mid_veg_prozent',
+            'late_veg': 'input_number.plantinator_bewasserung_crop_maintenance_dryback_late_veg_prozent',
+            'early_flower': 'input_number.plantinator_bewasserung_crop_maintenance_dryback_early_flower_prozent',
+            'mid_flower': 'input_number.plantinator_bewasserung_crop_maintenance_dryback_mid_flower_prozent',
+            'late_flower': 'input_number.plantinator_bewasserung_crop_maintenance_dryback_late_flower_prozent'
+          } %}
+          {% set individuell = is_state('input_boolean.plantinator_bewasserung_crop_individuelle_parameter', 'on')
+                and is_state('sensor.plantinator_bewasserung_crop_einstellungen_status', 'ok') %}
+          {% set konfiguriert = states(helpers[stage]) | float(0.5)
+                if stage in helpers else 0.5 %}
+          {% set legacy = states('input_number.plantinator_bewasserung_crop_maintenance_dryback_prozent') | float(0.5) %}
+          {% if individuell and konfiguriert > 0.5 %}
+            {{ konfiguriert | round(1) }}
+          {% elif individuell and legacy > 0.5 %}
+            {{ legacy | round(1) }}
+          {% else %}
+            {{ defaults.get(stage, 3.0) | round(1) }}
+          {% endif %}
+        attributes:
+          bezug: letzter_erreichter_peak
+          einheit_hinweis: >
+            Absolute Differenz in den Prozentwerten des gemappten Feuchtesensors,
+            nicht relativer Prozentanteil des Peaks.
+          migrationshinweis: >
+            Ein neuer phasenspezifischer Helfer mit 0,5 verwendet vorübergehend
+            den früheren globalen Wert oder den konservativen Rezept-Standard.
+
       - name: Plantinator Bewasserung Crop Shot Prozent effektiv
         unique_id: plantinator_bewasserung_crop_shot_prozent_effektiv
         icon: mdi:cup-water
@@ -807,20 +1009,18 @@ template:
         icon: mdi:water-percent
         unit_of_measurement: "%"
         state: >
-          {% set tagesphase = states('sensor.plantinator_bewasserung_crop_tagesphase') %}
           {% set individuell = is_state('input_boolean.plantinator_bewasserung_crop_individuelle_parameter', 'on')
                 and is_state('sensor.plantinator_bewasserung_crop_einstellungen_status', 'ok') %}
           {% set konfiguriert =
                 states('input_number.plantinator_bewasserung_crop_ramp_up_shot_faktor_prozent') | float(60)
                 if individuell else 60 %}
-          {{ (konfiguriert if tagesphase == 'ramp_up' else 100) | round(0) }}
+          {{ konfiguriert | round(0) }}
         attributes:
-          tagesphase: "{{ states('sensor.plantinator_bewasserung_crop_tagesphase') }}"
           konfigurierter_ramp_up_faktor_prozent: >
             {{ states('input_number.plantinator_bewasserung_crop_ramp_up_shot_faktor_prozent') }}
           hinweis: >
-            Der konfigurierte Faktor wird nur während ramp_up angewendet.
-            In allen anderen Tagesphasen beträgt der effektive Faktor 100 Prozent.
+            Dieser Faktor wird von den pflanzenspezifischen Shot-Sensoren
+            ausschließlich während des Ramp-up angewendet.
 
       - name: Plantinator Bewasserung Crop Shot ml effektiv
         unique_id: plantinator_bewasserung_crop_shot_ml_effektiv
@@ -836,28 +1036,13 @@ template:
           {% set minimum = states('input_number.plantinator_bewasserung_shot_min_ml') | float(25) %}
           {% set maximum = states('input_number.plantinator_bewasserung_shot_max_ml') | float(500) %}
           {% set basis = [[roh, minimum] | max, maximum] | min %}
-          {% set ramp_faktor =
-                states('sensor.plantinator_bewasserung_crop_ramp_up_shot_faktor_effektiv') | float(100) %}
-          {% set nach_ramp = basis * ramp_faktor / 100 %}
-          {{ [[nach_ramp, minimum] | max, maximum] | min | round(0) }}
+          {{ basis | round(0) }}
         attributes:
           berechnung: >
-            Stage-Shot aus Substratvolumen und Shot-Prozent, begrenzt durch
-            Shot-Min/Max und während ramp_up anschließend mit dem Ramp-up-Faktor reduziert
-          tagesphase: "{{ states('sensor.plantinator_bewasserung_crop_tagesphase') }}"
+            Stage-Basisshot aus Substratvolumen und Shot-Prozent,
+            begrenzt durch Shot-Min/Max. Die Ramp-up-Reduktion erfolgt
+            anschließend pro Pflanze.
           stage_shot_prozent: "{{ states('sensor.plantinator_bewasserung_crop_shot_prozent_effektiv') }}"
-          ramp_up_faktor_effektiv_prozent: >
-            {{ states('sensor.plantinator_bewasserung_crop_ramp_up_shot_faktor_effektiv') }}
-          shot_vor_ramp_up_ml: >
-            {% set individuell = is_state('input_boolean.plantinator_bewasserung_crop_individuelle_parameter', 'on')
-                  and is_state('sensor.plantinator_bewasserung_crop_einstellungen_status', 'ok') %}
-            {% set volumen = states('input_number.plantinator_bewasserung_crop_substratvolumen_liter') | float(10)
-                  if individuell else 10 %}
-            {% set prozent = states('sensor.plantinator_bewasserung_crop_shot_prozent_effektiv') | float(3) %}
-            {% set roh = volumen * 1000 * prozent / 100 %}
-            {% set minimum = states('input_number.plantinator_bewasserung_shot_min_ml') | float(25) %}
-            {% set maximum = states('input_number.plantinator_bewasserung_shot_max_ml') | float(500) %}
-            {{ [[roh, minimum] | max, maximum] | min | round(0) }}
           begrenzung_min_ml: "{{ states('input_number.plantinator_bewasserung_shot_min_ml') }}"
           begrenzung_max_ml: "{{ states('input_number.plantinator_bewasserung_shot_max_ml') }}"
 
@@ -874,7 +1059,413 @@ template:
           sicherheitsminimum: "{{ states('input_number.plantinator_bewasserung_bodenfeuchte_minimum') }}"
           feuchte_ziel: "{{ states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') }}"
           dryback_ziel: "{{ states('sensor.plantinator_bewasserung_crop_dryback_ziel_effektiv') }}"
-          berechnung: max(Sicherheitsminimum, Feuchteziel minus Dryback-Ziel)
+          berechnung: >
+            Kompatibilitätswert ohne gespeicherten Pflanzen-Peak:
+            max(Sicherheitsminimum, Feuchteziel minus Dryback-Ziel)
+
+      - name: Plantinator Bewasserung Crop P1 Phase
+        unique_id: plantinator_bewasserung_crop_p1_phase
+        icon: mdi:state-machine
+        state: >
+          {% set aktiv = is_state('input_boolean.plantinator_bewasserung_p1_aktiv', 'on') %}
+          {% set raw = states('sensor.plantinator_bewasserung_p1_bodenfeuchte_wert') %}
+          {% set licht = states('sensor.plantinator_bewasserung_lichtstatus') %}
+          {% set seit = states('sensor.plantinator_bewasserung_minuten_seit_licht_an') | int(-1) %}
+          {% set bis = states('sensor.plantinator_bewasserung_minuten_bis_licht_aus') | int(-1) %}
+          {% set start = states('sensor.plantinator_bewasserung_crop_start_nach_licht_an_effektiv') | int(120) %}
+          {% set stop = states('sensor.plantinator_bewasserung_crop_stop_vor_licht_aus_effektiv') | int(180) %}
+          {% set minimum = states('input_number.plantinator_bewasserung_bodenfeuchte_minimum') | float(19) %}
+          {% set ziel = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(32) %}
+          {% set maximum = states('input_number.plantinator_bewasserung_bodenfeuchte_maximum') | float(55) %}
+          {% set gespeichert = states('input_number.plantinator_bewasserung_crop_p1_letzter_peak_prozent') | float(0) %}
+          {% set peak = [gespeichert if gespeichert > 0 else ziel, maximum] | min %}
+          {% set dryback = states('sensor.plantinator_bewasserung_crop_dryback_ziel_effektiv') | float(5) %}
+          {% set schwelle = [minimum, peak - dryback] | max %}
+          {% if not aktiv %}
+            inaktiv
+          {% elif not is_number(raw) %}
+            sensorfehler
+          {% elif licht == 'nacht' %}
+            nacht
+          {% elif licht != 'tag' or seit < 0 or bis < 0 %}
+            unbekannt
+          {% elif seit < start %}
+            warte_licht
+          {% elif bis <= stop %}
+            overnight_dryback
+          {% elif is_state('input_boolean.plantinator_bewasserung_crop_p1_ramp_up_abgeschlossen', 'on') %}
+            maintenance
+          {% elif raw | float(0) <= schwelle %}
+            ramp_up
+          {% else %}
+            warte_dryback
+          {% endif %}
+        attributes:
+          feuchte_prozent: "{{ states('sensor.plantinator_bewasserung_p1_bodenfeuchte_wert') }}"
+          letzter_peak_prozent: >
+            {% set ziel = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(32) %}
+            {% set maximum = states('input_number.plantinator_bewasserung_bodenfeuchte_maximum') | float(55) %}
+            {% set gespeichert = states('input_number.plantinator_bewasserung_crop_p1_letzter_peak_prozent') | float(0) %}
+            {{ [gespeichert if gespeichert > 0 else ziel, maximum] | min | round(1) }}
+          aktueller_dryback_prozent: >
+            {% set f = states('sensor.plantinator_bewasserung_p1_bodenfeuchte_wert') | float(0) %}
+            {% set ziel = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(32) %}
+            {% set maximum = states('input_number.plantinator_bewasserung_bodenfeuchte_maximum') | float(55) %}
+            {% set gespeichert = states('input_number.plantinator_bewasserung_crop_p1_letzter_peak_prozent') | float(0) %}
+            {% set peak = [gespeichert if gespeichert > 0 else ziel, maximum] | min %}
+            {{ [peak - f, 0] | max | round(1) }}
+          ramp_up_dryback_prozent: "{{ states('sensor.plantinator_bewasserung_crop_dryback_ziel_effektiv') }}"
+          maintenance_dryback_prozent: "{{ states('sensor.plantinator_bewasserung_crop_maintenance_dryback_effektiv') }}"
+          ramp_up_startwert_prozent: >
+            {% set minimum = states('input_number.plantinator_bewasserung_bodenfeuchte_minimum') | float(19) %}
+            {% set ziel = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(32) %}
+            {% set maximum = states('input_number.plantinator_bewasserung_bodenfeuchte_maximum') | float(55) %}
+            {% set gespeichert = states('input_number.plantinator_bewasserung_crop_p1_letzter_peak_prozent') | float(0) %}
+            {% set peak = [gespeichert if gespeichert > 0 else ziel, maximum] | min %}
+            {% set dryback = states('sensor.plantinator_bewasserung_crop_dryback_ziel_effektiv') | float(5) %}
+            {{ [minimum, peak - dryback] | max | round(1) }}
+          maintenance_startwert_prozent: >
+            {% set minimum = states('input_number.plantinator_bewasserung_bodenfeuchte_minimum') | float(19) %}
+            {% set ziel = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(32) %}
+            {% set maximum = states('input_number.plantinator_bewasserung_bodenfeuchte_maximum') | float(55) %}
+            {% set gespeichert = states('input_number.plantinator_bewasserung_crop_p1_letzter_peak_prozent') | float(0) %}
+            {% set peak = [gespeichert if gespeichert > 0 else ziel, maximum] | min %}
+            {% set dryback = states('sensor.plantinator_bewasserung_crop_maintenance_dryback_effektiv') | float(3) %}
+            {{ [minimum, peak - dryback] | max | round(1) }}
+          giessschwelle_prozent: >
+            {% set minimum = states('input_number.plantinator_bewasserung_bodenfeuchte_minimum') | float(19) %}
+            {% set ziel = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(32) %}
+            {% set maximum = states('input_number.plantinator_bewasserung_bodenfeuchte_maximum') | float(55) %}
+            {% set gespeichert = states('input_number.plantinator_bewasserung_crop_p1_letzter_peak_prozent') | float(0) %}
+            {% set peak = [gespeichert if gespeichert > 0 else ziel, maximum] | min %}
+            {% set dryback = states('sensor.plantinator_bewasserung_crop_maintenance_dryback_effektiv') | float(3)
+                 if is_state('input_boolean.plantinator_bewasserung_crop_p1_ramp_up_abgeschlossen', 'on')
+                 else states('sensor.plantinator_bewasserung_crop_dryback_ziel_effektiv') | float(5) %}
+            {{ [minimum, peak - dryback] | max | round(1) }}
+          ramp_up_abgeschlossen: "{{ states('input_boolean.plantinator_bewasserung_crop_p1_ramp_up_abgeschlossen') }}"
+
+      - name: Plantinator Bewasserung Crop P2 Phase
+        unique_id: plantinator_bewasserung_crop_p2_phase
+        icon: mdi:state-machine
+        state: >
+          {% set aktiv = is_state('input_boolean.plantinator_bewasserung_p2_aktiv', 'on') %}
+          {% set raw = states('sensor.plantinator_bewasserung_p2_bodenfeuchte_wert') %}
+          {% set licht = states('sensor.plantinator_bewasserung_lichtstatus') %}
+          {% set seit = states('sensor.plantinator_bewasserung_minuten_seit_licht_an') | int(-1) %}
+          {% set bis = states('sensor.plantinator_bewasserung_minuten_bis_licht_aus') | int(-1) %}
+          {% set start = states('sensor.plantinator_bewasserung_crop_start_nach_licht_an_effektiv') | int(120) %}
+          {% set stop = states('sensor.plantinator_bewasserung_crop_stop_vor_licht_aus_effektiv') | int(180) %}
+          {% set minimum = states('input_number.plantinator_bewasserung_bodenfeuchte_minimum') | float(19) %}
+          {% set ziel = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(32) %}
+          {% set maximum = states('input_number.plantinator_bewasserung_bodenfeuchte_maximum') | float(55) %}
+          {% set gespeichert = states('input_number.plantinator_bewasserung_crop_p2_letzter_peak_prozent') | float(0) %}
+          {% set peak = [gespeichert if gespeichert > 0 else ziel, maximum] | min %}
+          {% set dryback = states('sensor.plantinator_bewasserung_crop_dryback_ziel_effektiv') | float(5) %}
+          {% set schwelle = [minimum, peak - dryback] | max %}
+          {% if not aktiv %}
+            inaktiv
+          {% elif not is_number(raw) %}
+            sensorfehler
+          {% elif licht == 'nacht' %}
+            nacht
+          {% elif licht != 'tag' or seit < 0 or bis < 0 %}
+            unbekannt
+          {% elif seit < start %}
+            warte_licht
+          {% elif bis <= stop %}
+            overnight_dryback
+          {% elif is_state('input_boolean.plantinator_bewasserung_crop_p2_ramp_up_abgeschlossen', 'on') %}
+            maintenance
+          {% elif raw | float(0) <= schwelle %}
+            ramp_up
+          {% else %}
+            warte_dryback
+          {% endif %}
+        attributes:
+          feuchte_prozent: "{{ states('sensor.plantinator_bewasserung_p2_bodenfeuchte_wert') }}"
+          letzter_peak_prozent: >
+            {% set ziel = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(32) %}
+            {% set maximum = states('input_number.plantinator_bewasserung_bodenfeuchte_maximum') | float(55) %}
+            {% set gespeichert = states('input_number.plantinator_bewasserung_crop_p2_letzter_peak_prozent') | float(0) %}
+            {{ [gespeichert if gespeichert > 0 else ziel, maximum] | min | round(1) }}
+          aktueller_dryback_prozent: >
+            {% set f = states('sensor.plantinator_bewasserung_p2_bodenfeuchte_wert') | float(0) %}
+            {% set ziel = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(32) %}
+            {% set maximum = states('input_number.plantinator_bewasserung_bodenfeuchte_maximum') | float(55) %}
+            {% set gespeichert = states('input_number.plantinator_bewasserung_crop_p2_letzter_peak_prozent') | float(0) %}
+            {% set peak = [gespeichert if gespeichert > 0 else ziel, maximum] | min %}
+            {{ [peak - f, 0] | max | round(1) }}
+          ramp_up_dryback_prozent: "{{ states('sensor.plantinator_bewasserung_crop_dryback_ziel_effektiv') }}"
+          maintenance_dryback_prozent: "{{ states('sensor.plantinator_bewasserung_crop_maintenance_dryback_effektiv') }}"
+          ramp_up_startwert_prozent: >
+            {% set minimum = states('input_number.plantinator_bewasserung_bodenfeuchte_minimum') | float(19) %}
+            {% set ziel = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(32) %}
+            {% set maximum = states('input_number.plantinator_bewasserung_bodenfeuchte_maximum') | float(55) %}
+            {% set gespeichert = states('input_number.plantinator_bewasserung_crop_p2_letzter_peak_prozent') | float(0) %}
+            {% set peak = [gespeichert if gespeichert > 0 else ziel, maximum] | min %}
+            {% set dryback = states('sensor.plantinator_bewasserung_crop_dryback_ziel_effektiv') | float(5) %}
+            {{ [minimum, peak - dryback] | max | round(1) }}
+          maintenance_startwert_prozent: >
+            {% set minimum = states('input_number.plantinator_bewasserung_bodenfeuchte_minimum') | float(19) %}
+            {% set ziel = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(32) %}
+            {% set maximum = states('input_number.plantinator_bewasserung_bodenfeuchte_maximum') | float(55) %}
+            {% set gespeichert = states('input_number.plantinator_bewasserung_crop_p2_letzter_peak_prozent') | float(0) %}
+            {% set peak = [gespeichert if gespeichert > 0 else ziel, maximum] | min %}
+            {% set dryback = states('sensor.plantinator_bewasserung_crop_maintenance_dryback_effektiv') | float(3) %}
+            {{ [minimum, peak - dryback] | max | round(1) }}
+          giessschwelle_prozent: >
+            {% set minimum = states('input_number.plantinator_bewasserung_bodenfeuchte_minimum') | float(19) %}
+            {% set ziel = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(32) %}
+            {% set maximum = states('input_number.plantinator_bewasserung_bodenfeuchte_maximum') | float(55) %}
+            {% set gespeichert = states('input_number.plantinator_bewasserung_crop_p2_letzter_peak_prozent') | float(0) %}
+            {% set peak = [gespeichert if gespeichert > 0 else ziel, maximum] | min %}
+            {% set dryback = states('sensor.plantinator_bewasserung_crop_maintenance_dryback_effektiv') | float(3)
+                 if is_state('input_boolean.plantinator_bewasserung_crop_p2_ramp_up_abgeschlossen', 'on')
+                 else states('sensor.plantinator_bewasserung_crop_dryback_ziel_effektiv') | float(5) %}
+            {{ [minimum, peak - dryback] | max | round(1) }}
+          ramp_up_abgeschlossen: "{{ states('input_boolean.plantinator_bewasserung_crop_p2_ramp_up_abgeschlossen') }}"
+
+      - name: Plantinator Bewasserung Crop P3 Phase
+        unique_id: plantinator_bewasserung_crop_p3_phase
+        icon: mdi:state-machine
+        state: >
+          {% set aktiv = is_state('input_boolean.plantinator_bewasserung_p3_aktiv', 'on') %}
+          {% set raw = states('sensor.plantinator_bewasserung_p3_bodenfeuchte_wert') %}
+          {% set licht = states('sensor.plantinator_bewasserung_lichtstatus') %}
+          {% set seit = states('sensor.plantinator_bewasserung_minuten_seit_licht_an') | int(-1) %}
+          {% set bis = states('sensor.plantinator_bewasserung_minuten_bis_licht_aus') | int(-1) %}
+          {% set start = states('sensor.plantinator_bewasserung_crop_start_nach_licht_an_effektiv') | int(120) %}
+          {% set stop = states('sensor.plantinator_bewasserung_crop_stop_vor_licht_aus_effektiv') | int(180) %}
+          {% set minimum = states('input_number.plantinator_bewasserung_bodenfeuchte_minimum') | float(19) %}
+          {% set ziel = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(32) %}
+          {% set maximum = states('input_number.plantinator_bewasserung_bodenfeuchte_maximum') | float(55) %}
+          {% set gespeichert = states('input_number.plantinator_bewasserung_crop_p3_letzter_peak_prozent') | float(0) %}
+          {% set peak = [gespeichert if gespeichert > 0 else ziel, maximum] | min %}
+          {% set dryback = states('sensor.plantinator_bewasserung_crop_dryback_ziel_effektiv') | float(5) %}
+          {% set schwelle = [minimum, peak - dryback] | max %}
+          {% if not aktiv %}
+            inaktiv
+          {% elif not is_number(raw) %}
+            sensorfehler
+          {% elif licht == 'nacht' %}
+            nacht
+          {% elif licht != 'tag' or seit < 0 or bis < 0 %}
+            unbekannt
+          {% elif seit < start %}
+            warte_licht
+          {% elif bis <= stop %}
+            overnight_dryback
+          {% elif is_state('input_boolean.plantinator_bewasserung_crop_p3_ramp_up_abgeschlossen', 'on') %}
+            maintenance
+          {% elif raw | float(0) <= schwelle %}
+            ramp_up
+          {% else %}
+            warte_dryback
+          {% endif %}
+        attributes:
+          feuchte_prozent: "{{ states('sensor.plantinator_bewasserung_p3_bodenfeuchte_wert') }}"
+          letzter_peak_prozent: >
+            {% set ziel = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(32) %}
+            {% set maximum = states('input_number.plantinator_bewasserung_bodenfeuchte_maximum') | float(55) %}
+            {% set gespeichert = states('input_number.plantinator_bewasserung_crop_p3_letzter_peak_prozent') | float(0) %}
+            {{ [gespeichert if gespeichert > 0 else ziel, maximum] | min | round(1) }}
+          aktueller_dryback_prozent: >
+            {% set f = states('sensor.plantinator_bewasserung_p3_bodenfeuchte_wert') | float(0) %}
+            {% set ziel = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(32) %}
+            {% set maximum = states('input_number.plantinator_bewasserung_bodenfeuchte_maximum') | float(55) %}
+            {% set gespeichert = states('input_number.plantinator_bewasserung_crop_p3_letzter_peak_prozent') | float(0) %}
+            {% set peak = [gespeichert if gespeichert > 0 else ziel, maximum] | min %}
+            {{ [peak - f, 0] | max | round(1) }}
+          ramp_up_dryback_prozent: "{{ states('sensor.plantinator_bewasserung_crop_dryback_ziel_effektiv') }}"
+          maintenance_dryback_prozent: "{{ states('sensor.plantinator_bewasserung_crop_maintenance_dryback_effektiv') }}"
+          ramp_up_startwert_prozent: >
+            {% set minimum = states('input_number.plantinator_bewasserung_bodenfeuchte_minimum') | float(19) %}
+            {% set ziel = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(32) %}
+            {% set maximum = states('input_number.plantinator_bewasserung_bodenfeuchte_maximum') | float(55) %}
+            {% set gespeichert = states('input_number.plantinator_bewasserung_crop_p3_letzter_peak_prozent') | float(0) %}
+            {% set peak = [gespeichert if gespeichert > 0 else ziel, maximum] | min %}
+            {% set dryback = states('sensor.plantinator_bewasserung_crop_dryback_ziel_effektiv') | float(5) %}
+            {{ [minimum, peak - dryback] | max | round(1) }}
+          maintenance_startwert_prozent: >
+            {% set minimum = states('input_number.plantinator_bewasserung_bodenfeuchte_minimum') | float(19) %}
+            {% set ziel = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(32) %}
+            {% set maximum = states('input_number.plantinator_bewasserung_bodenfeuchte_maximum') | float(55) %}
+            {% set gespeichert = states('input_number.plantinator_bewasserung_crop_p3_letzter_peak_prozent') | float(0) %}
+            {% set peak = [gespeichert if gespeichert > 0 else ziel, maximum] | min %}
+            {% set dryback = states('sensor.plantinator_bewasserung_crop_maintenance_dryback_effektiv') | float(3) %}
+            {{ [minimum, peak - dryback] | max | round(1) }}
+          giessschwelle_prozent: >
+            {% set minimum = states('input_number.plantinator_bewasserung_bodenfeuchte_minimum') | float(19) %}
+            {% set ziel = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(32) %}
+            {% set maximum = states('input_number.plantinator_bewasserung_bodenfeuchte_maximum') | float(55) %}
+            {% set gespeichert = states('input_number.plantinator_bewasserung_crop_p3_letzter_peak_prozent') | float(0) %}
+            {% set peak = [gespeichert if gespeichert > 0 else ziel, maximum] | min %}
+            {% set dryback = states('sensor.plantinator_bewasserung_crop_maintenance_dryback_effektiv') | float(3)
+                 if is_state('input_boolean.plantinator_bewasserung_crop_p3_ramp_up_abgeschlossen', 'on')
+                 else states('sensor.plantinator_bewasserung_crop_dryback_ziel_effektiv') | float(5) %}
+            {{ [minimum, peak - dryback] | max | round(1) }}
+          ramp_up_abgeschlossen: "{{ states('input_boolean.plantinator_bewasserung_crop_p3_ramp_up_abgeschlossen') }}"
+
+      - name: Plantinator Bewasserung Crop P4 Phase
+        unique_id: plantinator_bewasserung_crop_p4_phase
+        icon: mdi:state-machine
+        state: >
+          {% set aktiv = is_state('input_boolean.plantinator_bewasserung_p4_aktiv', 'on') %}
+          {% set raw = states('sensor.plantinator_bewasserung_p4_bodenfeuchte_wert') %}
+          {% set licht = states('sensor.plantinator_bewasserung_lichtstatus') %}
+          {% set seit = states('sensor.plantinator_bewasserung_minuten_seit_licht_an') | int(-1) %}
+          {% set bis = states('sensor.plantinator_bewasserung_minuten_bis_licht_aus') | int(-1) %}
+          {% set start = states('sensor.plantinator_bewasserung_crop_start_nach_licht_an_effektiv') | int(120) %}
+          {% set stop = states('sensor.plantinator_bewasserung_crop_stop_vor_licht_aus_effektiv') | int(180) %}
+          {% set minimum = states('input_number.plantinator_bewasserung_bodenfeuchte_minimum') | float(19) %}
+          {% set ziel = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(32) %}
+          {% set maximum = states('input_number.plantinator_bewasserung_bodenfeuchte_maximum') | float(55) %}
+          {% set gespeichert = states('input_number.plantinator_bewasserung_crop_p4_letzter_peak_prozent') | float(0) %}
+          {% set peak = [gespeichert if gespeichert > 0 else ziel, maximum] | min %}
+          {% set dryback = states('sensor.plantinator_bewasserung_crop_dryback_ziel_effektiv') | float(5) %}
+          {% set schwelle = [minimum, peak - dryback] | max %}
+          {% if not aktiv %}
+            inaktiv
+          {% elif not is_number(raw) %}
+            sensorfehler
+          {% elif licht == 'nacht' %}
+            nacht
+          {% elif licht != 'tag' or seit < 0 or bis < 0 %}
+            unbekannt
+          {% elif seit < start %}
+            warte_licht
+          {% elif bis <= stop %}
+            overnight_dryback
+          {% elif is_state('input_boolean.plantinator_bewasserung_crop_p4_ramp_up_abgeschlossen', 'on') %}
+            maintenance
+          {% elif raw | float(0) <= schwelle %}
+            ramp_up
+          {% else %}
+            warte_dryback
+          {% endif %}
+        attributes:
+          feuchte_prozent: "{{ states('sensor.plantinator_bewasserung_p4_bodenfeuchte_wert') }}"
+          letzter_peak_prozent: >
+            {% set ziel = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(32) %}
+            {% set maximum = states('input_number.plantinator_bewasserung_bodenfeuchte_maximum') | float(55) %}
+            {% set gespeichert = states('input_number.plantinator_bewasserung_crop_p4_letzter_peak_prozent') | float(0) %}
+            {{ [gespeichert if gespeichert > 0 else ziel, maximum] | min | round(1) }}
+          aktueller_dryback_prozent: >
+            {% set f = states('sensor.plantinator_bewasserung_p4_bodenfeuchte_wert') | float(0) %}
+            {% set ziel = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(32) %}
+            {% set maximum = states('input_number.plantinator_bewasserung_bodenfeuchte_maximum') | float(55) %}
+            {% set gespeichert = states('input_number.plantinator_bewasserung_crop_p4_letzter_peak_prozent') | float(0) %}
+            {% set peak = [gespeichert if gespeichert > 0 else ziel, maximum] | min %}
+            {{ [peak - f, 0] | max | round(1) }}
+          ramp_up_dryback_prozent: "{{ states('sensor.plantinator_bewasserung_crop_dryback_ziel_effektiv') }}"
+          maintenance_dryback_prozent: "{{ states('sensor.plantinator_bewasserung_crop_maintenance_dryback_effektiv') }}"
+          ramp_up_startwert_prozent: >
+            {% set minimum = states('input_number.plantinator_bewasserung_bodenfeuchte_minimum') | float(19) %}
+            {% set ziel = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(32) %}
+            {% set maximum = states('input_number.plantinator_bewasserung_bodenfeuchte_maximum') | float(55) %}
+            {% set gespeichert = states('input_number.plantinator_bewasserung_crop_p4_letzter_peak_prozent') | float(0) %}
+            {% set peak = [gespeichert if gespeichert > 0 else ziel, maximum] | min %}
+            {% set dryback = states('sensor.plantinator_bewasserung_crop_dryback_ziel_effektiv') | float(5) %}
+            {{ [minimum, peak - dryback] | max | round(1) }}
+          maintenance_startwert_prozent: >
+            {% set minimum = states('input_number.plantinator_bewasserung_bodenfeuchte_minimum') | float(19) %}
+            {% set ziel = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(32) %}
+            {% set maximum = states('input_number.plantinator_bewasserung_bodenfeuchte_maximum') | float(55) %}
+            {% set gespeichert = states('input_number.plantinator_bewasserung_crop_p4_letzter_peak_prozent') | float(0) %}
+            {% set peak = [gespeichert if gespeichert > 0 else ziel, maximum] | min %}
+            {% set dryback = states('sensor.plantinator_bewasserung_crop_maintenance_dryback_effektiv') | float(3) %}
+            {{ [minimum, peak - dryback] | max | round(1) }}
+          giessschwelle_prozent: >
+            {% set minimum = states('input_number.plantinator_bewasserung_bodenfeuchte_minimum') | float(19) %}
+            {% set ziel = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(32) %}
+            {% set maximum = states('input_number.plantinator_bewasserung_bodenfeuchte_maximum') | float(55) %}
+            {% set gespeichert = states('input_number.plantinator_bewasserung_crop_p4_letzter_peak_prozent') | float(0) %}
+            {% set peak = [gespeichert if gespeichert > 0 else ziel, maximum] | min %}
+            {% set dryback = states('sensor.plantinator_bewasserung_crop_maintenance_dryback_effektiv') | float(3)
+                 if is_state('input_boolean.plantinator_bewasserung_crop_p4_ramp_up_abgeschlossen', 'on')
+                 else states('sensor.plantinator_bewasserung_crop_dryback_ziel_effektiv') | float(5) %}
+            {{ [minimum, peak - dryback] | max | round(1) }}
+          ramp_up_abgeschlossen: "{{ states('input_boolean.plantinator_bewasserung_crop_p4_ramp_up_abgeschlossen') }}"
+
+      - name: Plantinator Bewasserung Crop P1 Shot ml effektiv
+        unique_id: plantinator_bewasserung_crop_p1_shot_ml_effektiv
+        icon: mdi:cup-water
+        unit_of_measurement: "ml"
+        state: >
+          {% set basis = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(0) %}
+          {% set minimum = states('input_number.plantinator_bewasserung_shot_min_ml') | float(25) %}
+          {% set maximum = states('input_number.plantinator_bewasserung_shot_max_ml') | float(500) %}
+          {% set ramp = is_state('sensor.plantinator_bewasserung_crop_p1_phase', 'ramp_up') %}
+          {% set faktor = states('sensor.plantinator_bewasserung_crop_ramp_up_shot_faktor_effektiv') | float(60)
+             if ramp else 100 %}
+          {{ [[basis * faktor / 100, minimum] | max, maximum] | min | round(0) }}
+        attributes:
+          phase: "{{ states('sensor.plantinator_bewasserung_crop_p1_phase') }}"
+          basis_shot_ml: "{{ states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') }}"
+          faktor_prozent: >
+            {{ states('sensor.plantinator_bewasserung_crop_ramp_up_shot_faktor_effektiv')
+               if is_state('sensor.plantinator_bewasserung_crop_p1_phase', 'ramp_up')
+               else 100 }}
+
+      - name: Plantinator Bewasserung Crop P2 Shot ml effektiv
+        unique_id: plantinator_bewasserung_crop_p2_shot_ml_effektiv
+        icon: mdi:cup-water
+        unit_of_measurement: "ml"
+        state: >
+          {% set basis = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(0) %}
+          {% set minimum = states('input_number.plantinator_bewasserung_shot_min_ml') | float(25) %}
+          {% set maximum = states('input_number.plantinator_bewasserung_shot_max_ml') | float(500) %}
+          {% set ramp = is_state('sensor.plantinator_bewasserung_crop_p2_phase', 'ramp_up') %}
+          {% set faktor = states('sensor.plantinator_bewasserung_crop_ramp_up_shot_faktor_effektiv') | float(60)
+             if ramp else 100 %}
+          {{ [[basis * faktor / 100, minimum] | max, maximum] | min | round(0) }}
+        attributes:
+          phase: "{{ states('sensor.plantinator_bewasserung_crop_p2_phase') }}"
+          basis_shot_ml: "{{ states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') }}"
+          faktor_prozent: >
+            {{ states('sensor.plantinator_bewasserung_crop_ramp_up_shot_faktor_effektiv')
+               if is_state('sensor.plantinator_bewasserung_crop_p2_phase', 'ramp_up')
+               else 100 }}
+
+      - name: Plantinator Bewasserung Crop P3 Shot ml effektiv
+        unique_id: plantinator_bewasserung_crop_p3_shot_ml_effektiv
+        icon: mdi:cup-water
+        unit_of_measurement: "ml"
+        state: >
+          {% set basis = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(0) %}
+          {% set minimum = states('input_number.plantinator_bewasserung_shot_min_ml') | float(25) %}
+          {% set maximum = states('input_number.plantinator_bewasserung_shot_max_ml') | float(500) %}
+          {% set ramp = is_state('sensor.plantinator_bewasserung_crop_p3_phase', 'ramp_up') %}
+          {% set faktor = states('sensor.plantinator_bewasserung_crop_ramp_up_shot_faktor_effektiv') | float(60)
+             if ramp else 100 %}
+          {{ [[basis * faktor / 100, minimum] | max, maximum] | min | round(0) }}
+        attributes:
+          phase: "{{ states('sensor.plantinator_bewasserung_crop_p3_phase') }}"
+          basis_shot_ml: "{{ states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') }}"
+          faktor_prozent: >
+            {{ states('sensor.plantinator_bewasserung_crop_ramp_up_shot_faktor_effektiv')
+               if is_state('sensor.plantinator_bewasserung_crop_p3_phase', 'ramp_up')
+               else 100 }}
+
+      - name: Plantinator Bewasserung Crop P4 Shot ml effektiv
+        unique_id: plantinator_bewasserung_crop_p4_shot_ml_effektiv
+        icon: mdi:cup-water
+        unit_of_measurement: "ml"
+        state: >
+          {% set basis = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(0) %}
+          {% set minimum = states('input_number.plantinator_bewasserung_shot_min_ml') | float(25) %}
+          {% set maximum = states('input_number.plantinator_bewasserung_shot_max_ml') | float(500) %}
+          {% set ramp = is_state('sensor.plantinator_bewasserung_crop_p4_phase', 'ramp_up') %}
+          {% set faktor = states('sensor.plantinator_bewasserung_crop_ramp_up_shot_faktor_effektiv') | float(60)
+             if ramp else 100 %}
+          {{ [[basis * faktor / 100, minimum] | max, maximum] | min | round(0) }}
+        attributes:
+          phase: "{{ states('sensor.plantinator_bewasserung_crop_p4_phase') }}"
+          basis_shot_ml: "{{ states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') }}"
+          faktor_prozent: >
+            {{ states('sensor.plantinator_bewasserung_crop_ramp_up_shot_faktor_effektiv')
+               if is_state('sensor.plantinator_bewasserung_crop_p4_phase', 'ramp_up')
+               else 100 }}
 
       - name: Plantinator Bewasserung Crop Aktive Rezeptur
         unique_id: plantinator_bewasserung_crop_aktive_rezeptur
@@ -893,12 +1484,15 @@ template:
                and is_state('sensor.plantinator_bewasserung_crop_einstellungen_status', 'ok')
                else 'standard' }}
           crop_faktor: "{{ states('sensor.plantinator_bewasserung_crop_steering_faktor') }}"
+          crop_faktor_wirkt_auf_menge: false
           start_nach_licht_an_minuten: "{{ states('sensor.plantinator_bewasserung_crop_start_nach_licht_an_effektiv') }}"
           stop_vor_licht_aus_minuten: "{{ states('sensor.plantinator_bewasserung_crop_stop_vor_licht_aus_effektiv') }}"
           dryback_ziel_prozentpunkte: "{{ states('sensor.plantinator_bewasserung_crop_dryback_ziel_effektiv') }}"
           shot_prozent_substratvolumen: "{{ states('sensor.plantinator_bewasserung_crop_shot_prozent_effektiv') }}"
           ramp_up_dauer_minuten: >
-            {{ states('input_number.plantinator_bewasserung_crop_ramp_up_dauer_minuten') }}
+            nicht_mehr_zeitgesteuert
+          maintenance_dryback_prozent: >
+            {{ states('sensor.plantinator_bewasserung_crop_maintenance_dryback_effektiv') }}
           ramp_up_shot_faktor_effektiv_prozent: >
             {{ states('sensor.plantinator_bewasserung_crop_ramp_up_shot_faktor_effektiv') }}
           shot_ml: "{{ states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') }}"
@@ -1112,11 +1706,6 @@ template:
           {% set bis = states('sensor.plantinator_bewasserung_minuten_bis_licht_aus') | int(-1) %}
           {% set start = states('sensor.plantinator_bewasserung_crop_start_nach_licht_an_effektiv') | int(120) %}
           {% set stop = states('sensor.plantinator_bewasserung_crop_stop_vor_licht_aus_effektiv') | int(180) %}
-          {% set individuell = is_state('input_boolean.plantinator_bewasserung_crop_individuelle_parameter', 'on')
-                and is_state('sensor.plantinator_bewasserung_crop_einstellungen_status', 'ok') %}
-          {% set ramp_dauer = states('input_number.plantinator_bewasserung_crop_ramp_up_dauer_minuten') | int(120)
-                if individuell else 120 %}
-          {% set ramp_ende = start + ramp_dauer %}
           {% if licht == 'nacht' %}
             nacht
           {% elif licht != 'tag' or seit < 0 or bis < 0 %}
@@ -1125,10 +1714,8 @@ template:
             morgen_dryback
           {% elif bis <= stop %}
             overnight_dryback
-          {% elif seit < ramp_ende %}
-            ramp_up
           {% else %}
-            maintenance
+            bewaesserungsfenster
           {% endif %}
         attributes:
           lichtstatus: "{{ states('sensor.plantinator_bewasserung_lichtstatus') }}"
@@ -1137,9 +1724,8 @@ template:
           start_nach_licht_an_minuten: "{{ states('sensor.plantinator_bewasserung_crop_start_nach_licht_an_effektiv') }}"
           stop_vor_licht_aus_minuten: "{{ states('sensor.plantinator_bewasserung_crop_stop_vor_licht_aus_effektiv') }}"
           steuerung: >
-            morgen_dryback = nur Notguss.
-            ramp_up = kleine adaptive Shots Richtung Zielbereich.
-            maintenance = Bedarfskorrektur.
+            morgen_dryback = früheste Startzeit noch nicht erreicht.
+            bewaesserungsfenster = Pflanzenphasen entscheiden individuell.
             overnight_dryback = normal nicht mehr gießen.
             nacht = nur Notguss.
 
@@ -1164,7 +1750,7 @@ template:
             stark_begrenzt
           {% elif tagesphase == 'morgen_dryback' %}
             notguss_oder_stark_trocken
-          {% elif tagesphase in ['ramp_up', 'maintenance'] %}
+          {% elif tagesphase == 'bewaesserungsfenster' %}
             erlaubt
           {% else %}
             sicherheitsmodus
@@ -1178,6 +1764,51 @@ template:
             Diese Erlaubnis ist nur ein Strategie-Signal.
             EXEC und Controller prüfen zusätzlich Wasserstand, Sensorwerte,
             Tageslimit, Max-Gussmenge und Hauptschalter.
+
+automation:
+  - id: plantinator_bewasserung_crop_neuer_lichttag
+    alias: Plantinator Bewasserung Crop neuer Lichttag
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: sensor.plantinator_bewasserung_lichtstatus
+        to: "tag"
+    action:
+      - variables:
+          lichttag_key: >
+            {% set raw = states('sensor.plantinator_bewasserung_licht_an_roh') %}
+            {% set teile = raw.split(':') %}
+            {% set an_minuten = (teile[0] | int(0)) * 60 + (teile[1] | int(0))
+                 if teile | count >= 2 else 0 %}
+            {% set jetzt_minuten = now().hour * 60 + now().minute %}
+            {{ now().strftime('%Y-%m-%d')
+               if jetzt_minuten >= an_minuten
+               else (now() - timedelta(days=1)).strftime('%Y-%m-%d') }}
+      - condition: template
+        value_template: >
+          {{ states('input_text.plantinator_bewasserung_crop_letzter_lichttag')
+             != lichttag_key }}
+      - service: input_boolean.turn_off
+        target:
+          entity_id:
+            - input_boolean.plantinator_bewasserung_crop_p1_ramp_up_abgeschlossen
+            - input_boolean.plantinator_bewasserung_crop_p2_ramp_up_abgeschlossen
+            - input_boolean.plantinator_bewasserung_crop_p3_ramp_up_abgeschlossen
+            - input_boolean.plantinator_bewasserung_crop_p4_ramp_up_abgeschlossen
+      - service: input_text.set_value
+        target:
+          entity_id:
+            - input_text.plantinator_bewasserung_crop_p1_letzter_sequenztyp
+            - input_text.plantinator_bewasserung_crop_p2_letzter_sequenztyp
+            - input_text.plantinator_bewasserung_crop_p3_letzter_sequenztyp
+            - input_text.plantinator_bewasserung_crop_p4_letzter_sequenztyp
+        data:
+          value: keiner
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_crop_letzter_lichttag
+        data:
+          value: "{{ lichttag_key }}"
 
 script:
   plantinator_bewasserung_crop_steering_standardwerte_setzen:
@@ -1260,6 +1891,49 @@ script:
           entity_id: input_number.plantinator_bewasserung_crop_ramp_up_shot_faktor_prozent
         data:
           value: 60
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_maintenance_dryback_prozent
+        data:
+          value: 3
+      - service: input_number.set_value
+        target:
+          entity_id:
+            - input_number.plantinator_bewasserung_crop_p1_letzter_peak_prozent
+            - input_number.plantinator_bewasserung_crop_p2_letzter_peak_prozent
+            - input_number.plantinator_bewasserung_crop_p3_letzter_peak_prozent
+            - input_number.plantinator_bewasserung_crop_p4_letzter_peak_prozent
+        data:
+          value: "{{ states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(32) }}"
+      - service: input_boolean.turn_off
+        target:
+          entity_id:
+            - input_boolean.plantinator_bewasserung_crop_p1_ramp_up_abgeschlossen
+            - input_boolean.plantinator_bewasserung_crop_p2_ramp_up_abgeschlossen
+            - input_boolean.plantinator_bewasserung_crop_p3_ramp_up_abgeschlossen
+            - input_boolean.plantinator_bewasserung_crop_p4_ramp_up_abgeschlossen
+      - service: input_text.set_value
+        target:
+          entity_id:
+            - input_text.plantinator_bewasserung_crop_p1_letzter_sequenztyp
+            - input_text.plantinator_bewasserung_crop_p2_letzter_sequenztyp
+            - input_text.plantinator_bewasserung_crop_p3_letzter_sequenztyp
+            - input_text.plantinator_bewasserung_crop_p4_letzter_sequenztyp
+        data:
+          value: keiner
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_crop_letzter_lichttag
+        data:
+          value: >
+            {% set raw = states('sensor.plantinator_bewasserung_licht_an_roh') %}
+            {% set teile = raw.split(':') %}
+            {% set an_minuten = (teile[0] | int(0)) * 60 + (teile[1] | int(0))
+                 if teile | count >= 2 else 0 %}
+            {% set jetzt_minuten = now().hour * 60 + now().minute %}
+            {{ now().strftime('%Y-%m-%d')
+               if jetzt_minuten >= an_minuten
+               else (now() - timedelta(days=1)).strftime('%Y-%m-%d') }}
 
       - service: input_number.set_value
         target:
@@ -1276,6 +1950,11 @@ script:
           entity_id: input_number.plantinator_bewasserung_crop_dryback_ziel_keimung_prozent
         data:
           value: 5
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_maintenance_dryback_keimung_prozent
+        data:
+          value: 2
       - service: input_number.set_value
         target:
           entity_id: input_number.plantinator_bewasserung_crop_shot_keimung_prozent
@@ -1299,6 +1978,11 @@ script:
           value: 5
       - service: input_number.set_value
         target:
+          entity_id: input_number.plantinator_bewasserung_crop_maintenance_dryback_steckling_prozent
+        data:
+          value: 2
+      - service: input_number.set_value
+        target:
           entity_id: input_number.plantinator_bewasserung_crop_shot_steckling_prozent
         data:
           value: 1.5
@@ -1318,6 +2002,11 @@ script:
           entity_id: input_number.plantinator_bewasserung_crop_dryback_ziel_early_veg_prozent
         data:
           value: 8
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_maintenance_dryback_early_veg_prozent
+        data:
+          value: 2.5
       - service: input_number.set_value
         target:
           entity_id: input_number.plantinator_bewasserung_crop_shot_early_veg_prozent
@@ -1341,6 +2030,11 @@ script:
           value: 8
       - service: input_number.set_value
         target:
+          entity_id: input_number.plantinator_bewasserung_crop_maintenance_dryback_mid_veg_prozent
+        data:
+          value: 3
+      - service: input_number.set_value
+        target:
           entity_id: input_number.plantinator_bewasserung_crop_shot_mid_veg_prozent
         data:
           value: 3
@@ -1360,6 +2054,11 @@ script:
           entity_id: input_number.plantinator_bewasserung_crop_dryback_ziel_late_veg_prozent
         data:
           value: 12
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_maintenance_dryback_late_veg_prozent
+        data:
+          value: 3.5
       - service: input_number.set_value
         target:
           entity_id: input_number.plantinator_bewasserung_crop_shot_late_veg_prozent
@@ -1383,6 +2082,11 @@ script:
           value: 18
       - service: input_number.set_value
         target:
+          entity_id: input_number.plantinator_bewasserung_crop_maintenance_dryback_early_flower_prozent
+        data:
+          value: 4
+      - service: input_number.set_value
+        target:
           entity_id: input_number.plantinator_bewasserung_crop_shot_early_flower_prozent
         data:
           value: 5
@@ -1404,6 +2108,11 @@ script:
           value: 12
       - service: input_number.set_value
         target:
+          entity_id: input_number.plantinator_bewasserung_crop_maintenance_dryback_mid_flower_prozent
+        data:
+          value: 3
+      - service: input_number.set_value
+        target:
           entity_id: input_number.plantinator_bewasserung_crop_shot_mid_flower_prozent
         data:
           value: 3.5
@@ -1423,6 +2132,11 @@ script:
           entity_id: input_number.plantinator_bewasserung_crop_dryback_ziel_late_flower_prozent
         data:
           value: 18
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_maintenance_dryback_late_flower_prozent
+        data:
+          value: 4
       - service: input_number.set_value
         target:
           entity_id: input_number.plantinator_bewasserung_crop_shot_late_flower_prozent
@@ -1471,3 +2185,49 @@ script:
       - service: input_boolean.turn_on
         target:
           entity_id: input_boolean.plantinator_bewasserung_crop_individuelle_parameter
+
+  plantinator_bewasserung_crop_maintenance_startwerte_setzen:
+    alias: Plantinator Bewasserung Crop Maintenance Startwerte setzen
+    icon: mdi:water-sync
+    mode: single
+    sequence:
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_maintenance_dryback_keimung_prozent
+        data:
+          value: 2
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_maintenance_dryback_steckling_prozent
+        data:
+          value: 2
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_maintenance_dryback_early_veg_prozent
+        data:
+          value: 2.5
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_maintenance_dryback_mid_veg_prozent
+        data:
+          value: 3
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_maintenance_dryback_late_veg_prozent
+        data:
+          value: 3.5
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_maintenance_dryback_early_flower_prozent
+        data:
+          value: 4
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_maintenance_dryback_mid_flower_prozent
+        data:
+          value: 3
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_crop_maintenance_dryback_late_flower_prozent
+        data:
+          value: 4
