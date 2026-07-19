@@ -108,97 +108,163 @@ views:
             name: Shot-EXEC Wait Time
             color: orange
           - type: markdown
-            title: Automatic / Plants
-            content: >
-              | Value | Status |
+            title: System Status in Plain English
+            content: |
+              {% set auto = states('sensor.plantinator_bewasserung_auto_status') %}
+              {% set grund = states('sensor.plantinator_bewasserung_auto_grundfreigabe') %}
+              {% set crop = states('sensor.plantinator_bewasserung_auto_crop_freigabe') %}
+              {% set nextp = states('sensor.plantinator_bewasserung_auto_naechste_pflanze') %}
+              {% set exec = states('sensor.plantinator_bewasserung_exec_status') %}
+              {% set shot = states('sensor.plantinator_bewasserung_shot_exec_status') %}
+              {% set circulation = states('input_text.plantinator_bewasserung_tank_umwalzung_status') %}
+              {% set last = states('input_text.plantinator_bewasserung_auto_letzter_gezaehlter_status') %}
+              {% set auto_map = {
+                'bereit': 'Ready',
+                'kein_guss_faellig': 'No irrigation required',
+                'warte_shot_exec_laeuft': 'Waiting for the active shot sequence',
+                'sicher_stop': 'Safely stopped',
+                'sicher_stop_durch_freigabe': 'Safely stopped because permission is missing'
+              } %}
+              {% set permission_map = {
+                'frei': 'Permitted',
+                'auto_controller_aus': 'Automatic controller is switched off',
+                'hauptschalter_aus': 'Main switch is switched off',
+                'automatik_aus': 'Automation is switched off',
+                'sperre_aktiv': 'System is locked',
+                'shot_exec_nicht_frei': 'Shot sequence is still busy',
+                'alarm_verriegelt': 'Alarm is latched'
+              } %}
+              {% set crop_map = {
+                'normal_erlaubt': 'Normal irrigation permitted',
+                'nur_notguss': 'Emergency irrigation only',
+                'nur_notguss_erlaubt': 'Emergency irrigation only',
+                'sicherheitsmodus': 'Safety mode – normal irrigation disabled',
+                'crop_blockiert': 'Blocked by crop steering'
+              } %}
+              {% set auto_text = ('Starting irrigation for plant ' ~ auto.split('_p')[1].split('_')[0])
+                if auto.startswith('starte_p') else
+                ('Blocked: ' ~ auto.replace('blockiert_', '').replace('_', ' '))
+                if auto.startswith('blockiert_') else
+                auto_map.get(auto, auto.replace('_', ' ') | capitalize) %}
+              {% set exec_text = 'Ready' if exec == 'bereit' else
+                ('Irrigation for plant ' ~ exec.split('_p')[1].split('_')[0] ~ ' completed')
+                if exec.startswith('normalguss_fertig_p') else
+                ('Shot for plant ' ~ exec.split('_p')[1].split('_')[0] ~ ' completed')
+                if exec.startswith('shot_plan_fertig_p') else
+                ('Preparing irrigation for plant ' ~ exec.split('_p')[1].split('_')[0])
+                if exec.startswith('normalguss_angefordert_p') else
+                ('Preparing shot for plant ' ~ exec.split('_p')[1].split('_')[0])
+                if exec.startswith('shot_plan_angefordert_p') else
+                'Safely stopped' if exec in ['sicher_stop', 'startup_sicher_stop'] else
+                ('Hardware fault: ' ~ exec.replace('hardwarefehler_', '').replace('_', ' '))
+                if exec.startswith('hardwarefehler_') else
+                ('Operation blocked: ' ~ exec.replace('blockiert_', '').replace('_', ' '))
+                if exec.startswith('blockiert_') else exec.replace('_', ' ') | capitalize %}
+              {% set shot_text = 'Ready' if shot == 'bereit' else
+                'Shot sequence completed' if shot.startswith('fertig_p') else
+                'Waiting for moisture evaluation' if 'warte_feedback' in shot else
+                'Shot sequence running' if shot.startswith('p') else
+                shot.replace('_', ' ') | capitalize %}
+              {% set circulation_text = 'Ready' if circulation == 'bereit' else
+                'Not required before irrigation' if circulation == 'pre_guss_nicht_noetig' else
+                'Cyclic circulation completed' if circulation.startswith('zyklisch_fertig') else
+                circulation.replace('_', ' ') | capitalize %}
 
+              | Area | Meaning |
               |---|---|
-
-              | Automatic Status | `{{
-              states('sensor.plantinator_bewasserung_auto_status') }}` |
-
-              | Basic Permission | `{{
-              states('sensor.plantinator_bewasserung_auto_grundfreigabe') }}` |
-
-              | Crop Permission | `{{
-              states('sensor.plantinator_bewasserung_auto_crop_freigabe') }}` |
-
-              | Next Plant | `{{
-              states('sensor.plantinator_bewasserung_auto_naechste_pflanze') }}`
-              |
-
-              | EXEC | `{% set s =
-              states('sensor.plantinator_bewasserung_exec_status') %}{{
-              s.rsplit('_', 1)[0] if s and s.split('_')[-1].isdigit() else s }}`
-              |
-
-              | Shot EXEC | `{% set s =
-              states('sensor.plantinator_bewasserung_shot_exec_status') %}{{
-              s.rsplit('_', 1)[0] if s and s.split('_')[-1].isdigit() else s }}`
-              |
-
-              | Circulation | `{{
-              states('input_text.plantinator_bewasserung_tank_umwalzung_status')
-              }}` |
-
-              | Last Counted | `{{
-              states('input_text.plantinator_bewasserung_auto_letzter_gezaehlter_status')
-              }}` |
-          - type: markdown
+              | Automation | **{{ auto_text }}**<br><small>`{{ auto }}`</small> |
+              | Basic permission | **{{ permission_map.get(grund, grund.replace('_', ' ') | capitalize) }}**<br><small>`{{ grund }}`</small> |
+              | Crop steering | **{{ crop_map.get(crop, crop.replace('_', ' ') | capitalize) }}**<br><small>`{{ crop }}`</small> |
+              | Next plant | **{{ 'None' if nextp == 'keine' else 'Plant ' ~ nextp }}** |
+              | Irrigation | **{{ exec_text }}**<br><small>`{{ exec }}`</small> |
+              | Shot sequence | **{{ shot_text }}**<br><small>`{{ shot }}`</small> |
+              | Reservoir circulation | **{{ circulation_text }}**<br><small>`{{ circulation }}`</small> |
+              | Daily counter | **{{ 'No irrigation recorded yet' if last in ['keiner', 'unknown', 'unavailable'] else 'Last irrigation was recorded' }}**<br><small>`{{ last }}`</small> |
+          - type: grid
             title: Plant Overview
-            content: >
-              | Plant | Moisture | State | Demand | Automatic | Recommendation | Today
-              | Shot |
+            columns: 2
+            square: false
+            cards:
+              - type: markdown
+                content: |
+                  {% set name = states('input_text.plantinator_bewasserung_p1_name') %}
+                  {% set moisture = states('sensor.plantinator_bewasserung_p1_bodenfeuchte_wert') %}
+                  {% set state = states('sensor.plantinator_bewasserung_p1_feuchtezustand') %}
+                  {% set demand = states('sensor.plantinator_bewasserung_p1_gussbedarf') %}
+                  {% set automatic = states('sensor.plantinator_bewasserung_auto_p1_freigabe') %}
+                  {% set state_map = {'trocken': 'Dry', 'unter_ziel': 'Below target', 'zielbereich': 'Within target', 'zu_feucht': 'Too wet', 'sensorfehler': 'Sensor fault'} %}
+                  {% set automatic_map = {'frei': 'Permitted', 'kein_bedarf': 'No demand', 'pause': 'Minimum pause', 'feedback_ausstehend': 'Waiting for evaluation', 'crop_blockiert': 'Crop steering blocked', 'nur_notguss_erlaubt': 'Emergency only', 'tageslimit': 'Daily limit reached', 'inaktiv': 'Inactive', 'sensor_nicht_aktuell': 'Sensor value too old'} %}
+                  {% set symbol = '🔴' if state in ['trocken', 'sensorfehler'] else '🟠' if state == 'unter_ziel' else '🟢' if state == 'zielbereich' else '🔵' if state == 'zu_feucht' else '⚪' %}
+                  {% set shots = state_attr('sensor.plantinator_bewasserung_p1_shot_plan', 'shot_anzahl') | int(0) %}
+                  {% set total = state_attr('sensor.plantinator_bewasserung_p1_shot_plan', 'geplante_gesamtmenge_ml') | float(0) | round(0) | int %}
+                  ### {{ symbol }} P1 · {{ 'Plant 1' if name in ['unknown', 'unavailable', ''] else name }}
 
-              |---|---:|---|---|---|---:|---:|---|
+                  **{{ (moisture | float(0) | round(1)) if is_number(moisture) else '–' }} %** · {{ state_map.get(state, state.replace('_', ' ') | capitalize) }}
 
-              | P1 | {{
-              states('sensor.plantinator_bewasserung_p1_bodenfeuchte_wert') }} %
-              | {{ states('sensor.plantinator_bewasserung_p1_feuchtezustand') }}
-              | {{ states('sensor.plantinator_bewasserung_p1_gussbedarf') }} |
-              {{ states('sensor.plantinator_bewasserung_auto_p1_freigabe') }} |
-              {{
-              states('sensor.plantinator_bewasserung_p1_empfehlung_normalguss_ml')
-              }} ml | {{
-              states('input_number.plantinator_bewasserung_p1_heute_ml') }} ml |
-              {{ state_attr('sensor.plantinator_bewasserung_p1_shot_plan',
-              'shot_sequence_ml') }} |
+                  💧 **Demand:** {{ 'Yes' if demand == 'ja' else 'No' if demand == 'nein' else demand }}<br>
+                  🤖 **Automatic:** {{ automatic_map.get(automatic, automatic.replace('_', ' ') | capitalize) }}<br>
+                  🎯 **Recommended:** {{ states('sensor.plantinator_bewasserung_p1_empfehlung_normalguss_ml') | float(0) | round(0) | int }} ml<br>
+                  📅 **Today:** {{ states('input_number.plantinator_bewasserung_p1_heute_ml') | float(0) | round(0) | int }} ml · **Shots:** {{ shots }} / {{ total }} ml
+              - type: markdown
+                content: |
+                  {% set name = states('input_text.plantinator_bewasserung_p2_name') %}
+                  {% set moisture = states('sensor.plantinator_bewasserung_p2_bodenfeuchte_wert') %}
+                  {% set state = states('sensor.plantinator_bewasserung_p2_feuchtezustand') %}
+                  {% set demand = states('sensor.plantinator_bewasserung_p2_gussbedarf') %}
+                  {% set automatic = states('sensor.plantinator_bewasserung_auto_p2_freigabe') %}
+                  {% set state_map = {'trocken': 'Dry', 'unter_ziel': 'Below target', 'zielbereich': 'Within target', 'zu_feucht': 'Too wet', 'sensorfehler': 'Sensor fault'} %}
+                  {% set automatic_map = {'frei': 'Permitted', 'kein_bedarf': 'No demand', 'pause': 'Minimum pause', 'feedback_ausstehend': 'Waiting for evaluation', 'crop_blockiert': 'Crop steering blocked', 'nur_notguss_erlaubt': 'Emergency only', 'tageslimit': 'Daily limit reached', 'inaktiv': 'Inactive', 'sensor_nicht_aktuell': 'Sensor value too old'} %}
+                  {% set symbol = '🔴' if state in ['trocken', 'sensorfehler'] else '🟠' if state == 'unter_ziel' else '🟢' if state == 'zielbereich' else '🔵' if state == 'zu_feucht' else '⚪' %}
+                  {% set shots = state_attr('sensor.plantinator_bewasserung_p2_shot_plan', 'shot_anzahl') | int(0) %}
+                  {% set total = state_attr('sensor.plantinator_bewasserung_p2_shot_plan', 'geplante_gesamtmenge_ml') | float(0) | round(0) | int %}
+                  ### {{ symbol }} P2 · {{ 'Plant 2' if name in ['unknown', 'unavailable', ''] else name }}
 
-              | P2 | {{
-              states('sensor.plantinator_bewasserung_p2_bodenfeuchte_wert') }} %
-              | {{ states('sensor.plantinator_bewasserung_p2_feuchtezustand') }}
-              | {{ states('sensor.plantinator_bewasserung_p2_gussbedarf') }} |
-              {{ states('sensor.plantinator_bewasserung_auto_p2_freigabe') }} |
-              {{
-              states('sensor.plantinator_bewasserung_p2_empfehlung_normalguss_ml')
-              }} ml | {{
-              states('input_number.plantinator_bewasserung_p2_heute_ml') }} ml |
-              {{ state_attr('sensor.plantinator_bewasserung_p2_shot_plan',
-              'shot_sequence_ml') }} |
+                  **{{ (moisture | float(0) | round(1)) if is_number(moisture) else '–' }} %** · {{ state_map.get(state, state.replace('_', ' ') | capitalize) }}
 
-              | P3 | {{
-              states('sensor.plantinator_bewasserung_p3_bodenfeuchte_wert') }} %
-              | {{ states('sensor.plantinator_bewasserung_p3_feuchtezustand') }}
-              | {{ states('sensor.plantinator_bewasserung_p3_gussbedarf') }} |
-              {{ states('sensor.plantinator_bewasserung_auto_p3_freigabe') }} |
-              {{
-              states('sensor.plantinator_bewasserung_p3_empfehlung_normalguss_ml')
-              }} ml | {{
-              states('input_number.plantinator_bewasserung_p3_heute_ml') }} ml |
-              {{ state_attr('sensor.plantinator_bewasserung_p3_shot_plan',
-              'shot_sequence_ml') }} |
+                  💧 **Demand:** {{ 'Yes' if demand == 'ja' else 'No' if demand == 'nein' else demand }}<br>
+                  🤖 **Automatic:** {{ automatic_map.get(automatic, automatic.replace('_', ' ') | capitalize) }}<br>
+                  🎯 **Recommended:** {{ states('sensor.plantinator_bewasserung_p2_empfehlung_normalguss_ml') | float(0) | round(0) | int }} ml<br>
+                  📅 **Today:** {{ states('input_number.plantinator_bewasserung_p2_heute_ml') | float(0) | round(0) | int }} ml · **Shots:** {{ shots }} / {{ total }} ml
+              - type: markdown
+                content: |
+                  {% set name = states('input_text.plantinator_bewasserung_p3_name') %}
+                  {% set moisture = states('sensor.plantinator_bewasserung_p3_bodenfeuchte_wert') %}
+                  {% set state = states('sensor.plantinator_bewasserung_p3_feuchtezustand') %}
+                  {% set demand = states('sensor.plantinator_bewasserung_p3_gussbedarf') %}
+                  {% set automatic = states('sensor.plantinator_bewasserung_auto_p3_freigabe') %}
+                  {% set state_map = {'trocken': 'Dry', 'unter_ziel': 'Below target', 'zielbereich': 'Within target', 'zu_feucht': 'Too wet', 'sensorfehler': 'Sensor fault'} %}
+                  {% set automatic_map = {'frei': 'Permitted', 'kein_bedarf': 'No demand', 'pause': 'Minimum pause', 'feedback_ausstehend': 'Waiting for evaluation', 'crop_blockiert': 'Crop steering blocked', 'nur_notguss_erlaubt': 'Emergency only', 'tageslimit': 'Daily limit reached', 'inaktiv': 'Inactive', 'sensor_nicht_aktuell': 'Sensor value too old'} %}
+                  {% set symbol = '🔴' if state in ['trocken', 'sensorfehler'] else '🟠' if state == 'unter_ziel' else '🟢' if state == 'zielbereich' else '🔵' if state == 'zu_feucht' else '⚪' %}
+                  {% set shots = state_attr('sensor.plantinator_bewasserung_p3_shot_plan', 'shot_anzahl') | int(0) %}
+                  {% set total = state_attr('sensor.plantinator_bewasserung_p3_shot_plan', 'geplante_gesamtmenge_ml') | float(0) | round(0) | int %}
+                  ### {{ symbol }} P3 · {{ 'Plant 3' if name in ['unknown', 'unavailable', ''] else name }}
 
-              | P4 | {{
-              states('sensor.plantinator_bewasserung_p4_bodenfeuchte_wert') }} %
-              | {{ states('sensor.plantinator_bewasserung_p4_feuchtezustand') }}
-              | {{ states('sensor.plantinator_bewasserung_p4_gussbedarf') }} |
-              {{ states('sensor.plantinator_bewasserung_auto_p4_freigabe') }} |
-              {{
-              states('sensor.plantinator_bewasserung_p4_empfehlung_normalguss_ml')
-              }} ml | {{
-              states('input_number.plantinator_bewasserung_p4_heute_ml') }} ml |
-              {{ state_attr('sensor.plantinator_bewasserung_p4_shot_plan',
-              'shot_sequence_ml') }} |
+                  **{{ (moisture | float(0) | round(1)) if is_number(moisture) else '–' }} %** · {{ state_map.get(state, state.replace('_', ' ') | capitalize) }}
+
+                  💧 **Demand:** {{ 'Yes' if demand == 'ja' else 'No' if demand == 'nein' else demand }}<br>
+                  🤖 **Automatic:** {{ automatic_map.get(automatic, automatic.replace('_', ' ') | capitalize) }}<br>
+                  🎯 **Recommended:** {{ states('sensor.plantinator_bewasserung_p3_empfehlung_normalguss_ml') | float(0) | round(0) | int }} ml<br>
+                  📅 **Today:** {{ states('input_number.plantinator_bewasserung_p3_heute_ml') | float(0) | round(0) | int }} ml · **Shots:** {{ shots }} / {{ total }} ml
+              - type: markdown
+                content: |
+                  {% set name = states('input_text.plantinator_bewasserung_p4_name') %}
+                  {% set moisture = states('sensor.plantinator_bewasserung_p4_bodenfeuchte_wert') %}
+                  {% set state = states('sensor.plantinator_bewasserung_p4_feuchtezustand') %}
+                  {% set demand = states('sensor.plantinator_bewasserung_p4_gussbedarf') %}
+                  {% set automatic = states('sensor.plantinator_bewasserung_auto_p4_freigabe') %}
+                  {% set state_map = {'trocken': 'Dry', 'unter_ziel': 'Below target', 'zielbereich': 'Within target', 'zu_feucht': 'Too wet', 'sensorfehler': 'Sensor fault'} %}
+                  {% set automatic_map = {'frei': 'Permitted', 'kein_bedarf': 'No demand', 'pause': 'Minimum pause', 'feedback_ausstehend': 'Waiting for evaluation', 'crop_blockiert': 'Crop steering blocked', 'nur_notguss_erlaubt': 'Emergency only', 'tageslimit': 'Daily limit reached', 'inaktiv': 'Inactive', 'sensor_nicht_aktuell': 'Sensor value too old'} %}
+                  {% set symbol = '🔴' if state in ['trocken', 'sensorfehler'] else '🟠' if state == 'unter_ziel' else '🟢' if state == 'zielbereich' else '🔵' if state == 'zu_feucht' else '⚪' %}
+                  {% set shots = state_attr('sensor.plantinator_bewasserung_p4_shot_plan', 'shot_anzahl') | int(0) %}
+                  {% set total = state_attr('sensor.plantinator_bewasserung_p4_shot_plan', 'geplante_gesamtmenge_ml') | float(0) | round(0) | int %}
+                  ### {{ symbol }} P4 · {{ 'Plant 4' if name in ['unknown', 'unavailable', ''] else name }}
+
+                  **{{ (moisture | float(0) | round(1)) if is_number(moisture) else '–' }} %** · {{ state_map.get(state, state.replace('_', ' ') | capitalize) }}
+
+                  💧 **Demand:** {{ 'Yes' if demand == 'ja' else 'No' if demand == 'nein' else demand }}<br>
+                  🤖 **Automatic:** {{ automatic_map.get(automatic, automatic.replace('_', ' ') | capitalize) }}<br>
+                  🎯 **Recommended:** {{ states('sensor.plantinator_bewasserung_p4_empfehlung_normalguss_ml') | float(0) | round(0) | int }} ml<br>
+                  📅 **Today:** {{ states('input_number.plantinator_bewasserung_p4_heute_ml') | float(0) | round(0) | int }} ml · **Shots:** {{ shots }} / {{ total }} ml
       - type: grid
         cards:
           - type: heading
@@ -994,8 +1060,25 @@ views:
               - entity: >-
                   input_number.plantinator_bewasserung_feedback_max_ml_pro_prozent
                 name: Maximum ml per Percentage Point
+              - entity: >-
+                  input_number.plantinator_bewasserung_feedback_ausreisser_pruefung_ab_anzahl
+                name: Begin Outlier Check After Accepted Samples
+              - entity: >-
+                  input_number.plantinator_bewasserung_feedback_ausreisser_max_abweichung_prozent
+                name: Maximum Deviation Before Outlier Rejection
+              - entity: >-
+                  input_number.plantinator_bewasserung_feedback_max_aenderung_pro_lernvorgang_prozent
+                name: Maximum Learned-Value Change per Sample
+              - entity: >-
+                  input_number.plantinator_bewasserung_feedback_vertrauen_voll_ab_anzahl
+                name: Full Confidence After Accepted Samples
+              - entity: >-
+                  input_number.plantinator_bewasserung_feedback_peak_abfall_warnung_prozent
+                name: Peak-Drop Diagnostic Threshold
+              - entity: script.plantinator_bewasserung_feedback_schutzwerte_setzen
+                name: Set New Protection Values (Keep Learned Values)
               - entity: script.plantinator_bewasserung_feedback_standardwerte_setzen
-                name: Set Feedback Defaults
+                name: New Pot / Substrate – Reset Learning Baseline
       - type: grid
         cards:
           - type: heading
@@ -1008,6 +1091,16 @@ views:
             entities:
               - entity: input_number.plantinator_bewasserung_p1_gelernt_ml_pro_prozent
                 name: Learned ml/%
+              - entity: sensor.plantinator_bewasserung_p1_lernvertrauen
+                name: Learning Confidence
+              - entity: counter.plantinator_bewasserung_p1_lernvorgaenge_gueltig
+                name: Accepted Learning Samples
+              - entity: counter.plantinator_bewasserung_p1_lernwert_ausreisser
+                name: Rejected Outliers
+              - entity: input_text.plantinator_bewasserung_p1_letztes_lernergebnis
+                name: Last Learning Result
+              - entity: input_text.plantinator_bewasserung_p1_lernhistorie
+                name: Last Four Learning Values
               - entity: input_boolean.plantinator_bewasserung_p1_lernwert_gueltig
                 name: Learned Value Valid
               - entity: input_boolean.plantinator_bewasserung_p1_feedback_ausstehend
@@ -1018,6 +1111,10 @@ views:
                 name: Moisture Before Irrigation
               - entity: input_number.plantinator_bewasserung_p1_feuchte_nach_guss
                 name: Moisture After Irrigation
+              - entity: input_number.plantinator_bewasserung_p1_feedback_peak_prozent
+                name: Highest Value Since Irrigation Started
+              - entity: sensor.plantinator_bewasserung_p1_feuchtestabilitaet
+                name: Moisture Stability
               - entity: sensor.plantinator_bewasserung_p1_feuchteanstieg_letzter_guss
                 name: Moisture Increase After Last Irrigation
               - entity: >-
@@ -1038,6 +1135,16 @@ views:
             entities:
               - entity: input_number.plantinator_bewasserung_p2_gelernt_ml_pro_prozent
                 name: Learned ml/%
+              - entity: sensor.plantinator_bewasserung_p2_lernvertrauen
+                name: Learning Confidence
+              - entity: counter.plantinator_bewasserung_p2_lernvorgaenge_gueltig
+                name: Accepted Learning Samples
+              - entity: counter.plantinator_bewasserung_p2_lernwert_ausreisser
+                name: Rejected Outliers
+              - entity: input_text.plantinator_bewasserung_p2_letztes_lernergebnis
+                name: Last Learning Result
+              - entity: input_text.plantinator_bewasserung_p2_lernhistorie
+                name: Last Four Learning Values
               - entity: input_boolean.plantinator_bewasserung_p2_lernwert_gueltig
                 name: Learned Value Valid
               - entity: input_boolean.plantinator_bewasserung_p2_feedback_ausstehend
@@ -1048,6 +1155,10 @@ views:
                 name: Moisture Before Irrigation
               - entity: input_number.plantinator_bewasserung_p2_feuchte_nach_guss
                 name: Moisture After Irrigation
+              - entity: input_number.plantinator_bewasserung_p2_feedback_peak_prozent
+                name: Highest Value Since Irrigation Started
+              - entity: sensor.plantinator_bewasserung_p2_feuchtestabilitaet
+                name: Moisture Stability
               - entity: sensor.plantinator_bewasserung_p2_feuchteanstieg_letzter_guss
                 name: Moisture Increase After Last Irrigation
               - entity: >-
@@ -1068,6 +1179,16 @@ views:
             entities:
               - entity: input_number.plantinator_bewasserung_p3_gelernt_ml_pro_prozent
                 name: Learned ml/%
+              - entity: sensor.plantinator_bewasserung_p3_lernvertrauen
+                name: Learning Confidence
+              - entity: counter.plantinator_bewasserung_p3_lernvorgaenge_gueltig
+                name: Accepted Learning Samples
+              - entity: counter.plantinator_bewasserung_p3_lernwert_ausreisser
+                name: Rejected Outliers
+              - entity: input_text.plantinator_bewasserung_p3_letztes_lernergebnis
+                name: Last Learning Result
+              - entity: input_text.plantinator_bewasserung_p3_lernhistorie
+                name: Last Four Learning Values
               - entity: input_boolean.plantinator_bewasserung_p3_lernwert_gueltig
                 name: Learned Value Valid
               - entity: input_boolean.plantinator_bewasserung_p3_feedback_ausstehend
@@ -1078,6 +1199,10 @@ views:
                 name: Moisture Before Irrigation
               - entity: input_number.plantinator_bewasserung_p3_feuchte_nach_guss
                 name: Moisture After Irrigation
+              - entity: input_number.plantinator_bewasserung_p3_feedback_peak_prozent
+                name: Highest Value Since Irrigation Started
+              - entity: sensor.plantinator_bewasserung_p3_feuchtestabilitaet
+                name: Moisture Stability
               - entity: sensor.plantinator_bewasserung_p3_feuchteanstieg_letzter_guss
                 name: Moisture Increase After Last Irrigation
               - entity: >-
@@ -1098,6 +1223,16 @@ views:
             entities:
               - entity: input_number.plantinator_bewasserung_p4_gelernt_ml_pro_prozent
                 name: Learned ml/%
+              - entity: sensor.plantinator_bewasserung_p4_lernvertrauen
+                name: Learning Confidence
+              - entity: counter.plantinator_bewasserung_p4_lernvorgaenge_gueltig
+                name: Accepted Learning Samples
+              - entity: counter.plantinator_bewasserung_p4_lernwert_ausreisser
+                name: Rejected Outliers
+              - entity: input_text.plantinator_bewasserung_p4_letztes_lernergebnis
+                name: Last Learning Result
+              - entity: input_text.plantinator_bewasserung_p4_lernhistorie
+                name: Last Four Learning Values
               - entity: input_boolean.plantinator_bewasserung_p4_lernwert_gueltig
                 name: Learned Value Valid
               - entity: input_boolean.plantinator_bewasserung_p4_feedback_ausstehend
@@ -1108,6 +1243,10 @@ views:
                 name: Moisture Before Irrigation
               - entity: input_number.plantinator_bewasserung_p4_feuchte_nach_guss
                 name: Moisture After Irrigation
+              - entity: input_number.plantinator_bewasserung_p4_feedback_peak_prozent
+                name: Highest Value Since Irrigation Started
+              - entity: sensor.plantinator_bewasserung_p4_feuchtestabilitaet
+                name: Moisture Stability
               - entity: sensor.plantinator_bewasserung_p4_feuchteanstieg_letzter_guss
                 name: Moisture Increase After Last Irrigation
               - entity: >-
@@ -1116,6 +1255,36 @@ views:
               - entity: >-
                   input_datetime.plantinator_bewasserung_p4_letzter_feedback_zeitpunkt
                 name: Last Feedback Time
+      - type: grid
+        cards:
+          - type: heading
+            heading: Learning Histories
+            heading_style: title
+            icon: mdi:chart-timeline-variant
+          - type: history-graph
+            title: Learned Irrigation Response
+            hours_to_show: 168
+            entities:
+              - entity: input_number.plantinator_bewasserung_p1_gelernt_ml_pro_prozent
+                name: P1 ml/%
+              - entity: input_number.plantinator_bewasserung_p2_gelernt_ml_pro_prozent
+                name: P2 ml/%
+              - entity: input_number.plantinator_bewasserung_p3_gelernt_ml_pro_prozent
+                name: P3 ml/%
+              - entity: input_number.plantinator_bewasserung_p4_gelernt_ml_pro_prozent
+                name: P4 ml/%
+          - type: history-graph
+            title: Learning Confidence
+            hours_to_show: 168
+            entities:
+              - entity: sensor.plantinator_bewasserung_p1_lernvertrauen
+                name: P1
+              - entity: sensor.plantinator_bewasserung_p2_lernvertrauen
+                name: P2
+              - entity: sensor.plantinator_bewasserung_p3_lernvertrauen
+                name: P3
+              - entity: sensor.plantinator_bewasserung_p4_lernvertrauen
+                name: P4
   - title: Profile
     path: plantinator-bewasserung-profil
     icon: mdi:tune-variant

@@ -238,7 +238,7 @@ script:
             {{ states('sensor.plantinator_bewasserung_crop_p' ~ (pflanze | int) ~ '_shot_ml_effektiv') | float(0) }}
           pause_s: "{{ state_attr('sensor.plantinator_bewasserung_p' ~ (pflanze | int) ~ '_shot_plan', 'pause_sekunden') | float(180) }}"
           max_normal: "{{ states('input_number.plantinator_bewasserung_max_ml_pro_normalguss') | float(0) }}"
-          feedback_wait: "{{ states('input_number.plantinator_bewasserung_feedback_wartezeit_minuten') | int(4) }}"
+          feedback_wait: "{{ states('input_number.plantinator_bewasserung_feedback_wartezeit_minuten') | int(10) }}"
           pre_guss_noetig: "{{ states('sensor.plantinator_bewasserung_tank_umwalzung_pre_guss_noetig') == 'ja' }}"
           p_innerhalb_anzahl: "{{ (pflanze | int) <= (states('input_number.plantinator_bewasserung_anzahl_pflanzen') | int(4)) }}"
           feedback_pending: "{{ is_state('input_boolean.plantinator_bewasserung_p' ~ (pflanze | int) ~ '_feedback_ausstehend', 'on') }}"

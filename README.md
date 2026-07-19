@@ -491,11 +491,30 @@ Die Schaltflächen **Standardwerte setzen** schreiben die folgenden Startwerte. 
 | Startwert | 35 ml/% |
 | Kleinster empfohlener Guss | 50 ml |
 | Notguss-Schwelle unter Minimum | 5 Prozentpunkte |
-| Feedback-Wartezeit | 4 min |
+| Feedback-Wartezeit | 10 min |
 | Lernrate | 30 % |
 | Mindest-Feuchteanstieg | 2 % |
 | Untergrenze Lernwert | 20 ml/% |
 | Obergrenze Lernwert | 250 ml/% |
+| Ausreißerprüfung ab | 3 akzeptierten Lernvorgängen |
+| Maximale Ausreißer-Abweichung | 50 % vom bisherigen Lernwert |
+| Maximale Lernwertänderung je Vorgang | 20 % |
+| Volles Lernvertrauen ab | 5 akzeptierten Lernvorgängen |
+| Diagnosegrenze Peak-Abfall | 3 Feuchte-Prozentpunkte |
+
+> [!IMPORTANT]
+> Verwende bei einem Update mit bereits angelernten Pflanzen im Dashboard
+> **Neue Schutzwerte setzen (Lernwerte behalten)**. Dieser Button setzt nur
+> Feedback-Wartezeit, Ausreißerschutz, Änderungsgrenze, Vertrauensziel und
+> Peak-Diagnose. **Neuer Topf / Substrat – Lernbasis auf Standard** ist für
+> einen Wechsel von Topf, Topfgröße, Substrat oder einer ähnlich grundlegenden
+> Änderung vorgesehen. Er setzt die Lern- und Feedbackparameter auf die oben
+> genannten Standardwerte, verwirft Lernwerte, Gültigkeitsflags, Zähler,
+> Historien sowie alte Vor-/Nachguss- und Peak-Diagnosedaten und initialisiert
+> die Crop-Peaks wieder mit dem eingestellten Bodenfeuchte-Ziel. Auch die
+> Ramp-up-Abschlüsse werden für alle Pflanzen zurückgesetzt. Mapping,
+> Pumpenkalibrierung, Sicherheitsgrenzen, Crop-Rezepte und Verbrauchszähler
+> bleiben erhalten.
 
 ### Shot-Plan
 
@@ -768,9 +787,11 @@ Nach einem Normal- oder Shot-Guss:
 
 1. wird die Bodenfeuchte vor dem Guss gespeichert,
 2. bleibt **Feedback ausstehend** aktiv,
-3. wartet das System die konfigurierte Feedback-Zeit,
-4. liest die Bodenfeuchte erneut,
-5. berechnet den Feuchteanstieg und gegebenenfalls einen neuen Lernwert.
+3. verfolgt das System automatisch den höchsten gemeldeten Feuchtewert,
+4. wartet es die konfigurierte Feedback-Zeit,
+5. liest es den dann stabilisierten Wert,
+6. berechnet es Feuchteanstieg, Peak-Abfall und gegebenenfalls einen neuen
+   Lernwert.
 
 Während dieser Transaktion ist ein weiterer Guss derselben Pflanze blockiert. Ändere Feuchtesensor, Lernwerte oder Feedback-Flags nicht während eines laufenden Feedbacks.
 
@@ -996,9 +1017,15 @@ Gelernt wird nur, wenn:
 - ein gültiges Feedback aussteht,
 - die Bodenfeuchte vor und nach dem Guss gültig ist,
 - die Menge größer als 0 ist,
-- der Feuchteanstieg mindestens dem konfigurierten Mindestanstieg entspricht.
+- der Feuchteanstieg mindestens dem konfigurierten Mindestanstieg entspricht,
+- der berechnete Wert innerhalb der harten Min-/Max-Grenzen liegt,
+- der Messwert nach der Anlernphase nicht stärker als erlaubt vom bisherigen
+  Lernwert abweicht.
 
-Der Messwert wird zunächst auf die eingestellte Unter- und Obergrenze begrenzt. Danach wird er geglättet:
+Nach standardmäßig drei akzeptierten Lernvorgängen gilt ein neuer Messwert als
+Ausreißer, wenn er mehr als 50 % vom bisherigen Lernwert abweicht. Ein
+Ausreißer wird protokolliert, verändert den Lernwert aber nicht. Akzeptierte
+Messwerte werden geglättet:
 
 ```text
 neuer Lernwert =
@@ -1006,7 +1033,31 @@ neuer Lernwert =
   + begrenzter Messwert × Lernrate
 ```
 
-Bei 30 % Lernrate wirken 30 % des neuen Messwerts und 70 % des bisherigen Werts. Mess-Drain-Läufe werden nicht zum Lernen verwendet.
+Bei 30 % Lernrate wirken 30 % des neuen Messwerts und 70 % des bisherigen
+Werts. Zusätzlich darf sich der gespeicherte Wert standardmäßig höchstens
+20 % je Lernvorgang ändern. Das Dashboard zeigt pro Pflanze akzeptierte
+Lernvorgänge, verworfene Ausreißer, die letzten vier Ergebnisse und einen
+Vertrauenswert. Dieser steigt linear an und erreicht nach fünf akzeptierten
+Lernvorgängen 100 %. Er ist eine Reifeanzeige für die Datenbasis und keine
+statistische Garantie. Mess-Drain-Läufe werden nicht zum Lernen verwendet.
+
+### Feuchte-Peak und Stabilitätsdiagnose
+
+Mit dem Start eines normalen Gusses beginnt die Peak-Erfassung. Jede neue
+gültige SMT100-Messung während des Gusses und der Feedback-Wartezeit wird mit
+dem bisherigen Höchstwert verglichen. Nach zehn Minuten wird der aktuelle
+stabilisierte Wert gespeichert:
+
+```text
+Peak-Abfall = höchster Wert seit Gussstart − Wert nach Feedback-Wartezeit
+```
+
+Ein Abfall über der einstellbaren Diagnosegrenze wird als `auffaellig`
+angezeigt. Das kann auf Wasserumverteilung, bevorzugte Fließwege, eine
+ungünstige Sensorposition oder eine zu schnelle/große Sequenz hinweisen. Es
+ist **kein sicherer Drain-Nachweis**: Ein einzelner Sensor misst nur an seiner
+Position und kann abgeflossenes Wasser nicht direkt erkennen. Die Diagnose
+löst deshalb keinen Alarm aus und verändert weder Gussmenge noch Freigaben.
 
 Beachte, dass kapazitive Feuchtesensoren häufig verzögert, positionsabhängig und nicht linear reagieren. Ein Lernwert ist deshalb eine praktische Regelgröße und keine exakte physikalische Substratkennzahl.
 
@@ -1159,6 +1210,9 @@ Zusätzliche Diagnosemöglichkeiten:
 - Praktisch getestet wurde die Feuchteerfassung bisher nur mit dem TRUEBNER SMT100; andere Sensortypen sind nicht validiert.
 - Es verwendet eine gemeinsame Pumpenleistung für alle Pflanzen.
 - Die Wassermenge wird aus der Laufzeit berechnet; es gibt keine Rückmeldung eines Durchflussmessers.
+- Der Vergleich aus Feuchte-Peak und stabilisiertem Wert ist nur eine
+  Verteilungsdiagnose. Er erkennt Drain, Verstopfung oder tatsächlich
+  abgeflossene Wassermenge nicht zuverlässig.
 - Pumpen und Ventile müssen als `switch.*` vorliegen.
 - Nur ein Wasserprozess kann gleichzeitig laufen.
 - Die Automatik priorisiert Notguss und danach die größte Überschreitung der

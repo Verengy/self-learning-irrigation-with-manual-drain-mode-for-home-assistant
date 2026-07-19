@@ -525,11 +525,30 @@ are examples, not universal recommendations.
 | Initial value | 35 ml/% |
 | Minimum recommended irrigation | 50 ml |
 | Emergency threshold below minimum | 5 percentage points |
-| Feedback wait | 4 min |
+| Feedback wait | 10 min |
 | Learning rate | 30% |
 | Minimum moisture increase | 2% |
 | Lower learned-value limit | 20 ml/% |
 | Upper learned-value limit | 250 ml/% |
+| Begin outlier check after | 3 accepted samples |
+| Maximum outlier deviation | 50% from the existing learned value |
+| Maximum learned-value change per sample | 20% |
+| Full learning confidence after | 5 accepted samples |
+| Peak-drop diagnostic threshold | 3 moisture percentage points |
+
+> [!IMPORTANT]
+> When updating an installation that already has learned plant values, use
+> **Set New Protection Values (Keep Learned Values)** on the dashboard. It
+> only applies the feedback delay, outlier protection, update limit,
+> confidence target, and peak diagnostic defaults. **New Pot / Substrate –
+> Reset Learning Baseline** is intended for a change of pot, pot size,
+> substrate, or a similarly fundamental change. It restores the learning and
+> feedback parameters listed above, clears learned values, validity flags,
+> counters, histories, old before/after-irrigation measurements, and peak
+> diagnostics, then initializes the crop peaks from the configured soil
+> moisture target. Ramp-up completion is also reset for every plant. Mapping,
+> pump calibration, safety limits, crop recipes, and consumption counters are
+> preserved.
 
 ### Shot plan
 
@@ -819,9 +838,11 @@ After normal or shot irrigation:
 
 1. the moisture value before irrigation is stored;
 2. **Feedback Pending** remains enabled;
-3. the controller waits for the configured feedback delay;
-4. moisture is read again;
-5. the moisture increase and, when valid, a new learned value are calculated.
+3. the controller automatically tracks the highest reported moisture value;
+4. it waits for the configured feedback delay;
+5. it stores the then-stabilized reading;
+6. it calculates moisture increase, peak drop, and, when valid, a new learned
+   value.
 
 Another irrigation of the same plant is blocked during this transaction. Do
 not modify the plant's sensor mapping, learned values, or feedback flags while
@@ -1077,10 +1098,15 @@ Learning occurs only if:
 - valid feedback is pending;
 - moisture before and after irrigation is valid;
 - delivered volume is greater than zero;
-- moisture increase reaches the configured minimum.
+- moisture increase reaches the configured minimum;
+- the calculated response is within the hard lower and upper limits;
+- after the initial learning period, the sample does not deviate from the
+  existing learned value by more than the configured limit.
 
-The measured value is first clamped to the configured lower and upper learned
-limits. It is then smoothed:
+After three accepted samples by default, a new response is considered an
+outlier if it deviates from the existing learned value by more than 50%. The
+outlier is recorded but does not modify the learned value. Accepted samples
+are smoothed:
 
 ```text
 new learned value =
@@ -1089,7 +1115,29 @@ new learned value =
 ```
 
 At a 30% learning rate, 30% of the new measurement and 70% of the existing
-value form the update. Measuring-drain processes are excluded from learning.
+value form the update. The stored value is additionally limited to a maximum
+20% change per accepted sample by default. For each plant, the dashboard
+shows the accepted sample count, rejected outliers, the last four results, and
+a confidence indicator. Confidence rises linearly to 100% after five accepted
+samples. It indicates maturity of the data set, not a statistical guarantee.
+Measuring-drain processes are excluded from learning.
+
+### Moisture peak and stability diagnostics
+
+Peak tracking begins when a normal irrigation starts. Every new valid SMT100
+reading during irrigation and the feedback wait is compared with the previous
+maximum. After ten minutes, the current stabilized reading is stored:
+
+```text
+peak drop = highest value since irrigation start − value after feedback wait
+```
+
+A drop above the configurable threshold is shown as `auffaellig`. It may
+indicate redistribution, preferential flow, unsuitable sensor placement, or
+an overly fast/large sequence. It is **not reliable drain detection**: one
+sensor only measures at its own position and cannot directly observe water
+leaving the container. This diagnostic therefore triggers no alarm and does
+not modify irrigation volumes or permissions.
 
 Capacitive moisture sensors can respond slowly, non-linearly, and differently
 depending on position. The learned value is therefore a practical control
@@ -1247,6 +1295,9 @@ Additional diagnostic views:
   sensors; other sensor types are not validated.
 - One shared pump-output value is used for all plants.
 - Volume is inferred from runtime; there is no flow-meter feedback.
+- The moisture-peak/stabilized-value comparison is a distribution diagnostic
+  only. It cannot reliably detect drain, a blockage, or the volume that
+  physically left the container.
 - Pumps and valves must be exposed as `switch.*`.
 - Only one water process can run at a time.
 - Automatic control prioritizes emergency demand and then the largest
