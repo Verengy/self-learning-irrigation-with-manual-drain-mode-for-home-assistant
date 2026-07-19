@@ -1,6 +1,6 @@
 ############################################################
 # PLANTINATOR BEWASSERUNG - LERNSENSORIK V2 (Fixed)
-# Datei: plantinator_bewasserung_lernsensorik_v2.yaml
+# Datei: plantinator_bewasserung_lernsensorik.yaml
 #
 # Änderungen gegenüber Original:
 # - float(none)-Anti-Pattern ersetzt durch expliziten Rohwert-Check
@@ -8,8 +8,8 @@
 # - Header-Versionsreferenz auf v5 aktualisiert
 #
 # Benötigt:
-# - plantinator_bewasserung_mapping_v4.yaml
-# - plantinator_bewasserung_profil_v3.yaml
+# - plantinator_bewasserung_mapping.yaml
+# - plantinator_bewasserung_profil.yaml
 # - plantinator_bewasserung_crop_steering.yaml
 ############################################################
 

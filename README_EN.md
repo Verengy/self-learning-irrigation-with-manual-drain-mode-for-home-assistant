@@ -365,21 +365,9 @@ For P1 through P4:
 - set **Substrate-Moisture Entity** to a numeric `sensor.*`;
 - set **Substrate-Temperature Entity** to a numeric `sensor.*`.
 
-Set `input_number.plantinator_bewasserung_anzahl_pflanzen` to the actual number
-of plants. Only enabled plants within this count are evaluated by sensor-age
-monitoring and automatic control. The helper is not currently displayed as an
-input in the supplied dashboard. Set it once in **Developer tools → Actions**:
-
-```yaml
-action: input_number.set_value
-target:
-  entity_id: input_number.plantinator_bewasserung_anzahl_pflanzen
-data:
-  value: 4
-```
-
-Replace `4` with the installed count from 1 to 4. The **Set Mapping Defaults**
-script also sets this value to 4.
+Set **Number of Plants** in Main Mapping to the installed count from 1 to 4.
+Only enabled plants within this count are evaluated by sensor-age monitoring
+and automatic control.
 
 #### Observation sensors
 
@@ -387,11 +375,10 @@ Input-water, climate, and PPFD sensors are optional. They support monitoring
 and the environmental factor. Missing observation sensors do not block core
 irrigation.
 
-> [!WARNING]
-> **Set Mapping Defaults** writes installation-specific example
-> entities such as `switch.pumpe_wasser` and `switch.ventil_pflanze_1`. Do not
-> execute this script blindly. Prefer manual mapping, or replace every example
-> immediately while the main switch is off and the system lock is on.
+**Set Safe Mapping Basics** selects four plants, neutral plant names, and
+disables the optional water-level and circulation features. It deliberately
+does not write pump, valve, or sensor entity IDs. Always enter those IDs
+manually to match the real installation.
 
 **Mapping Status** must display `ok`.
 
@@ -410,18 +397,16 @@ scripts once while the main switch is off and the system lock is on:
 7. **Set Monitoring Defaults**
 8. **Set Defaults** on the Circulation page, if used
 9. **Set Crop Defaults**
+10. **Set Debug Defaults**, if the optional logger is used
 
 The automation script disables the auto controller and resets daily counters.
 The feedback script invalidates existing learned values. Do not rerun these
 scripts casually on an already trained system.
 
-The optional
-`script.plantinator_bewasserung_debug_logger_standardwerte_setzen` can be
-called from Developer tools. It disables the logger and sets its interval to
-60 seconds.
+The debug defaults disable the logger and set its interval to 60 seconds.
 
-**Set Mapping Defaults** is intentionally excluded from this list
-because it writes example entity IDs.
+**Set Safe Mapping Basics** is optional. Afterwards adjust **Number of Plants**
+and each Enabled switch, then enter every required entity ID manually.
 
 ### 4. Configure the irrigation profile
 
@@ -797,8 +782,12 @@ For every plant, this page shows:
 - pause between shots;
 - total pump runtime.
 
-Larger recommendations are split according to **Shot Maximum**. A remainder
-below **Shot Minimum Rest** is added to the preceding final shot. Emergency
+Larger recommendations are split according to **Shot Maximum**. If a remainder
+would be smaller than **Shot Minimum Rest**, the total is distributed as
+evenly as possible across all shots. The hard shot maximum is therefore never
+exceeded. The executor uses the exact displayed ml sequence and verifies the
+success state after every shot. Sequences containing a technically
+non-executable individual shot below 25 ml are safely blocked. Emergency
 irrigation uses the shorter emergency pause.
 
 ### Feedback
@@ -1066,6 +1055,7 @@ Status is only `ok` if:
 - Profile Status is `ok`;
 - all active plants have valid and sufficiently recent moisture and
   temperature readings;
+- Actuator Safety Status is `ok`;
 - an enabled water-level sensor is valid;
 - water level matches the selected safe state.
 
@@ -1079,12 +1069,18 @@ Possible status groups include:
 | `sensoralter_pX_bodentemperatur_ungueltig` | Temperature sensor is missing or non-numeric |
 | `sensoralter_pX_bodenfeuchte_veraltet` | Moisture reading is older than allowed |
 | `sensoralter_pX_bodentemperatur_veraltet` | Temperature reading is older than allowed |
+| `aktor_pumpe_unerwartet_an` | Pump is on outside an EXEC run |
+| `aktor_pumpe_ohne_pflanzenventil` | Pump runs without an open plant valve |
+| `aktor_pflanzenventil_unerwartet_offen` | A plant valve is open outside an EXEC run |
+| `aktor_mehrere_pflanzenventile_offen` | More than one plant valve is open |
+| `aktor_*_unverfuegbar_im_lauf` | A required actuator became unavailable during a run |
 | `wasserstand_ungueltig` | Water-level entity is missing or invalid |
 | `wasserstand_nicht_sicher` | Water level does not match the selected safe state |
 
-A critical fault that persists for two minutes latches the alarm. During an
-active water process, an unsafe water level triggers the alarm and safe stop
-after approximately two seconds.
+A general critical fault that persists for two minutes latches the alarm.
+During an active water process, unsafe water level and contradictory actuator
+states trigger the alarm and safe stop after approximately two seconds.
+Failure to switch a pump or valve on or off in EXEC latches immediately.
 
 ### Alarm status
 
@@ -1213,8 +1209,9 @@ Additional diagnostic views:
 - Manual drain EC and pH values are not automatically used for control.
 - The environmental factor has no effect until an influence is deliberately
   set above 0%.
-- Stage-specific shot size is clamped by global shot minimum and maximum. A
-  small remainder may be added to the final preceding shot.
+- Stage-specific shot size is clamped by global shot minimum and maximum.
+  Small remainders are distributed evenly, so no individual shot exceeds the
+  hard maximum.
 - Interrupted irrigation is not resumed after a Home Assistant restart.
 - Software cannot replace physical leak, overflow, and dry-run protection.
 

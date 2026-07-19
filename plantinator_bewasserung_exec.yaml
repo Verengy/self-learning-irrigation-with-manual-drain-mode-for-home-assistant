@@ -1,6 +1,6 @@
 ############################################################
 # PLANTINATOR BEWASSERUNG - EXEC V1 (Fixed)
-# Datei: plantinator_bewasserung_exec_v1.yaml
+# Datei: plantinator_bewasserung_exec.yaml
 #
 # Änderungen gegenüber Original:
 # - Neuer input_boolean: plantinator_bewasserung_exec_abort
@@ -80,7 +80,7 @@ input_number:
     name: Plantinator Bewasserung Mess-Drain abgegeben
     icon: mdi:water-check
     min: 0
-    max: 5000
+    max: 30000
     step: 1
     mode: box
     unit_of_measurement: "ml"
@@ -415,14 +415,18 @@ script:
         selector:
           number:
             min: 25
-            max: 5000
+            max: 10000
             step: 25
       vorgang:
         name: Vorgang
         description: normalguss, mess_drain oder shot_plan
         required: true
         selector:
-          text:
+          select:
+            options:
+              - normalguss
+              - mess_drain
+              - shot_plan
       stop_generation:
         name: Stop-Generation
         description: Vom übergeordneten Ablauf übernommenes Stop-Token
@@ -461,6 +465,7 @@ script:
           feedback_pending: "{{ is_state('input_boolean.plantinator_bewasserung_p' ~ (pflanze | int) ~ '_feedback_ausstehend', 'on') }}"
           max_normal: "{{ states('input_number.plantinator_bewasserung_max_ml_pro_normalguss') | float(0) }}"
           max_drain: "{{ states('input_number.plantinator_bewasserung_max_ml_mess_drain_guss') | float(0) }}"
+          max_shot: "{{ states('input_number.plantinator_bewasserung_shot_max_ml') | float(0) }}"
           wasserstand_ok: >
             {% set ent = states('input_text.plantinator_bewasserung_wasserstand_entity') | trim %}
             {% set sicher = states('input_select.plantinator_bewasserung_wasserstand_sicherer_zustand') %}
@@ -469,6 +474,17 @@ script:
                    and has_value(ent) and states(ent) == sicher) }}
 
       - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ vorgang not in ['normalguss', 'mess_drain', 'shot_plan'] }}"
+            sequence:
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.plantinator_bewasserung_exec_status
+                data:
+                  value: blockiert_vorgang_ungueltig
+              - stop: "Unbekannter Vorgang. Erlaubt sind normalguss, mess_drain und shot_plan."
+
           - conditions:
               - condition: template
                 value_template: "{{ states('sensor.plantinator_bewasserung_sensoralter_status') != 'ok' }}"
@@ -621,6 +637,17 @@ script:
                   value: blockiert_max_mess_drain
               - stop: "Mess-Drain-Menge über Maximalwert."
 
+          - conditions:
+              - condition: template
+                value_template: "{{ vorgang == 'shot_plan' and (max_shot <= 0 or ml > max_shot) }}"
+            sequence:
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.plantinator_bewasserung_exec_status
+                data:
+                  value: blockiert_max_shot
+              - stop: "Shot-Menge über dem harten Shot-Maximalwert."
+
       # Ein Guss hat Vorrang vor einer laufenden Tank-Umwälzung.
       - choose:
           - conditions:
@@ -741,6 +768,12 @@ script:
                           entity_id: input_text.plantinator_bewasserung_exec_status
                         data:
                           value: "hardwarefehler_hauptventil_p{{ p }}"
+                      - service: counter.increment
+                        target:
+                          entity_id: counter.plantinator_bewasserung_hardwarefehler_gesamt
+                      - service: script.plantinator_bewasserung_alarm_ausloesen
+                        data:
+                          grund: "hardwarefehler_hauptventil_p{{ p }}"
                       - stop: "Hauptventil konnte nicht geöffnet werden."
 
       - choose:
@@ -790,6 +823,12 @@ script:
                   entity_id: input_text.plantinator_bewasserung_exec_status
                 data:
                   value: "hardwarefehler_ventil_p{{ p }}"
+              - service: counter.increment
+                target:
+                  entity_id: counter.plantinator_bewasserung_hardwarefehler_gesamt
+              - service: script.plantinator_bewasserung_alarm_ausloesen
+                data:
+                  grund: "hardwarefehler_ventil_p{{ p }}"
               - stop: "Pflanzenventil konnte nicht geöffnet werden."
 
       - wait_template: >
@@ -862,6 +901,12 @@ script:
                   entity_id: input_text.plantinator_bewasserung_exec_status
                 data:
                   value: "hardwarefehler_pumpe_p{{ p }}"
+              - service: counter.increment
+                target:
+                  entity_id: counter.plantinator_bewasserung_hardwarefehler_gesamt
+              - service: script.plantinator_bewasserung_alarm_ausloesen
+                data:
+                  grund: "hardwarefehler_pumpe_p{{ p }}"
               - stop: "Pumpe konnte nicht eingeschaltet werden."
 
       # Hauptlauf der Pumpe – bricht bei Abort sofort ab
@@ -875,6 +920,32 @@ script:
         continue_on_error: true
         target:
           entity_id: "{{ pumpe }}"
+
+      - wait_template: >
+          {{ is_state(pumpe, 'off')
+             or is_state('input_boolean.plantinator_bewasserung_exec_abort', 'on')
+             or (states('counter.plantinator_bewasserung_stop_generation') | int(0)) != (run_generation | int(0)) }}
+        timeout: "00:00:02"
+        continue_on_timeout: true
+
+      # Ventile erst schließen, wenn die Pumpe nachweislich aus ist.
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ not is_state(pumpe, 'off') }}"
+            sequence:
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.plantinator_bewasserung_exec_status
+                data:
+                  value: "hardwarefehler_pumpe_aus_p{{ p }}"
+              - service: counter.increment
+                target:
+                  entity_id: counter.plantinator_bewasserung_hardwarefehler_gesamt
+              - service: script.plantinator_bewasserung_alarm_ausloesen
+                data:
+                  grund: "hardwarefehler_pumpe_aus_p{{ p }}"
+              - stop: "Pumpe konnte nicht sicher ausgeschaltet werden."
 
       - wait_template: >
           {{ is_state('input_boolean.plantinator_bewasserung_exec_abort', 'on')
@@ -959,7 +1030,15 @@ script:
                 value_template: "{{ not is_state('input_boolean.plantinator_bewasserung_p' ~ p ~ '_feedback_ausstehend', 'on') }}"
             sequence:
               - stop: "Bodenfeuchte vor dem Normalguss ist ungültig."
+
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_exec_status
+        data:
+          value: "normalguss_angefordert_p{{ p }}_{{ ml | round(0) | int }}ml"
+
       - service: script.plantinator_bewasserung_exec_guss_ml
+        continue_on_error: true
         data:
           pflanze: "{{ p }}"
           menge_ml: "{{ ml }}"

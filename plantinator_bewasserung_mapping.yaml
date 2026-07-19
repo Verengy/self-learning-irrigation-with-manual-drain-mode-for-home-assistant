@@ -1,6 +1,6 @@
 ############################################################
 # PLANTINATOR BEWASSERUNG - UNIVERSAL MAPPING
-# Datei: plantinator_bewasserung_mapping_v4.yaml
+# Datei: plantinator_bewasserung_mapping.yaml
 #
 # Zweck:
 # - Zentrale Entity-Zuordnung für universelle Bewasserung
@@ -594,7 +594,7 @@ template:
 
 script:
   plantinator_bewasserung_mapping_standardwerte_setzen:
-    alias: Plantinator Bewasserung Mapping Standardwerte setzen
+    alias: Plantinator Bewässerung sichere Mapping-Grundwerte setzen
     icon: mdi:database-import
     mode: single
     sequence:
@@ -610,7 +610,13 @@ script:
             - input_boolean.plantinator_bewasserung_p2_aktiv
             - input_boolean.plantinator_bewasserung_p3_aktiv
             - input_boolean.plantinator_bewasserung_p4_aktiv
+      # Optionale Hardware bleibt aus, bis der Benutzer gültige Entity-IDs
+      # manuell eingetragen und getestet hat.
+      - service: input_boolean.turn_off
+        target:
+          entity_id:
             - input_boolean.plantinator_bewasserung_wasserstand_verwenden
+            - input_boolean.plantinator_bewasserung_tank_umwalzung_verwenden
       - service: input_select.select_option
         target:
           entity_id: input_select.plantinator_bewasserung_wasserstand_sicherer_zustand
@@ -618,76 +624,21 @@ script:
           option: "off"
       - service: input_text.set_value
         target:
-          entity_id: input_text.plantinator_bewasserung_pumpe_entity
+          entity_id: input_text.plantinator_bewasserung_p1_name
         data:
-          value: switch.pumpe_wasser
+          value: Pflanze 1
       - service: input_text.set_value
         target:
-          entity_id: input_text.plantinator_bewasserung_wasserstand_entity
+          entity_id: input_text.plantinator_bewasserung_p2_name
         data:
-          value: binary_sensor.plantinator_bewasserung_wasserstand_giesswasser
+          value: Pflanze 2
       - service: input_text.set_value
         target:
-          entity_id: input_text.plantinator_bewasserung_tank_umwalzung_entity
+          entity_id: input_text.plantinator_bewasserung_p3_name
         data:
-          value: switch.pool_switch_0
+          value: Pflanze 3
       - service: input_text.set_value
         target:
-          entity_id: input_text.plantinator_bewasserung_p1_ventil_entity
+          entity_id: input_text.plantinator_bewasserung_p4_name
         data:
-          value: switch.ventil_pflanze_1
-      - service: input_text.set_value
-        target:
-          entity_id: input_text.plantinator_bewasserung_p2_ventil_entity
-        data:
-          value: switch.ventil_pflanze_2
-      - service: input_text.set_value
-        target:
-          entity_id: input_text.plantinator_bewasserung_p3_ventil_entity
-        data:
-          value: switch.ventil_pflanze_3
-      - service: input_text.set_value
-        target:
-          entity_id: input_text.plantinator_bewasserung_p4_ventil_entity
-        data:
-          value: switch.ventil_pflanze_4
-      - service: input_text.set_value
-        target:
-          entity_id: input_text.plantinator_bewasserung_p1_bodenfeuchte_entity
-        data:
-          value: sensor.pflanze1_moisture
-      - service: input_text.set_value
-        target:
-          entity_id: input_text.plantinator_bewasserung_p2_bodenfeuchte_entity
-        data:
-          value: sensor.pflanze2_moisture
-      - service: input_text.set_value
-        target:
-          entity_id: input_text.plantinator_bewasserung_p3_bodenfeuchte_entity
-        data:
-          value: sensor.pflanze3_moisture
-      - service: input_text.set_value
-        target:
-          entity_id: input_text.plantinator_bewasserung_p4_bodenfeuchte_entity
-        data:
-          value: sensor.pflanze4_moisture
-      - service: input_text.set_value
-        target:
-          entity_id: input_text.plantinator_bewasserung_p1_bodentemperatur_entity
-        data:
-          value: sensor.plantinator_bewasserung_bodentemperatur_pflanze_1
-      - service: input_text.set_value
-        target:
-          entity_id: input_text.plantinator_bewasserung_p2_bodentemperatur_entity
-        data:
-          value: sensor.plantinator_bewasserung_bodentemperatur_pflanze_2
-      - service: input_text.set_value
-        target:
-          entity_id: input_text.plantinator_bewasserung_p3_bodentemperatur_entity
-        data:
-          value: sensor.plantinator_bewasserung_2_bodentemperatur_pflanze_3
-      - service: input_text.set_value
-        target:
-          entity_id: input_text.plantinator_bewasserung_p4_bodentemperatur_entity
-        data:
-          value: sensor.plantinator_bewasserung_2_bodentemperatur_pflanze_4
+          value: Pflanze 4

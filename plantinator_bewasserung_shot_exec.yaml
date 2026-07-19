@@ -1,6 +1,6 @@
 ############################################################
 # PLANTINATOR BEWASSERUNG - SHOT EXEC V1.2 (Fixed + Tank-Umwaelzung + Race Fix)
-# Datei: plantinator_bewasserung_shot_exec_v1.yaml
+# Datei: plantinator_bewasserung_shot_exec.yaml
 #
 # Aenderungen gegenueber vorheriger Version:
 # - NEU: Pre-Guss-Tank-Umwaelzung wird vor jedem Shot-Plan aufgerufen
@@ -209,16 +209,52 @@ script:
           bedarf: "{{ states('sensor.plantinator_bewasserung_p' ~ (pflanze | int) ~ '_gussbedarf') }}"
           plan: "{{ states('sensor.plantinator_bewasserung_p' ~ (pflanze | int) ~ '_shot_plan') }}"
           empfehlung_ml: "{{ states('sensor.plantinator_bewasserung_p' ~ (pflanze | int) ~ '_empfehlung_normalguss_ml') | float(0) }}"
-          shot_anzahl: "{{ state_attr('sensor.plantinator_bewasserung_p' ~ (pflanze | int) ~ '_shot_plan', 'shot_anzahl') | int(0) }}"
+          shot_sequence: >
+            {% set seq = state_attr(
+              'sensor.plantinator_bewasserung_p' ~ (pflanze | int) ~ '_shot_plan',
+              'shot_sequence_ml'
+            ) %}
+            {{ seq if seq is iterable and seq is not string else [] }}
           shot_max_anzahl: "{{ states('input_number.plantinator_bewasserung_shot_max_anzahl') | int(10) }}"
-          shot_max_ml: "{{ states('input_number.plantinator_bewasserung_shot_max_ml') | float(200) }}"
-          last_shot_ml: "{{ state_attr('sensor.plantinator_bewasserung_p' ~ (pflanze | int) ~ '_shot_plan', 'shot_ml') | float(0) }}"
+          exec_min_ml: 25
+          shot_max_ml: "{{ states('input_number.plantinator_bewasserung_shot_max_ml') | float(0) }}"
+          shot_effektiv_max_ml: "{{ states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(0) }}"
           pause_s: "{{ state_attr('sensor.plantinator_bewasserung_p' ~ (pflanze | int) ~ '_shot_plan', 'pause_sekunden') | float(180) }}"
           max_normal: "{{ states('input_number.plantinator_bewasserung_max_ml_pro_normalguss') | float(0) }}"
           feedback_wait: "{{ states('input_number.plantinator_bewasserung_feedback_wartezeit_minuten') | int(4) }}"
           pre_guss_noetig: "{{ states('sensor.plantinator_bewasserung_tank_umwalzung_pre_guss_noetig') == 'ja' }}"
           p_innerhalb_anzahl: "{{ (pflanze | int) <= (states('input_number.plantinator_bewasserung_anzahl_pflanzen') | int(4)) }}"
           feedback_pending: "{{ is_state('input_boolean.plantinator_bewasserung_p' ~ (pflanze | int) ~ '_feedback_ausstehend', 'on') }}"
+
+      - variables:
+          shot_anzahl: >
+            {{ shot_sequence | count
+               if shot_sequence is iterable and shot_sequence is not string else 0 }}
+          sequence_summe_ml: >
+            {% set ns = namespace(summe=0) %}
+            {% if shot_sequence is iterable and shot_sequence is not string %}
+              {% for item in shot_sequence %}
+                {% if is_number(item) %}
+                  {% set ns.summe = ns.summe + (item | float(0)) %}
+                {% endif %}
+              {% endfor %}
+            {% endif %}
+            {{ ns.summe | round(0) }}
+          sequence_elemente_gueltig: >
+            {% set ns = namespace(ok=true) %}
+            {% if shot_sequence is not iterable or shot_sequence is string or (shot_sequence | count) <= 0 %}
+              {% set ns.ok = false %}
+            {% else %}
+              {% for item in shot_sequence %}
+                {% if not is_number(item)
+                      or (item | float(0)) < (exec_min_ml | float(25))
+                      or (item | float(0)) > (shot_max_ml | float(0))
+                      or (item | float(0)) > (shot_effektiv_max_ml | float(0)) %}
+                  {% set ns.ok = false %}
+                {% endif %}
+              {% endfor %}
+            {% endif %}
+            {{ ns.ok }}
 
       - choose:
           - conditions:
@@ -271,7 +307,12 @@ script:
 
           - conditions:
               - condition: template
-                value_template: "{{ shot_anzahl <= 0 or last_shot_ml <= 0 }}"
+                value_template: >
+                  {{ (states('sensor.plantinator_bewasserung_shot_plan_gesamtstatus').startswith('parameterfehler_')
+                      or states('sensor.plantinator_bewasserung_shot_plan_gesamtstatus').startswith('planfehler_'))
+                     or shot_anzahl <= 0
+                     or not sequence_elemente_gueltig
+                     or (sequence_summe_ml | float(0)) <= 0 }}
             sequence:
               - service: input_text.set_value
                 target:
@@ -293,7 +334,19 @@ script:
 
           - conditions:
               - condition: template
-                value_template: "{{ max_normal > 0 and empfehlung_ml > max_normal }}"
+                value_template: >
+                  {{ ((sequence_summe_ml | float(0)) - (empfehlung_ml | float(0))) | abs > 1 }}
+            sequence:
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.plantinator_bewasserung_shot_exec_status
+                data:
+                  value: "blockiert_shot_summe_p{{ p }}_{{ sequence_summe_ml | round(0) }}statt{{ empfehlung_ml | round(0) }}"
+              - stop: "Shot-Sequenz und Empfehlung stimmen nicht ueberein."
+
+          - conditions:
+              - condition: template
+                value_template: "{{ max_normal > 0 and (sequence_summe_ml | float(0)) > max_normal }}"
             sequence:
               - service: input_text.set_value
                 target:
@@ -393,12 +446,12 @@ script:
         target:
           entity_id: input_text.plantinator_bewasserung_shot_exec_status
         data:
-          value: "start_p{{ p }}_{{ empfehlung_ml | round(0) | int }}ml_{{ shot_anzahl }}shots"
+          value: "start_p{{ p }}_{{ sequence_summe_ml | round(0) | int }}ml_{{ shot_anzahl }}shots"
 
       - service: script.plantinator_bewasserung_feedback_vor_guss_speichern
         data:
           pflanze: "{{ p }}"
-          menge_ml: "{{ empfehlung_ml }}"
+          menge_ml: "{{ sequence_summe_ml }}"
 
       - choose:
           - conditions:
@@ -409,7 +462,7 @@ script:
               - stop: "Bodenfeuchte vor dem Guss ist ungültig."
 
       - repeat:
-          count: "{{ shot_anzahl }}"
+          for_each: "{{ shot_sequence }}"
           sequence:
             # Stop-Check vor jedem Shot
             - choose:
@@ -424,12 +477,7 @@ script:
                     - stop: "Shot EXEC Stop-Anforderung oder Abort."
 
             - variables:
-                current_shot_ml: >
-                  {% if repeat.index < (shot_anzahl | int) %}
-                    {{ shot_max_ml }}
-                  {% else %}
-                    {{ last_shot_ml }}
-                  {% endif %}
+                current_shot_ml: "{{ repeat.item | float(0) }}"
 
             - service: input_text.set_value
               target:
@@ -437,12 +485,47 @@ script:
               data:
                 value: "p{{ p }}_shot_{{ repeat.index }}von{{ shot_anzahl }}_{{ current_shot_ml | float(0) | round(0) }}ml"
 
+            # Ein neutraler Anforderungsstatus verhindert, dass ein alter
+            # Erfolgsstatus bei einem fehlgeschlagenen Skriptaufruf zählt.
+            - service: input_text.set_value
+              target:
+                entity_id: input_text.plantinator_bewasserung_exec_status
+              data:
+                value: >
+                  shot_plan_angefordert_p{{ p }}_shot{{ repeat.index }}_{{
+                  current_shot_ml | float(0) | round(0) | int }}ml
+
             - service: script.plantinator_bewasserung_exec_guss_ml
+              continue_on_error: true
               data:
                 pflanze: "{{ p }}"
                 menge_ml: "{{ current_shot_ml | float(0) }}"
                 vorgang: shot_plan
                 stop_generation: "{{ run_generation }}"
+
+            - variables:
+                einzel_exec_status: "{{ states('input_text.plantinator_bewasserung_exec_status') }}"
+                einzel_exec_erfolgreich: >
+                  {{ states('input_text.plantinator_bewasserung_exec_status').startswith(
+                    'shot_plan_fertig_p' ~ p ~ '_'
+                    ~ (current_shot_ml | float(0) | round(0) | int) ~ 'ml_'
+                  ) }}
+
+            # Jeder einzelne Pumpenlauf muss eindeutig erfolgreich beendet sein.
+            - choose:
+                - conditions:
+                    - condition: template
+                      value_template: "{{ not einzel_exec_erfolgreich }}"
+                  sequence:
+                    - service: script.plantinator_bewasserung_shot_exec_sicher_stop
+                    - service: input_text.set_value
+                      target:
+                        entity_id: input_text.plantinator_bewasserung_shot_exec_status
+                      data:
+                        value: >
+                          abgebrochen_exec_fehler_p{{ p }}_shot{{ repeat.index }}_{{
+                          einzel_exec_status[:150] }}
+                    - stop: "Ein einzelner Shot wurde nicht erfolgreich beendet."
 
             # Pause zwischen Shots (unterbrechbar)
             - choose:
@@ -532,9 +615,9 @@ script:
             {% if is_state('input_boolean.plantinator_bewasserung_shot_exec_stop_anforderung', 'on')
                   or is_state('input_boolean.plantinator_bewasserung_exec_abort', 'on')
                   or (states('counter.plantinator_bewasserung_stop_generation') | int(0)) != (run_generation | int(0)) %}
-              abgebrochen_p{{ p }}_{{ empfehlung_ml | round(0) | int }}ml_{{ shot_anzahl }}shots_{{ now().timestamp() | int }}
+              abgebrochen_p{{ p }}_{{ sequence_summe_ml | round(0) | int }}ml_{{ shot_anzahl }}shots_{{ now().timestamp() | int }}
             {% else %}
-              fertig_p{{ p }}_{{ empfehlung_ml | round(0) | int }}ml_{{ shot_anzahl }}shots_{{ now().timestamp() | int }}
+              fertig_p{{ p }}_{{ sequence_summe_ml | round(0) | int }}ml_{{ shot_anzahl }}shots_{{ now().timestamp() | int }}
             {% endif %}
 
       - service: input_datetime.set_datetime
