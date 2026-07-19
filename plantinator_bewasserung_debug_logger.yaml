@@ -1,5 +1,5 @@
 ############################################################
-# PLANTINATOR BEWASSERUNG - DEBUG LOGGER V7
+# PLANTINATOR BEWASSERUNG - DEBUG LOGGER V8
 # Datei: plantinator_bewasserung_debug_logger.yaml
 #
 # Zweck:
@@ -22,10 +22,13 @@
 # - /config/plantinator_diag/plantinator_v3_snapshot.txt
 #
 # Hinweis:
-# - Alte Debug-Logger V1 bis V6 deaktivieren oder löschen.
-# - Nur diese V7 aktiv lassen.
+# - Alte Debug-Logger V1 bis V7 deaktivieren oder löschen.
+# - Nur diese V8 aktiv lassen.
 # - V7 protokolliert zusätzlich Alarm, Sensoralter, Umweltwerte
 #   und die bewusst begrenzten Umweltfaktoren.
+# - V8 protokolliert kritische Systemstatus-Wechsel sofort.
+#   Dadurch werden auch sehr kurze rote Alarmanzeigen erfasst,
+#   unabhängig vom eingestellten periodischen Logintervall.
 ############################################################
 
 shell_command:
@@ -251,6 +254,7 @@ script:
             exec_laeuft={{ states('input_boolean.plantinator_bewasserung_exec_laeuft') }}
             exec_abort={{ states('input_boolean.plantinator_bewasserung_exec_abort') }}
             stop_generation={{ states('counter.plantinator_bewasserung_stop_generation') }}
+            aktor_bestaetigungszeit_s={{ states('input_number.plantinator_bewasserung_aktor_bestaetigungszeit_sekunden') }}
 
             MESS_DRAIN
             status={{ states('sensor.plantinator_bewasserung_mess_drain_status') }}
@@ -425,3 +429,100 @@ automation:
         value_template: "{{ is_state('input_boolean.plantinator_bewasserung_debug_logger_aktiv', 'on') }}"
     action:
       - service: script.plantinator_bewasserung_debug_log_schreiben
+
+  - id: plantinator_bewasserung_debug_kritischen_status_sofort_loggen
+    alias: Plantinator Bewasserung Debug - kritischen Status sofort loggen
+    mode: queued
+    max: 20
+    trigger:
+      - platform: state
+        entity_id: sensor.plantinator_bewasserung_kritischer_systemstatus
+    condition:
+      - condition: state
+        entity_id: input_boolean.plantinator_bewasserung_debug_logger_aktiv
+        state: "on"
+      - condition: template
+        value_template: >
+          {% set unkritisch = ['ok', 'unknown', 'unavailable', 'none', ''] %}
+          {% set alt = trigger.from_state.state if trigger.from_state is not none else 'unknown' %}
+          {% set neu = trigger.to_state.state if trigger.to_state is not none else 'unknown' %}
+          {{ alt not in unkritisch or neu not in unkritisch }}
+    action:
+      - variables:
+          zeit: "{{ now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3] }}"
+          status_alt: "{{ trigger.from_state.state if trigger.from_state is not none else 'unknown' }}"
+          status_neu: "{{ trigger.to_state.state if trigger.to_state is not none else 'unknown' }}"
+          vorheriger_status_dauer_s: >
+            {% if trigger.from_state is not none %}
+              {{ (as_timestamp(now()) -
+                  as_timestamp(trigger.from_state.last_changed)) | round(3) }}
+            {% else %}
+              unbekannt
+            {% endif %}
+
+      - service: notify.send_message
+        target:
+          entity_id: notify.plantinator_status
+        data:
+          message: >
+            ############################################################
+            KRITISCHER SYSTEMSTATUS - SOFORTMELDUNG
+            Zeit={{ zeit }}
+            Status_alt={{ status_alt }}
+            Status_neu={{ status_neu }}
+            Dauer_des_vorherigen_Status_s={{ vorheriger_status_dauer_s }}
+
+            alarm_status={{ states('sensor.plantinator_bewasserung_alarm_status') }}
+            alarm_verriegelt={{ states('input_boolean.plantinator_bewasserung_alarm_verriegelt') }}
+            aktor_sicherheitsstatus={{ states('sensor.plantinator_bewasserung_aktor_sicherheitsstatus') }}
+            exec_laeuft={{ states('input_boolean.plantinator_bewasserung_exec_laeuft') }}
+            shot_exec_laeuft={{ states('input_boolean.plantinator_bewasserung_shot_exec_laeuft') }}
+            exec_status={{ states('sensor.plantinator_bewasserung_exec_status') }}
+            shot_exec_status={{ states('sensor.plantinator_bewasserung_shot_exec_status') }}
+            aktor_bestaetigungszeit_s={{ states('input_number.plantinator_bewasserung_aktor_bestaetigungszeit_sekunden') }}
+            pumpe={{ states('sensor.plantinator_bewasserung_pumpe_status_gemappt') }}
+            {% set pumpe_entity = states('input_text.plantinator_bewasserung_pumpe_entity') | trim %}
+            pumpe_entity={{ pumpe_entity }}
+            pumpe_roh={{ states(pumpe_entity) if pumpe_entity else 'nicht_gemappt' }}
+            pumpe_roh_aktualisiert={{
+              states[pumpe_entity].last_updated
+              if pumpe_entity and states[pumpe_entity] is not none
+              else 'nicht_verfuegbar'
+            }}
+            ventil_p1={{ states('sensor.plantinator_bewasserung_p1_ventil_status_gemappt') }}
+            ventil_p2={{ states('sensor.plantinator_bewasserung_p2_ventil_status_gemappt') }}
+            ventil_p3={{ states('sensor.plantinator_bewasserung_p3_ventil_status_gemappt') }}
+            ventil_p4={{ states('sensor.plantinator_bewasserung_p4_ventil_status_gemappt') }}
+            {% for p in [1, 2, 3, 4] %}
+            {% set ventil_entity = states('input_text.plantinator_bewasserung_p' ~ p ~ '_ventil_entity') | trim %}
+            ventil_p{{ p }}_entity={{ ventil_entity }}
+            ventil_p{{ p }}_roh={{ states(ventil_entity) if ventil_entity else 'nicht_gemappt' }}
+            ventil_p{{ p }}_roh_aktualisiert={{
+              states[ventil_entity].last_updated
+              if ventil_entity and states[ventil_entity] is not none
+              else 'nicht_verfuegbar'
+            }}
+            {% endfor %}
+            wasserstand={{ states('sensor.plantinator_bewasserung_wasserstand_status_gemappt') }}
+            ############################################################
+
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ status_neu not in
+                     ['ok', 'unknown', 'unavailable', 'none', ''] }}
+            sequence:
+              - service: script.plantinator_bewasserung_debug_log_schreiben
+
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_debug_logger_status
+        data:
+          value: "statuswechsel_{{ status_alt }}_zu_{{ status_neu }}_{{ zeit }}"
+
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_debug_logger_letzte_meldung
+        data:
+          value: "kritisch_{{ status_alt }}_zu_{{ status_neu }}_{{ zeit }}"

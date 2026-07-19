@@ -548,6 +548,9 @@ views:
                 name: Ventil Vorlauf
               - entity: input_number.plantinator_bewasserung_ventil_nachlauf_sekunden
                 name: Ventil Nachlauf
+              - entity: >-
+                  input_number.plantinator_bewasserung_aktor_bestaetigungszeit_sekunden
+                name: Aktor-Bestätigung max.
           - type: entities
             title: Normalguss Buttons
             show_header_toggle: false
@@ -1496,22 +1499,25 @@ views:
                 name: Substratprofil
               - entity: input_number.plantinator_bewasserung_crop_substratvolumen_liter
                 name: Substratvolumen
-              - entity: input_number.plantinator_bewasserung_crop_ramp_up_dauer_minuten
-                name: Ramp-up Dauer
               - entity: input_number.plantinator_bewasserung_crop_ramp_up_shot_faktor_prozent
                 name: Ramp-up Shot-Faktor
+              - entity: script.plantinator_bewasserung_crop_maintenance_startwerte_setzen
+                name: Nur Maintenance-Startwerte setzen
               - entity: script.plantinator_bewasserung_crop_steering_standardwerte_setzen
                 name: Crop-Standardwerte setzen
           - type: markdown
             title: Wirkung der Werte
             content: >
               **Start** und **Stop** begrenzen das Bewässerungsfenster relativ
-              zur Lichtzeit. **Dryback** bestimmt die normale Gießschwelle.
-              **Shot %** bezieht sich auf das Substratvolumen; die globalen
-              Shot-Min/Max-Werte bleiben zusätzliche Grenzen. Während
-              **Ramp-up** reduziert der Shot-Faktor diese bereits begrenzte
-              Shot-Größe. Beispiel: 300 ml bei 60 % ergeben 180 ml. Der
-              globale Feuchte-Minimalwert bleibt immer die Notfallgrenze.
+              zur Lichtzeit. Nach dem Start wartet jede Pflanze auf
+              `Peak − Dryback`. Im **Ramp-up** wird der gesamte Wasserverlust
+              mit kleineren Shots als vollständige Sequenz ausgeglichen.
+              Nach erfolgreichem Feedback folgt **Maintenance** mit normalen
+              Shots und dem Maintenance-Dryback der aktiven Rezeptur.
+              Beide Drybacks sind absolute Differenzen in den Prozentwerten
+              des Feuchtesensors. Shot-Min/Max,
+              maximale Shot-Anzahl, Sicherheitsminimum, Tageslimit und alle
+              EXEC-Sperren bleiben harte Grenzen.
       - type: grid
         cards:
           - type: heading
@@ -1522,28 +1528,28 @@ views:
             title: Keimung
             show_header_toggle: false
             entities:
-              - entity: input_number.plantinator_bewasserung_crop_faktor_keimung
-                name: Mengenfaktor
               - entity: input_number.plantinator_bewasserung_crop_start_nach_licht_an_keimung_minuten
                 name: Start nach Licht an
               - entity: input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_keimung_minuten
                 name: Stop vor Licht aus
               - entity: input_number.plantinator_bewasserung_crop_dryback_ziel_keimung_prozent
-                name: Dryback-Ziel
+                name: Overnight-Dryback
+              - entity: input_number.plantinator_bewasserung_crop_maintenance_dryback_keimung_prozent
+                name: Maintenance-Dryback
               - entity: input_number.plantinator_bewasserung_crop_shot_keimung_prozent
                 name: Shot vom Substratvolumen
           - type: entities
             title: Steckling
             show_header_toggle: false
             entities:
-              - entity: input_number.plantinator_bewasserung_crop_faktor_steckling
-                name: Mengenfaktor
               - entity: input_number.plantinator_bewasserung_crop_start_nach_licht_an_steckling_minuten
                 name: Start nach Licht an
               - entity: input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_steckling_minuten
                 name: Stop vor Licht aus
               - entity: input_number.plantinator_bewasserung_crop_dryback_ziel_steckling_prozent
-                name: Dryback-Ziel
+                name: Overnight-Dryback
+              - entity: input_number.plantinator_bewasserung_crop_maintenance_dryback_steckling_prozent
+                name: Maintenance-Dryback
               - entity: input_number.plantinator_bewasserung_crop_shot_steckling_prozent
                 name: Shot vom Substratvolumen
       - type: grid
@@ -1556,42 +1562,42 @@ views:
             title: Early Veg
             show_header_toggle: false
             entities:
-              - entity: input_number.plantinator_bewasserung_crop_faktor_early_veg
-                name: Mengenfaktor
               - entity: input_number.plantinator_bewasserung_crop_start_nach_licht_an_early_veg_minuten
                 name: Start nach Licht an
               - entity: input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_early_veg_minuten
                 name: Stop vor Licht aus
               - entity: input_number.plantinator_bewasserung_crop_dryback_ziel_early_veg_prozent
-                name: Dryback-Ziel
+                name: Overnight-Dryback
+              - entity: input_number.plantinator_bewasserung_crop_maintenance_dryback_early_veg_prozent
+                name: Maintenance-Dryback
               - entity: input_number.plantinator_bewasserung_crop_shot_early_veg_prozent
                 name: Shot vom Substratvolumen
           - type: entities
             title: Mid Veg
             show_header_toggle: false
             entities:
-              - entity: input_number.plantinator_bewasserung_crop_faktor_mid_veg
-                name: Mengenfaktor
               - entity: input_number.plantinator_bewasserung_crop_start_nach_licht_an_mid_veg_minuten
                 name: Start nach Licht an
               - entity: input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_mid_veg_minuten
                 name: Stop vor Licht aus
               - entity: input_number.plantinator_bewasserung_crop_dryback_ziel_mid_veg_prozent
-                name: Dryback-Ziel
+                name: Overnight-Dryback
+              - entity: input_number.plantinator_bewasserung_crop_maintenance_dryback_mid_veg_prozent
+                name: Maintenance-Dryback
               - entity: input_number.plantinator_bewasserung_crop_shot_mid_veg_prozent
                 name: Shot vom Substratvolumen
           - type: entities
             title: Late Veg
             show_header_toggle: false
             entities:
-              - entity: input_number.plantinator_bewasserung_crop_faktor_late_veg
-                name: Mengenfaktor
               - entity: input_number.plantinator_bewasserung_crop_start_nach_licht_an_late_veg_minuten
                 name: Start nach Licht an
               - entity: input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_late_veg_minuten
                 name: Stop vor Licht aus
               - entity: input_number.plantinator_bewasserung_crop_dryback_ziel_late_veg_prozent
-                name: Dryback-Ziel
+                name: Overnight-Dryback
+              - entity: input_number.plantinator_bewasserung_crop_maintenance_dryback_late_veg_prozent
+                name: Maintenance-Dryback
               - entity: input_number.plantinator_bewasserung_crop_shot_late_veg_prozent
                 name: Shot vom Substratvolumen
       - type: grid
@@ -1604,42 +1610,42 @@ views:
             title: Early Flower / Stretch
             show_header_toggle: false
             entities:
-              - entity: input_number.plantinator_bewasserung_crop_faktor_early_flower
-                name: Mengenfaktor
               - entity: input_number.plantinator_bewasserung_crop_start_nach_licht_an_early_flower_minuten
                 name: Start nach Licht an
               - entity: input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_early_flower_minuten
                 name: Stop vor Licht aus
               - entity: input_number.plantinator_bewasserung_crop_dryback_ziel_early_flower_prozent
-                name: Dryback-Ziel
+                name: Overnight-Dryback
+              - entity: input_number.plantinator_bewasserung_crop_maintenance_dryback_early_flower_prozent
+                name: Maintenance-Dryback
               - entity: input_number.plantinator_bewasserung_crop_shot_early_flower_prozent
                 name: Shot vom Substratvolumen
           - type: entities
             title: Mid Flower
             show_header_toggle: false
             entities:
-              - entity: input_number.plantinator_bewasserung_crop_faktor_mid_flower
-                name: Mengenfaktor
               - entity: input_number.plantinator_bewasserung_crop_start_nach_licht_an_mid_flower_minuten
                 name: Start nach Licht an
               - entity: input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_mid_flower_minuten
                 name: Stop vor Licht aus
               - entity: input_number.plantinator_bewasserung_crop_dryback_ziel_mid_flower_prozent
-                name: Dryback-Ziel
+                name: Overnight-Dryback
+              - entity: input_number.plantinator_bewasserung_crop_maintenance_dryback_mid_flower_prozent
+                name: Maintenance-Dryback
               - entity: input_number.plantinator_bewasserung_crop_shot_mid_flower_prozent
                 name: Shot vom Substratvolumen
           - type: entities
             title: Late Flower
             show_header_toggle: false
             entities:
-              - entity: input_number.plantinator_bewasserung_crop_faktor_late_flower
-                name: Mengenfaktor
               - entity: input_number.plantinator_bewasserung_crop_start_nach_licht_an_late_flower_minuten
                 name: Start nach Licht an
               - entity: input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_late_flower_minuten
                 name: Stop vor Licht aus
               - entity: input_number.plantinator_bewasserung_crop_dryback_ziel_late_flower_prozent
-                name: Dryback-Ziel
+                name: Overnight-Dryback
+              - entity: input_number.plantinator_bewasserung_crop_maintenance_dryback_late_flower_prozent
+                name: Maintenance-Dryback
               - entity: input_number.plantinator_bewasserung_crop_shot_late_flower_prozent
                 name: Shot vom Substratvolumen
       - type: grid
@@ -1664,8 +1670,6 @@ views:
                 name: Crop Steering Modus
               - entity: sensor.plantinator_bewasserung_crop_steering_strategie
                 name: Strategie
-              - entity: sensor.plantinator_bewasserung_crop_steering_faktor
-                name: Faktor
               - entity: sensor.plantinator_bewasserung_crop_aktive_rezeptur
                 name: Aktive Rezeptur
               - entity: sensor.plantinator_bewasserung_crop_start_nach_licht_an_effektiv
@@ -1673,9 +1677,9 @@ views:
               - entity: sensor.plantinator_bewasserung_crop_stop_vor_licht_aus_effektiv
                 name: Stop vor Licht aus
               - entity: sensor.plantinator_bewasserung_crop_dryback_ziel_effektiv
-                name: Dryback-Ziel
-              - entity: sensor.plantinator_bewasserung_crop_giessschwelle_effektiv
-                name: Gießschwelle
+                name: Overnight-Dryback effektiv
+              - entity: sensor.plantinator_bewasserung_crop_maintenance_dryback_effektiv
+                name: Maintenance-Dryback effektiv
               - entity: sensor.plantinator_bewasserung_crop_shot_prozent_effektiv
                 name: Shot vom Substratvolumen
               - entity: sensor.plantinator_bewasserung_crop_ramp_up_shot_faktor_effektiv
@@ -1684,6 +1688,118 @@ views:
                 name: Shot-Größe effektiv
               - entity: sensor.plantinator_bewasserung_crop_normalguss_erlaubnis
                 name: Normalguss Erlaubnis
+              - entity: input_text.plantinator_bewasserung_crop_letzter_lichttag
+                name: Letzter zurückgesetzter Lichttag
+      - type: grid
+        cards:
+          - type: heading
+            heading: Pflanzenphasen / Dryback
+            heading_style: title
+            icon: mdi:state-machine
+          - type: entities
+            title: Pflanze 1
+            show_header_toggle: false
+            entities:
+              - entity: sensor.plantinator_bewasserung_crop_p1_phase
+                name: Phase
+              - entity: sensor.plantinator_bewasserung_p1_bodenfeuchte_wert
+                name: Aktuelle Feuchte
+              - entity: input_number.plantinator_bewasserung_crop_p1_letzter_peak_prozent
+                name: Gespeicherter Peak
+              - type: attribute
+                entity: sensor.plantinator_bewasserung_crop_p1_phase
+                attribute: aktueller_dryback_prozent
+                name: Aktueller Dryback
+              - type: attribute
+                entity: sensor.plantinator_bewasserung_crop_p1_phase
+                attribute: ramp_up_startwert_prozent
+                name: Ramp-up Startwert
+              - type: attribute
+                entity: sensor.plantinator_bewasserung_crop_p1_phase
+                attribute: maintenance_startwert_prozent
+                name: Maintenance Startwert
+              - entity: sensor.plantinator_bewasserung_crop_p1_shot_ml_effektiv
+                name: Aktueller Shot
+              - entity: input_boolean.plantinator_bewasserung_crop_p1_ramp_up_abgeschlossen
+                name: Ramp-up abgeschlossen
+          - type: entities
+            title: Pflanze 2
+            show_header_toggle: false
+            entities:
+              - entity: sensor.plantinator_bewasserung_crop_p2_phase
+                name: Phase
+              - entity: sensor.plantinator_bewasserung_p2_bodenfeuchte_wert
+                name: Aktuelle Feuchte
+              - entity: input_number.plantinator_bewasserung_crop_p2_letzter_peak_prozent
+                name: Gespeicherter Peak
+              - type: attribute
+                entity: sensor.plantinator_bewasserung_crop_p2_phase
+                attribute: aktueller_dryback_prozent
+                name: Aktueller Dryback
+              - type: attribute
+                entity: sensor.plantinator_bewasserung_crop_p2_phase
+                attribute: ramp_up_startwert_prozent
+                name: Ramp-up Startwert
+              - type: attribute
+                entity: sensor.plantinator_bewasserung_crop_p2_phase
+                attribute: maintenance_startwert_prozent
+                name: Maintenance Startwert
+              - entity: sensor.plantinator_bewasserung_crop_p2_shot_ml_effektiv
+                name: Aktueller Shot
+              - entity: input_boolean.plantinator_bewasserung_crop_p2_ramp_up_abgeschlossen
+                name: Ramp-up abgeschlossen
+          - type: entities
+            title: Pflanze 3
+            show_header_toggle: false
+            entities:
+              - entity: sensor.plantinator_bewasserung_crop_p3_phase
+                name: Phase
+              - entity: sensor.plantinator_bewasserung_p3_bodenfeuchte_wert
+                name: Aktuelle Feuchte
+              - entity: input_number.plantinator_bewasserung_crop_p3_letzter_peak_prozent
+                name: Gespeicherter Peak
+              - type: attribute
+                entity: sensor.plantinator_bewasserung_crop_p3_phase
+                attribute: aktueller_dryback_prozent
+                name: Aktueller Dryback
+              - type: attribute
+                entity: sensor.plantinator_bewasserung_crop_p3_phase
+                attribute: ramp_up_startwert_prozent
+                name: Ramp-up Startwert
+              - type: attribute
+                entity: sensor.plantinator_bewasserung_crop_p3_phase
+                attribute: maintenance_startwert_prozent
+                name: Maintenance Startwert
+              - entity: sensor.plantinator_bewasserung_crop_p3_shot_ml_effektiv
+                name: Aktueller Shot
+              - entity: input_boolean.plantinator_bewasserung_crop_p3_ramp_up_abgeschlossen
+                name: Ramp-up abgeschlossen
+          - type: entities
+            title: Pflanze 4
+            show_header_toggle: false
+            entities:
+              - entity: sensor.plantinator_bewasserung_crop_p4_phase
+                name: Phase
+              - entity: sensor.plantinator_bewasserung_p4_bodenfeuchte_wert
+                name: Aktuelle Feuchte
+              - entity: input_number.plantinator_bewasserung_crop_p4_letzter_peak_prozent
+                name: Gespeicherter Peak
+              - type: attribute
+                entity: sensor.plantinator_bewasserung_crop_p4_phase
+                attribute: aktueller_dryback_prozent
+                name: Aktueller Dryback
+              - type: attribute
+                entity: sensor.plantinator_bewasserung_crop_p4_phase
+                attribute: ramp_up_startwert_prozent
+                name: Ramp-up Startwert
+              - type: attribute
+                entity: sensor.plantinator_bewasserung_crop_p4_phase
+                attribute: maintenance_startwert_prozent
+                name: Maintenance Startwert
+              - entity: sensor.plantinator_bewasserung_crop_p4_shot_ml_effektiv
+                name: Aktueller Shot
+              - entity: input_boolean.plantinator_bewasserung_crop_p4_ramp_up_abgeschlossen
+                name: Ramp-up abgeschlossen
       - type: grid
         cards:
           - type: heading
@@ -1747,16 +1863,16 @@ views:
       - type: grid
         cards:
           - type: heading
-            heading: Umweltfaktor
+            heading: Umweltbeobachtung
             heading_style: title
             icon: mdi:function-variant
           - type: markdown
-            title: Sichere Zuschaltung
+            title: Diagnose ohne Mengenwirkung
             content: >
-              Die drei Einflüsse starten bei **0 %**. Der Umweltfaktor wird
-              nach Lernwert und Crop-Faktor angewendet. Die maximale
-              Umweltkorrektur sowie Maximalguss und Tageslimit begrenzen
-              die Wirkung weiterhin hart.
+              Die Roh- und Effektivfaktoren dienen zur Beobachtung und
+              Simulation. Die selbstlernende Bewässerungsmenge wird direkt
+              aus Peak-Verlust und gelerntem ml/%-Wert berechnet; diese
+              Diagnosefaktoren verändern die Wassermenge nicht.
           - type: entities
             title: Faktor / Einfluss
             show_header_toggle: false
@@ -1764,7 +1880,7 @@ views:
               - entity: sensor.plantinator_bewasserung_umwelt_faktor_status
                 name: Status
               - entity: sensor.plantinator_bewasserung_umwelt_faktor
-                name: Effektiver Umweltfaktor
+                name: Effektiver Diagnosefaktor
               - entity: sensor.plantinator_bewasserung_klima_sensorstatus
                 name: Klima Sensorstatus
               - entity: sensor.plantinator_bewasserung_licht_sensorstatus
@@ -1774,18 +1890,18 @@ views:
               - entity: sensor.plantinator_bewasserung_klima_faktor_roh
                 name: Klima Rohfaktor
               - entity: input_number.plantinator_bewasserung_klima_einfluss_prozent
-                name: Klima Einfluss
+                name: Klima Einfluss (Diagnose)
               - entity: sensor.plantinator_bewasserung_licht_faktor_roh
                 name: Licht Rohfaktor
               - entity: input_number.plantinator_bewasserung_licht_einfluss_prozent
-                name: Licht Einfluss
+                name: Licht Einfluss (Diagnose)
               - entity: sensor.plantinator_bewasserung_zulauf_faktor_roh
                 name: Zulauf Rohfaktor
               - entity: input_number.plantinator_bewasserung_zulauf_einfluss_prozent
-                name: Zulauf Einfluss
+                name: Zulauf Einfluss (Diagnose)
               - entity: >-
                   input_number.plantinator_bewasserung_umwelt_max_korrektur_prozent
-                name: Maximale Gesamtkorrektur
+                name: Maximale Diagnosekorrektur
       - type: grid
         cards:
           - type: heading
@@ -1886,7 +2002,7 @@ views:
               - entity: sensor.plantinator_bewasserung_dli
                 name: DLI
               - entity: sensor.plantinator_bewasserung_umwelt_faktor
-                name: Umweltfaktor
+                name: Diagnosefaktor
           - type: history-graph
             title: Zulauf
             hours_to_show: 48

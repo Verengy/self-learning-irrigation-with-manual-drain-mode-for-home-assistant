@@ -71,7 +71,6 @@ flowchart LR
     A[Substrate moisture and temperature] --> B[Mapping]
     B --> C[Profile and learned value]
     D[Crop steering] --> E[Volume recommendation]
-    F[Optional environmental factor] --> E
     C --> E
     E --> G[Shot plan]
     G --> H[Shot EXEC]
@@ -89,10 +88,12 @@ The delivered volume is calculated from pump runtime:
 pump runtime in seconds = requested volume in ml / pump output in ml/s
 ```
 
-A flow meter is not required, so accurate pump calibration is essential. After
-a switching command, the controller checks whether pump and valve entities
-report the expected state. It cannot detect a blocked dripper, a disconnected
-hose, or the volume that physically flowed.
+A flow meter is not required, so accurate pump calibration is essential. Pump
+runtime starts with the switch-on command and is therefore not extended by a
+delayed Wi-Fi state report. After the switch-off command, the controller waits
+up to the configurable actuator confirmation time for a new `off` report. It
+cannot detect a blocked dripper, a disconnected hose, or the volume that
+physically flowed.
 
 ## Screenshots
 
@@ -121,7 +122,7 @@ Click an image to open it at full size.
 
 | Monitoring and dryback | Measuring drain |
 |---|---|
-| [![Alarms, environmental factors, and dryback monitoring](docs/images/monitoring.png)](docs/images/monitoring.png) | [![Pulse control and manually recorded drain EC and pH](docs/images/mess-drain.png)](docs/images/mess-drain.png) |
+| [![Alarms, environmental diagnostics, and dryback monitoring](docs/images/monitoring.png)](docs/images/monitoring.png) | [![Pulse control and manually recorded drain EC and pH](docs/images/mess-drain.png)](docs/images/mess-drain.png) |
 
 ### Debug and live diagnostics
 
@@ -372,8 +373,8 @@ and automatic control.
 #### Observation sensors
 
 Input-water, climate, and PPFD sensors are optional. They support monitoring
-and the environmental factor. Missing observation sensors do not block core
-irrigation.
+and diagnostic environmental factors. They do not change the self-learning
+irrigation volume. Missing observation sensors do not block core irrigation.
 
 **Set Safe Mapping Basics** selects four plants, neutral plant names, and
 disables the optional water-level and circulation features. It deliberately
@@ -547,16 +548,16 @@ These values are conservative starting points for sensor-controlled irrigation
 in coco or rockwool. Pot size, substrate, drippers, climate, sensor position,
 and cultivar must be considered during calibration.
 
-| Internal stage | Volume factor | Start after lights on | Stop before lights off | Dryback target | Shot as substrate volume |
+| Internal stage | Start after lights on | Stop before lights off | Overnight/ramp-up dryback | Maintenance dryback | Shot as substrate volume |
 |---|---:|---:|---:|---:|---:|
-| `keimung` | 0.45 | 0 min | 120 min | 5% | 1.0% |
-| `steckling` | 0.70 | 0 min | 120 min | 5% | 1.5% |
-| `early_veg` | 0.90 | 30 min | 60 min | 8% | 2.0% |
-| `mid_veg` | 1.00 | 45 min | 90 min | 8% | 3.0% |
-| `late_veg` | 1.00 | 90 min | 150 min | 12% | 3.5% |
-| `early_flower` | 1.00 | 150 min | 210 min | 18% | 5.0% |
-| `mid_flower` | 1.00 | 90 min | 150 min | 12% | 3.5% |
-| `late_flower` | 0.90 | 120 min | 180 min | 18% | 4.0% |
+| `keimung` | 0 min | 120 min | 5% | 2.0% | 1.0% |
+| `steckling` | 0 min | 120 min | 5% | 2.0% | 1.5% |
+| `early_veg` | 30 min | 60 min | 8% | 2.5% | 2.0% |
+| `mid_veg` | 45 min | 90 min | 8% | 3.0% | 3.0% |
+| `late_veg` | 90 min | 150 min | 12% | 3.5% | 3.5% |
+| `early_flower` | 150 min | 210 min | 18% | 4.0% | 5.0% |
+| `mid_flower` | 90 min | 150 min | 12% | 3.0% | 3.5% |
+| `late_flower` | 120 min | 180 min | 18% | 4.0% | 4.0% |
 
 Additional crop defaults:
 
@@ -564,20 +565,40 @@ Additional crop defaults:
 |---|---:|
 | Substrate profile | `coco` |
 | Substrate volume | 10 l |
-| Ramp-up duration after irrigation start | 120 min |
 | Ramp-up shot factor | 60% |
 
-During `ramp_up`, the stage shot size—calculated from substrate volume and
-bounded by the global shot limits—is multiplied by the ramp-up factor. A base
-shot capped at 300 ml becomes 180 ml at 60%. The global minimum shot remains a
-hard lower bound. During `maintenance` and all other day phases, the effective
-factor is automatically 100%. The ramp-up factor only divides the same total
-recommendation into smaller shots; it does not increase the total
-recommendation or bypass safety limits.
+`ramp_up` no longer has a fixed duration. After its earliest start time, each
+plant waits until `stored peak − ramp-up dryback` is reached. The complete
+calculated water loss is then delivered as one full sequence. The ramp-up
+factor only reduces the size of individual shots: a 300 ml base shot becomes
+180 ml at 60%. The global minimum shot remains a hard lower bound. After a
+successful sequence and feedback, only that plant enters `maintenance`, where
+normal shot sizes and the stage-specific maintenance dryback apply. The
+**Set Maintenance Starting Values Only** button writes only the eight
+maintenance values in this table and leaves every other setting unchanged.
 
-The ranges are informed by published practical guides. They must still be
-adapted to the actual substrate and installation:
+“Full sequence” does not bypass safety limits: maximum normal irrigation still
+caps the recommendation. If the configured maximum shot count cannot hold the
+complete list, Shot EXEC blocks the start and reports
+`blockiert_zu_viele_shots`.
 
+The separation into ramp-up, maintenance, and overnight dryback follows a
+controlled cannabis study on precision irrigation. Its maintenance phase
+held stage-specific VWC target ranges, with more frequent irrigation during
+flower bulking. This is why the `mid_flower` maintenance dryback is narrower
+than the early- and late-flower values. Another controlled study found that
+water stress during flowering can reduce inflorescence biomass. The 2.0–4.0
+values are therefore deliberately mild **engineering starting values**, not
+scientifically validated SMT100 thresholds.
+
+Sensor scales and substrates are not directly interchangeable. The study used
+rockwool and different substrate sensors; this project has only been
+practically tested with the TRUEBNER SMT100. A 3% maintenance dryback here
+means that the mapped reading may fall by 3 **percentage points** from the
+most recently stored peak.
+
+- [Karnoutsos et al. 2026 – three-phase precision irrigation in medicinal cannabis](https://www.mdpi.com/2311-7524/12/5/619)
+- [Water Stress Effects on Biomass Allocation and Secondary Metabolism in Cannabis sativa](https://www.mdpi.com/2223-7747/14/8/1267)
 - [Grodan – Precision Irrigation in Cannabis (PDF)](https://www.grodan.com/siteassets/downloads/downloads-na-101/grow-guide-2023/precision-irrigation.pdf)
 - [AROYA – Drybacks 101](https://aroya.io/education-guides/drybacks-101)
 - [Botanicare – Irrigation Strategies for Coco Pro and Rockwool](https://www.botanicare.com/hydro-101/irrigation-strategies-cocopro-rockwool/)
@@ -589,6 +610,7 @@ adapted to the actual substrate and installation:
 | Manual test irrigation | 100 ml |
 | Valve pre-run | 1 s |
 | Valve post-run | 1 s |
+| Maximum actuator confirmation time | 8 s |
 | Automatic check interval | 5 min |
 | Minimum pause per plant | 45 min |
 | Circulation interval | 180 min |
@@ -596,7 +618,7 @@ adapted to the actual substrate and installation:
 | Pre-irrigation circulation duration | 60 s |
 | Minimum pre-irrigation circulation pause | 30 min |
 
-### Monitoring and environmental factor
+### Monitoring and environmental diagnostics
 
 | Parameter | Default |
 |---|---:|
@@ -604,7 +626,7 @@ adapted to the actual substrate and installation:
 | Climate influence | 0% |
 | Light influence | 0% |
 | Input-water influence | 0% |
-| Maximum combined environmental correction | 10% |
+| Maximum diagnostic correction | 10% |
 | VPD reference | 1.2 kPa |
 | PPFD reference | 600 µmol/m²/s |
 | DLI reference | 35 mol/m² |
@@ -612,9 +634,10 @@ adapted to the actual substrate and installation:
 | Input-water pH reference | 5.8 |
 | Input-water temperature reference | 20 °C |
 
-All three environmental influences deliberately begin at 0%. Observe the raw
-factors for several days before applying any influence. Increase them in small
-steps and retain maximum-irrigation and daily-volume limits as hard bounds.
+All three environmental influences begin at 0%. Their raw and effective
+factors are retained as diagnostic and simulation values. They do not alter
+self-learning irrigation volume, which is calculated only from peak loss and
+the learned ml/% value. The helpers remain for compatibility.
 
 ### Calibrate pump output
 
@@ -851,10 +874,10 @@ off.
 
 Each internal stage has a fully editable recipe:
 
-- total-volume factor;
 - earliest start in minutes after lights on;
 - final irrigation time in minutes before lights off;
-- desired dryback in moisture percentage points;
+- desired overnight/ramp-up dryback as a direct moisture difference;
+- a separate maintenance dryback as a direct moisture difference;
 - shot size as a percentage of substrate volume.
 
 **Custom Parameters** determines whether dashboard values are used. If it
@@ -864,20 +887,30 @@ irrigation.
 
 #### Dryback and irrigation threshold
 
-The dryback target directly changes the normal-irrigation threshold:
+Each plant uses its own most recently measured successful peak. Dryback is
+subtracted as a direct difference and does not require relative conversion:
 
 ```text
-irrigation threshold =
-  max(moisture minimum, moisture target - dryback target)
+ramp-up trigger =
+  max(moisture minimum, stored peak - ramp-up dryback)
+
+maintenance trigger =
+  max(moisture minimum, stored peak - maintenance dryback)
 ```
 
-Example: target 31%, minimum 19%, and dryback 8% produce a normal-irrigation
-threshold of 23%. A dryback target of 18% would mathematically produce 13%,
-but the hard minimum clamps the threshold to 19%.
+Example: a stored peak of 32%, dryback of 5%, and minimum of 19% produce a
+trigger of 27%; ramp-up is released at 27% or below. A dryback of 18% would
+mathematically produce 14%, so the hard minimum clamps the trigger to 19%.
 
 The global moisture minimum is therefore a hard lower bound for normal crop
 steering. `kritisch_trocken` only begins below **minimum minus emergency
 threshold**. A crop recipe cannot lower this emergency logic.
+
+Until a successful peak is available, the configured **Moisture Target** is
+used as the peak fallback.
+The maintenance dryback may not exceed the active recipe's overnight dryback;
+otherwise Settings Status reports
+`fehler_maintenance_groesser_overnight`.
 
 > [!IMPORTANT]
 > Capacitive moisture-sensor percentages are not standardized volumetric water
@@ -906,20 +939,36 @@ constraints.
 `erde`, or `benutzerdefiniert`). It does not silently change values; the
 actual recipe remains visible and editable.
 
-#### Day phases
+#### Plant phases and complete sequences
 
-The active recipe and light times produce:
+The global day phase only defines the safe irrigation window. Within that
+window, every plant advances independently:
 
-- `morgen_dryback`: before the stage-specific start;
-- `ramp_up`: from the start until the configured ramp-up duration ends;
-- `maintenance`: the regular irrigation window;
-- `overnight_dryback`: within the stage-specific stop period before lights
-  off;
+- `warte_licht`: earliest start time has not been reached;
+- `warte_dryback`: start time reached, dryback not yet reached;
+- `ramp_up`: dryback reached; complete sequence with smaller shots;
+- `maintenance`: ramp-up and feedback completed successfully;
+- `overnight_dryback`: stop time before lights off reached;
 - `nacht`: lights off.
 
-Normal automatic irrigation is restricted or blocked during night and dryback
-phases. Critical emergency irrigation may remain possible if the other safety
-checks pass.
+Ramp-up restores the water loss to the stored peak:
+
+```text
+deficit = stored peak - current moisture
+total volume = deficit × learned ml per percentage point
+```
+
+The shot plan divides that total into smaller ramp-up shots, and Shot EXEC
+runs the complete list. Only after successful feedback is the stabilized
+reading stored as the new peak and **Ramp-Up Complete** set. Abort, alarm, or
+hardware failure does not perform this transition. Maintenance uses the same
+loss calculation with normal shots and the smaller maintenance dryback.
+
+At the next transition to lights on, ramp-up completion is reset exactly once
+per light day for every plant. A stored light-day key prevents a Home
+Assistant restart during the light period from repeating the same reset.
+Critical emergency irrigation may remain possible if all other safety checks
+pass.
 
 If start delay plus stop-before-lights-off is at least as long as the light
 period, settings status becomes `fehler_keine_bewaesserungszeit` and automatic
@@ -932,15 +981,15 @@ The Monitoring page contains:
 - alarm state and latest alarm reason;
 - age of active plant sensors;
 - climate, light, and input-water sensor status;
-- raw and effective environmental factors;
+- diagnostic raw and effective factors;
 - VPD, PPFD, and DLI;
 - input-water EC, pH, and temperature;
 - one-hour and overnight dryback;
 - history graphs.
 
-Monitoring dryback values show measured development. The stage-specific
-dryback target additionally controls the normal-irrigation threshold but does
-not change the hard emergency threshold.
+Monitoring dryback values show measured development. Ramp-up dryback and
+maintenance dryback control the corresponding normal-irrigation thresholds
+but do not change the hard emergency threshold.
 
 ### Debug
 
@@ -974,13 +1023,11 @@ plant, emergency logic can take priority.
 In simplified form:
 
 ```text
-moisture deficit = max(0, target - current moisture)
+moisture deficit = max(0, stored peak - current moisture)
 
 recommendation =
   moisture deficit
   × ml per percentage point
-  × crop factor
-  × environmental factor
 ```
 
 Minimum irrigation and maximum normal-irrigation volume then clamp the
@@ -999,13 +1046,16 @@ A plant only receives automatic permission if, among other requirements:
 - the minimum pause since the last automatic start has expired;
 - recommendation and daily limit allow the process.
 
-Selection order is fixed:
+Selection is based on urgency:
 
-1. emergency irrigation P1 through P4;
-2. normal demand P1 through P4.
+1. eligible plants requiring emergency irrigation first;
+2. then the largest positive difference calculated as
+   `individual irrigation threshold - current moisture`;
+3. the lower plant number if priorities are equal.
 
-Plants are not sorted by dryness. The controller evaluates again after each
-completed process.
+This makes the selection account for the plant-specific peak and the active
+ramp-up or maintenance threshold. Priority is recalculated from current states
+after every completed process.
 
 ### Mutual exclusion
 
@@ -1079,8 +1129,11 @@ Possible status groups include:
 
 A general critical fault that persists for two minutes latches the alarm.
 During an active water process, unsafe water level and contradictory actuator
-states trigger the alarm and safe stop after approximately two seconds.
-Failure to switch a pump or valve on or off in EXEC latches immediately.
+states trigger the alarm and safe stop after approximately two seconds. For
+slow-reporting Wi-Fi actuators, EXEC waits no longer than the configurable
+actuator confirmation time when opening a valve and after switching the pump
+off. A missing confirmation then latches immediately. A delayed pump `on`
+report does not extend the calculated dosing time.
 
 ### Alarm status
 
@@ -1196,19 +1249,22 @@ Additional diagnostic views:
 - Volume is inferred from runtime; there is no flow-meter feedback.
 - Pumps and valves must be exposed as `switch.*`.
 - Only one water process can run at a time.
-- Automatic priority is fixed: emergency P1–P4, then normal demand P1–P4.
+- Automatic control prioritizes emergency demand and then the largest
+  exceedance of the individual irrigation threshold. Its order therefore
+  depends on accurate and current moisture readings.
 - Crop rules, plant pause, and daily limit are automatic permissions. The
   operator must check them before manual normal or shot starts.
 - Plant count exists as a helper but is not displayed as an input in the
   supplied dashboard.
 - External software must expose stage and light times as Home Assistant entity
   states or attributes. The controller does not call external network APIs.
-- Dryback is derived from the difference between target and normal-irrigation
-  threshold, is limited by the global safety minimum, and is only as accurate
-  as the installed moisture sensor.
+- Ramp-up and maintenance dryback are subtracted as direct moisture
+  differences from each plant's stored peak. The resulting trigger is clamped
+  by the global safety minimum and is only as accurate as the installed
+  moisture sensor.
 - Manual drain EC and pH values are not automatically used for control.
-- The environmental factor has no effect until an influence is deliberately
-  set above 0%.
+- Crop-factor and environmental-factor helpers remain for compatibility, but
+  they are used for diagnostics only and do not alter irrigation volume.
 - Stage-specific shot size is clamped by global shot minimum and maximum.
   Small remainders are distributed evenly, so no individual shot exceeds the
   hard maximum.

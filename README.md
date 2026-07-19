@@ -58,7 +58,6 @@ flowchart LR
     A[Bodenfeuchte und Temperatur] --> B[Mapping]
     B --> C[Profil und Lernwert]
     D[Crop-Steering] --> E[Mengenempfehlung]
-    F[Optionaler Umweltfaktor] --> E
     C --> E
     E --> G[Shot-Plan]
     G --> H[Shot EXEC]
@@ -76,7 +75,7 @@ Die abgegebene Wassermenge wird zeitbasiert berechnet:
 Pumpenlaufzeit in Sekunden = gewünschte Menge in ml / Pumpenleistung in ml/s
 ```
 
-Ein Durchflussmesser ist nicht erforderlich, aber die Pumpenleistung muss sorgfältig kalibriert werden. Das System prüft nach einem Schaltbefehl, ob Pumpe und Ventile den erwarteten Zustand melden. Es kann jedoch keine verstopfte Leitung, gelöste Schlauchverbindung oder tatsächlich geflossene Wassermenge erkennen.
+Ein Durchflussmesser ist nicht erforderlich, aber die Pumpenleistung muss sorgfältig kalibriert werden. Die Pumpenlaufzeit beginnt direkt mit dem Einschaltbefehl und wird daher nicht durch eine verspätete WLAN-Zustandsanzeige verlängert. Nach dem Ausschaltbefehl wartet das System bis zur einstellbaren Aktor-Bestätigungszeit auf eine neue `off`-Rückmeldung. Es kann jedoch keine verstopfte Leitung, gelöste Schlauchverbindung oder tatsächlich geflossene Wassermenge erkennen.
 
 ## Screenshots
 
@@ -104,7 +103,7 @@ Die Bilder zeigen die wichtigsten Bereiche des mitgelieferten Home-Assistant-Das
 
 | Monitoring und Dryback | Mess-Drain |
 |---|---|
-| [![Monitoring mit Alarmen, Umweltfaktoren und Dryback](docs/images/monitoring.png)](docs/images/monitoring.png) | [![Mess-Drain mit Pulssteuerung und manuellen EC- und pH-Werten](docs/images/mess-drain.png)](docs/images/mess-drain.png) |
+| [![Monitoring mit Alarmen, Umweltdiagnose und Dryback](docs/images/monitoring.png)](docs/images/monitoring.png) | [![Mess-Drain mit Pulssteuerung und manuellen EC- und pH-Werten](docs/images/mess-drain.png)](docs/images/mess-drain.png) |
 
 ### Debug und Live-Diagnose
 
@@ -348,7 +347,10 @@ Automatik berücksichtigt.
 
 #### Beobachtungssensoren
 
-Zulauf-, Klima- und PPFD-Sensoren sind optional. Sie werden für Monitoring und den Umweltfaktor verwendet. Nicht konfigurierte Beobachtungssensoren blockieren die Kernbewässerung nicht.
+Zulauf-, Klima- und PPFD-Sensoren sind optional. Sie werden für Monitoring und
+die diagnostischen Umweltfaktoren verwendet. Die selbstlernende
+Bewässerungsmenge wird davon nicht verändert. Nicht konfigurierte
+Beobachtungssensoren blockieren die Kernbewässerung nicht.
 
 Das Skript **Sichere Mapping-Grundwerte setzen** setzt vier Pflanzen, neutrale
 Pflanzennamen und schaltet die optionalen Funktionen Wasserstand und
@@ -510,16 +512,16 @@ Die Schaltflächen **Standardwerte setzen** schreiben die folgenden Startwerte. 
 
 Die folgenden Werte sind konservative Ausgangspunkte für sensorgestützte Bewässerung in Coco oder Steinwolle. Sie sind keine universelle Garantie. Topfgröße, Substrat, Tropfer, Klima, Sensorposition und Genetik müssen bei der Kalibrierung berücksichtigt werden.
 
-| Interne Phase | Mengenfaktor | Start nach Licht an | Stop vor Licht aus | Dryback-Ziel | Shot vom Substratvolumen |
+| Interne Phase | Start nach Licht an | Stop vor Licht aus | Overnight-/Ramp-up-Dryback | Maintenance-Dryback | Shot vom Substratvolumen |
 |---|---:|---:|---:|---:|---:|
-| `keimung` | 0,45 | 0 min | 120 min | 5 % | 1,0 % |
-| `steckling` | 0,70 | 0 min | 120 min | 5 % | 1,5 % |
-| `early_veg` | 0,90 | 30 min | 60 min | 8 % | 2,0 % |
-| `mid_veg` | 1,00 | 45 min | 90 min | 8 % | 3,0 % |
-| `late_veg` | 1,00 | 90 min | 150 min | 12 % | 3,5 % |
-| `early_flower` | 1,00 | 150 min | 210 min | 18 % | 5,0 % |
-| `mid_flower` | 1,00 | 90 min | 150 min | 12 % | 3,5 % |
-| `late_flower` | 0,90 | 120 min | 180 min | 18 % | 4,0 % |
+| `keimung` | 0 min | 120 min | 5 % | 2,0 % | 1,0 % |
+| `steckling` | 0 min | 120 min | 5 % | 2,0 % | 1,5 % |
+| `early_veg` | 30 min | 60 min | 8 % | 2,5 % | 2,0 % |
+| `mid_veg` | 45 min | 90 min | 8 % | 3,0 % | 3,0 % |
+| `late_veg` | 90 min | 150 min | 12 % | 3,5 % | 3,5 % |
+| `early_flower` | 150 min | 210 min | 18 % | 4,0 % | 5,0 % |
+| `mid_flower` | 90 min | 150 min | 12 % | 3,0 % | 3,5 % |
+| `late_flower` | 120 min | 180 min | 18 % | 4,0 % | 4,0 % |
 
 Weitere Crop-Standardwerte:
 
@@ -527,20 +529,44 @@ Weitere Crop-Standardwerte:
 |---|---:|
 | Substratprofil | `coco` |
 | Substratvolumen | 10 l |
-| Ramp-up-Dauer nach Bewässerungsstart | 120 min |
 | Ramp-up Shot-Faktor | 60 % |
 
-Während `ramp_up` wird die durch Stage, Substratvolumen und globale
-Shot-Grenzen bestimmte Basis-Shot-Größe mit dem Ramp-up-Faktor reduziert.
-Aus einem auf 300 ml begrenzten Basis-Shot werden bei 60 % beispielsweise
-180 ml. Das globale Shot-Minimum bleibt als Untergrenze aktiv. In
-`maintenance` und allen anderen Tagesphasen beträgt der effektive Faktor
-automatisch 100 %. Der Faktor verändert nur die Aufteilung in kleinere
-Shots; die berechnete Gesamt-Empfehlung und die Sicherheitslimits bleiben
+`ramp_up` besitzt keine feste Zeitdauer mehr. Jede Pflanze wartet nach ihrer
+frühesten Startzeit auf `gespeicherter Peak − Ramp-up-Dryback`. Danach wird
+der gesamte berechnete Wasserverlust als vollständige Sequenz ausgeführt.
+Der Ramp-up-Faktor verkleinert dabei nur die einzelnen Shots: Aus einem
+Basis-Shot von 300 ml werden bei 60 % beispielsweise 180 ml. Das globale
+Shot-Minimum bleibt als Untergrenze aktiv. Nach erfolgreicher Sequenz und
+Feedback wechselt nur diese Pflanze zu `maintenance`; dort gelten normale
+Shots und der phasenspezifische Maintenance-Dryback. Der Button
+**Nur Maintenance-Startwerte setzen** schreibt ausschließlich die acht
+Maintenance-Werte aus der Tabelle und lässt alle übrigen Einstellungen
 unverändert.
 
-Die Größenordnungen orientieren sich an publizierten Praxisleitfäden: Grodan nennt je nach Strategie ungefähr 1–6 % Shot-Größe relativ zum Substratvolumen sowie spätere Start- und frühere Stopzeiten für generatives Steering. AROYA beschreibt kleinere Drybacks für vegetatives und größere Drybacks für generatives Steering. Das konkrete Substrat bleibt entscheidend; ein Vergleich von Botanicare zeigte unterschiedliche Ergebnisse von Einzel- und Mehrfachpulsen in Coco und Steinwolle.
+„Vollständige Sequenz“ hebt keine Sicherheitsgrenze auf: Der Maximalguss
+begrenzt weiterhin die berechnete Empfehlung. Reicht die konfigurierte
+maximale Shot-Anzahl für die vollständige Liste nicht aus, blockiert Shot-EXEC
+den Start und meldet `blockiert_zu_viele_shots`.
 
+Die Aufteilung in Ramp-up, Maintenance und nächtlichen Dryback entspricht der
+in einer kontrollierten Cannabis-Studie beschriebenen Präzisionsbewässerung.
+Dort wurden in der Maintenance-Phase die VWC-Zielbereiche gehalten und in der
+Bulking-Phase häufiger bewässert. Deshalb ist der Maintenance-Dryback für
+`mid_flower` enger als für `early_flower` und `late_flower`. Eine weitere
+kontrollierte Studie zeigt, dass Wasserstress in der Blüte die
+Infloreszenzmasse verringern kann. Die Werte 2,0–4,0 sind daher bewusst milde
+**technische Startwerte**, keine wissenschaftlich validierten Grenzwerte für
+den SMT100.
+
+Die Prozentwerte verschiedener Sensoren und Substrate sind nicht direkt
+vergleichbar. Die Studie arbeitete mit Steinwolle und anderen
+Substratsensoren; das vorliegende Projekt wurde praktisch nur mit dem
+TRUEBNER SMT100 getestet. Ein Maintenance-Dryback von 3 % bedeutet hier:
+Der gemappte Messwert darf vom zuletzt gespeicherten Peak um 3
+**Prozentpunkte** fallen.
+
+- [Karnoutsos et al. 2026 – dreiphasige Präzisionsbewässerung bei medizinischem Cannabis](https://www.mdpi.com/2311-7524/12/5/619)
+- [Water Stress Effects on Biomass Allocation and Secondary Metabolism in Cannabis sativa](https://www.mdpi.com/2223-7747/14/8/1267)
 - [Grodan – Precision Irrigation in Cannabis (PDF)](https://www.grodan.com/siteassets/downloads/downloads-na-101/grow-guide-2023/precision-irrigation.pdf)
 - [AROYA – Drybacks 101](https://aroya.io/education-guides/drybacks-101)
 - [Botanicare – Irrigation Strategies for Coco Pro and Rockwool](https://www.botanicare.com/hydro-101/irrigation-strategies-cocopro-rockwool/)
@@ -552,6 +578,7 @@ Die Größenordnungen orientieren sich an publizierten Praxisleitfäden: Grodan 
 | Manueller Testguss | 100 ml |
 | Ventil-Vorlauf | 1 s |
 | Ventil-Nachlauf | 1 s |
+| Maximale Aktor-Bestätigungszeit | 8 s |
 | Auto-Check-Intervall | 5 min |
 | Mindestpause je Pflanze | 45 min |
 | Umwälzintervall | 180 min |
@@ -559,7 +586,7 @@ Die Größenordnungen orientieren sich an publizierten Praxisleitfäden: Grodan 
 | Pre-Guss-Umwälzdauer | 60 s |
 | Mindestpause Pre-Guss | 30 min |
 
-### Monitoring und Umweltfaktor
+### Monitoring und Umweltdiagnose
 
 | Parameter | Standardwert |
 |---|---:|
@@ -567,7 +594,7 @@ Die Größenordnungen orientieren sich an publizierten Praxisleitfäden: Grodan 
 | Klimaeinfluss | 0 % |
 | Lichteinfluss | 0 % |
 | Zulaufeinfluss | 0 % |
-| Maximale gesamte Umweltkorrektur | 10 % |
+| Maximale Diagnosekorrektur | 10 % |
 | VPD-Referenz | 1,2 kPa |
 | PPFD-Referenz | 600 µmol/m²/s |
 | DLI-Referenz | 35 mol/m² |
@@ -575,7 +602,11 @@ Die Größenordnungen orientieren sich an publizierten Praxisleitfäden: Grodan 
 | Zulauf-pH-Referenz | 5,8 |
 | Zulauftemperatur-Referenz | 20 °C |
 
-Die drei Umwelteinflüsse beginnen absichtlich bei 0 %. Beobachte die Rohfaktoren zunächst über mehrere Tage. Erhöhe Einflüsse nur in kleinen Schritten und behalte Maximalguss und Tageslimit als harte Grenzen bei.
+Die drei Umwelteinflüsse beginnen bei 0 %. Die daraus berechneten Roh- und
+Effektivfaktoren sind Diagnose- und Simulationswerte. Sie verändern die
+selbstlernende Bewässerungsmenge nicht; diese wird ausschließlich aus
+Peak-Verlust und ml/%-Lernwert bestimmt. Die Helfer bleiben aus
+Kompatibilitätsgründen erhalten.
 
 ### Pumpenleistung kalibrieren
 
@@ -782,26 +813,41 @@ Diese Seiten sind Konfigurationsseiten, keine tägliche Bedienung. Änderungen a
 
 Für jede interne Phase gibt es ein vollständig editierbares Rezept:
 
-- Mengenfaktor für die berechnete Gesamtmenge,
 - frühester Bewässerungsstart in Minuten nach Licht an,
 - letzter Bewässerungszeitpunkt in Minuten vor Licht aus,
-- gewünschter Dryback in Feuchte-Prozentpunkten,
+- gewünschter Overnight-/Ramp-up-Dryback als direkte Feuchtedifferenz,
+- eigener Maintenance-Dryback als direkte Feuchtedifferenz,
 - Shot-Größe als Prozent des Substratvolumens.
 
 Der Schalter **Individuelle Parameter** bestimmt, ob die Dashboardwerte verwendet werden. Ist er aus oder meldet **Einstellungen Status** einen Fehler, werden die dokumentierten Standardwerte verwendet. Ein unbekannter oder nicht eindeutig gemappter Pflanzenstatus blockiert weiterhin die Automatik.
 
 #### Dryback und Gießschwelle
 
-Das Dryback-Ziel wird direkt in die normale Gießentscheidung einbezogen:
+Jede Pflanze verwendet ihren eigenen zuletzt erfolgreich gemessenen Peak.
+Die Dryback-Zahl wird als direkte Differenz abgezogen und muss nicht relativ
+umgerechnet werden:
 
 ```text
-Gießschwelle =
-  max(Bodenfeuchte Minimum, Bodenfeuchte Ziel - Dryback-Ziel)
+Ramp-up-Startwert =
+  max(Bodenfeuchte Minimum, letzter Peak - Ramp-up-Dryback)
+
+Maintenance-Startwert =
+  max(Bodenfeuchte Minimum, letzter Peak - Maintenance-Dryback)
 ```
 
-Beispiel: Ziel 31 %, Minimum 19 %, Dryback 8 % ergibt eine normale Gießschwelle von 23 %. Ein Dryback von 18 % würde rechnerisch 13 % ergeben, wird aber durch das Sicherheitsminimum auf 19 % begrenzt.
+Beispiel: Ein gespeicherter Peak von 32 %, ein Dryback von 5 % und ein
+Minimum von 19 % ergeben einen Startwert von 27 %; bei 27 % oder darunter
+wird der Ramp-up freigegeben. Ein Dryback von 18 %
+würde rechnerisch 14 % ergeben und wird deshalb auf das Sicherheitsminimum
+von 19 % angehoben.
 
 Der globale Wert **Bodenfeuchte Minimum** ist damit eine harte Untergrenze für das normale Crop-Steering. `kritisch_trocken` wird weiterhin erst unter **Minimum minus Notguss-Schwelle** ausgelöst. Das Dryback-Rezept darf diese Notfalllogik nicht absenken.
+
+Solange noch kein erfolgreicher Peak gespeichert wurde, wird das konfigurierte
+**Bodenfeuchte Ziel** als Startwert für die Rechnung verwendet.
+Der Maintenance-Dryback darf nicht größer als der Overnight-Dryback der
+aktiven Rezeptur sein; andernfalls meldet der Einstellungsstatus
+`fehler_maintenance_groesser_overnight`.
 
 > [!IMPORTANT]
 > Die Prozentwerte kapazitiver Feuchtesensoren sind keine genormten Wassergehalte. Kalibriere Ziel, Minimum und Dryback anhand des tatsächlich verwendeten Sensors und Substrats. Verändere Dryback-Ziele schrittweise und beobachte mindestens mehrere vollständige Lichtzyklen.
@@ -822,17 +868,40 @@ Bei 10 Litern Substrat entsprechen 3 % beispielsweise 300 ml. Das Ergebnis wird 
 
 Das Feld **Substratprofil** kennzeichnet die verwendete Grundlage (`coco`, `steinwolle`, `erde` oder `benutzerdefiniert`). Es verändert keine Werte heimlich; die tatsächlichen Rezeptwerte bleiben im Dashboard sichtbar und einzeln editierbar.
 
-#### Tagesphasen
+#### Pflanzenphasen und vollständige Sequenzen
 
-Aus aktivem Rezept und Lichtzeiten entstehen:
+Die globale Tagesphase stellt nur das sichere Bewässerungsfenster bereit.
+Innerhalb dieses Fensters arbeitet jede Pflanze unabhängig:
 
-- `morgen_dryback`: vor dem phasenspezifischen Start,
-- `ramp_up`: vom Start bis zum Ende der einstellbaren Ramp-up-Dauer,
-- `maintenance`: reguläres Bewässerungsfenster,
-- `overnight_dryback`: innerhalb der phasenspezifischen Stopzeit vor Licht aus,
+- `warte_licht`: früheste Startzeit noch nicht erreicht,
+- `warte_dryback`: Startzeit erreicht, Dryback noch nicht erreicht,
+- `ramp_up`: Dryback erreicht; vollständige Sequenz mit kleineren Shots,
+- `maintenance`: Ramp-up und Feedback erfolgreich abgeschlossen,
+- `overnight_dryback`: Stopzeit vor Licht aus erreicht,
 - `nacht`: Licht aus.
 
-In Nacht- und Dryback-Phasen wird normaler automatischer Guss eingeschränkt oder gesperrt. Kritische Notgüsse bleiben abhängig von den übrigen Sicherheitsprüfungen möglich. Wenn Start plus Stop mindestens so lang wie die Lichtdauer ist, meldet der Einstellungsstatus `fehler_keine_bewaesserungszeit` und automatische Normalgüsse werden blockiert.
+Der Ramp-up gleicht den Wasserverlust bis zum gespeicherten Peak aus:
+
+```text
+Defizit = gespeicherter Peak - aktuelle Feuchte
+Gesamtmenge = Defizit × gelernte ml pro Prozent
+```
+
+Der Shot-Plan teilt diese Gesamtmenge in kleinere Ramp-up-Shots und Shot-EXEC
+führt die komplette Liste aus. Erst nach erfolgreichem Feedback wird der
+stabilisierte Messwert als neuer Peak gespeichert und
+`Ramp-up abgeschlossen` gesetzt. Bei Abbruch, Alarm oder Hardwarefehler
+erfolgt dieser Übergang nicht. In Maintenance wird dieselbe Verlustrechnung
+mit normalen Shots und dem kleineren Maintenance-Dryback verwendet.
+
+Beim nächsten Wechsel auf Licht an werden die Ramp-up-Abschlüsse aller
+Pflanzen genau einmal je Lichttag zurückgesetzt. Ein gespeicherter
+Lichttag-Schlüssel verhindert, dass ein Home-Assistant-Neustart während der
+Lichtphase denselben Reset erneut ausführt. Kritische Notgüsse bleiben
+abhängig von den übrigen Sicherheitsprüfungen möglich. Wenn Start plus Stop
+mindestens so lang wie die Lichtdauer ist, meldet der Einstellungsstatus
+`fehler_keine_bewaesserungszeit` und automatische Normalgüsse werden
+blockiert.
 
 ### Monitoring
 
@@ -841,13 +910,15 @@ Die Monitoring-Seite enthält:
 - Alarmzustand und letzten Alarmgrund,
 - Alter der aktiven Pflanzensensoren,
 - Klima-, Licht- und Zulaufsensorstatus,
-- Roh- und Effektivwerte des Umweltfaktors,
+- diagnostische Roh- und Effektivfaktoren,
 - VPD, PPFD und DLI,
 - Zulauf-EC, pH und Temperatur,
 - 1-Stunden- und Nacht-Dryback,
 - Verlaufsdiagramme.
 
-Die Monitoring-Drybacks zeigen die gemessene Entwicklung. Das phasenspezifische Dryback-Ziel steuert zusätzlich die normale Gießschwelle; es verändert nicht die harte Notfallgrenze.
+Die Monitoring-Drybacks zeigen die gemessene Entwicklung. Ramp-up-Dryback und
+Maintenance-Dryback steuern die jeweilige normale Gießschwelle; sie verändern
+nicht die harte Notfallgrenze.
 
 ### Debug
 
@@ -877,13 +948,11 @@ Ein kritischer Temperaturzustand blockiert einen normalen Guss. Bei kritisch tro
 Vereinfacht gilt:
 
 ```text
-Feuchtedefizit = max(0, Ziel - aktuelle Bodenfeuchte)
+Feuchtedefizit = max(0, gespeicherter Peak - aktuelle Bodenfeuchte)
 
 Empfehlung =
   Feuchtedefizit
   × ml pro Prozent
-  × Crop-Faktor
-  × Umweltfaktor
 ```
 
 Anschließend begrenzen Mindestguss und Maximalmenge pro Normalguss die Empfehlung. Das Tageslimit wird zusätzlich bei der automatischen Pflanzenfreigabe geprüft. Manuelle Starts umgehen diese Auto-Prüfung. Solange noch kein gültiger Lernwert vorhanden ist, wird der konfigurierte Startwert in ml/% verwendet.
@@ -899,12 +968,16 @@ Eine Pflanze ist nur automatisch freigegeben, wenn unter anderem:
 - die Mindestpause seit dem letzten Auto-Start abgelaufen ist,
 - Empfehlung und Tageslimit den Lauf erlauben.
 
-Die Auswahl erfolgt in dieser Reihenfolge:
+Die Auswahl erfolgt nach Dringlichkeit:
 
-1. Notguss P1 bis P4,
-2. normaler Bedarf P1 bis P4.
+1. freigegebene Pflanzen mit Notgussbedarf zuerst,
+2. danach die größte positive Differenz aus
+   `individuelle Gießschwelle − aktuelle Feuchte`,
+3. bei identischer Priorität die kleinere Pflanzennummer.
 
-Damit ist die Priorität fest und nicht nach Trockenheitsgrad sortiert. Nach einem Lauf wird erneut geprüft.
+Damit berücksichtigt die Auswahl den pflanzenspezifischen Peak und die jeweils
+gültige Ramp-up- oder Maintenance-Schwelle. Nach jedem Lauf wird die
+Priorität mit den aktuellen Zuständen neu berechnet.
 
 ### Parallelität
 
@@ -971,8 +1044,11 @@ Mögliche Statusgruppen:
 Bleibt ein allgemeiner kritischer Fehler zwei Minuten bestehen, wird der Alarm
 verriegelt. Unsicherer Wasserstand während eines Wasserprozesses und
 widersprüchliche Aktorzustände führen bereits nach etwa zwei Sekunden zum
-Alarm und sicheren Stopp. Schlägt das Ein- oder Ausschalten von Pumpe oder
-Ventil im EXEC fehl, wird sofort verriegelt.
+Alarm und sicheren Stopp. Für verzögert meldende WLAN-Aktoren wartet EXEC
+beim Öffnen eines Ventils und nach dem Abschalten der Pumpe höchstens die
+einstellbare Aktor-Bestätigungszeit. Fehlt danach die erwartete Rückmeldung,
+wird sofort verriegelt. Eine verspätete `on`-Anzeige der Pumpe verlängert die
+berechnete Dosierzeit nicht.
 
 ### Alarmstatus
 
@@ -1085,12 +1161,19 @@ Zusätzliche Diagnosemöglichkeiten:
 - Die Wassermenge wird aus der Laufzeit berechnet; es gibt keine Rückmeldung eines Durchflussmessers.
 - Pumpen und Ventile müssen als `switch.*` vorliegen.
 - Nur ein Wasserprozess kann gleichzeitig laufen.
-- Die Priorität der Automatik ist fest: Notguss P1 bis P4, danach Normalbedarf P1 bis P4.
+- Die Automatik priorisiert Notguss und danach die größte Überschreitung der
+  individuellen Gießschwelle. Die Reihenfolge ist deshalb von der Genauigkeit
+  und Aktualität der Feuchtesensoren abhängig.
 - Crop-Regel, Mindestpause und Tageslimit gelten als Auto-Freigaben. Manuelle Normal- und Shot-Starts müssen vom Bediener entsprechend geprüft werden.
 - Externe Software muss ihre Stage und Lichtzeiten als Home-Assistant-Zustand oder -Attribut bereitstellen; direkte Netzwerk-APIs werden nicht selbst abgefragt.
-- Das Dryback-Ziel wird aus der Differenz zwischen Ziel und normaler Gießschwelle abgeleitet. Es ist nur so genau wie der Feuchtesensor und wird durch das globale Sicherheitsminimum begrenzt.
+- Ramp-up- und Maintenance-Dryback werden als direkte Feuchtedifferenz vom
+  pflanzenspezifisch gespeicherten Peak abgezogen. Die daraus entstehende
+  Gießschwelle wird durch das globale Sicherheitsminimum begrenzt und ist nur
+  so genau wie der Feuchtesensor.
 - Manuelle Drain-EC- und pH-Werte werden nicht automatisch geregelt.
-- Der Umweltfaktor ist standardmäßig wirkungslos, bis seine Einflüsse bewusst größer als 0 % gesetzt werden.
+- Crop-Faktor- und Umweltfaktor-Helfer bleiben aus Kompatibilitätsgründen
+  erhalten, werden aber nur diagnostisch verwendet und verändern die
+  Bewässerungsmenge nicht.
 - Die phasenspezifische Shot-Zielgröße wird durch `Shot Minimum` und
   `Shot Maximum` begrenzt. Kleine Restmengen werden gleichmäßig verteilt,
   sodass kein einzelner Shot das harte Maximum überschreitet.

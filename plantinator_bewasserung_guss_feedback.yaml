@@ -804,6 +804,53 @@ script:
                 data:
                   datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
 
+      # Den stabilisierten Wert nur für automatisch gestartete Crop-Sequenzen
+      # mit messbarer Feuchtereaktion als neuen Peak übernehmen. Ein gültiger
+      # Sensorwert allein reicht nicht: Ohne Mindestanstieg bleibt Ramp-up
+      # offen und wird nicht fälschlich als erfolgreich abgeschlossen.
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ states('input_text.plantinator_bewasserung_crop_p' ~ p ~ '_letzter_sequenztyp')
+                     in ['ramp_up', 'maintenance']
+                     and (
+                       (feuchte | float(0))
+                       - (
+                         states(
+                           'input_number.plantinator_bewasserung_p'
+                           ~ p ~ '_feuchte_vor_guss'
+                         ) | float(0)
+                       )
+                     ) >= (min_anstieg | float(0))
+                     and (
+                       states(
+                         'input_number.plantinator_bewasserung_p'
+                         ~ p ~ '_letzter_normalguss_ml'
+                       ) | float(0)
+                     ) > 0 }}
+            sequence:
+              - service: input_number.set_value
+                target:
+                  entity_id: "input_number.plantinator_bewasserung_crop_p{{ p }}_letzter_peak_prozent"
+                data:
+                  value: "{{ feuchte | round(1) }}"
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: >
+                          {{ is_state('input_text.plantinator_bewasserung_crop_p' ~ p ~ '_letzter_sequenztyp', 'ramp_up') }}
+                    sequence:
+                      - service: input_boolean.turn_on
+                        target:
+                          entity_id: "input_boolean.plantinator_bewasserung_crop_p{{ p }}_ramp_up_abgeschlossen"
+
+      - service: input_text.set_value
+        target:
+          entity_id: "input_text.plantinator_bewasserung_crop_p{{ p }}_letzter_sequenztyp"
+        data:
+          value: keiner
+
       - service: input_boolean.turn_off
         target:
           entity_id: "input_boolean.plantinator_bewasserung_p{{ p }}_feedback_ausstehend"
