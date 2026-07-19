@@ -1,20 +1,20 @@
 ############################################################
 # PLANTINATOR BEWASSERUNG - SHOT PLAN V3
-# Datei: plantinator_bewasserung_shot_plan_v3.yaml
+# Datei: plantinator_shot_plan.yaml
 #
 # Zweck:
 # - Zerlegt die empfohlene Normalguss-Menge in sichere Shots
-# - Restshot unter Mindest-Rest wird auf den vorherigen Shot addiert
+# - Verteilt kleine Restmengen gleichmäßig, ohne das Shot-Maximum zu überschreiten
 # - zeigt ml-Sequenz und Sekunden-Sequenz getrennt an
 # - Reine Berechnung / Planung
 # - Keine Pumpen-/Ventilsteuerung
 # - Keine Automatik-Ausführung
 #
 # Benötigt:
-# - plantinator_bewasserung_mapping_v4.yaml
-# - plantinator_bewasserung_profil_v3.yaml
+# - plantinator_bewasserung_mapping.yaml
+# - plantinator_bewasserung_profil.yaml
 # - plantinator_bewasserung_crop_steering.yaml
-# - plantinator_bewasserung_lernsensorik_v2.yaml
+# - plantinator_bewasserung_lernsensorik.yaml
 ############################################################
 
 input_number:
@@ -93,141 +93,115 @@ template:
           shot_max_anzahl: "{{ states('input_number.plantinator_bewasserung_shot_max_anzahl') }}"
           crop_shot_ml_effektiv: "{{ states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') }}"
           shot_ml: >
-            {% set ml = states('sensor.plantinator_bewasserung_p1_empfehlung_normalguss_ml') | float(0) %}
-            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(200) %}
-            {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | float(100) %}
-            {% if ml <= 0 or maxshot <= 0 %}
+            {% set total = states('sensor.plantinator_bewasserung_p1_empfehlung_normalguss_ml') | float(0) | round(0) | int %}
+            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(0) | round(0) | int %}
+            {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | float(0) | round(0) | int %}
+            {% if total <= 0 or maxshot <= 0 %}
               0
-            {% elif ml <= maxshot %}
-              {{ ml | round(0) }}
             {% else %}
-              {% set full = (ml // maxshot) | int %}
-              {% set rest = ml - (full * maxshot) %}
-              {% if rest == 0 %}
-                {{ maxshot | round(0) }}
-              {% elif rest < minrest and full > 0 %}
-                {{ (maxshot + rest) | round(0) }}
+              {% set full = (total // maxshot) | int %}
+              {% set rest = (total % maxshot) | int %}
+              {% if rest == 0 or (full > 0 and rest >= minrest) %}
+                {{ maxshot }}
+              {% elif full == 0 %}
+                {{ rest }}
               {% else %}
-                {{ rest | round(0) }}
+                {% set count = full + 1 %}
+                {% set base = (total // count) | int %}
+                {{ base + (1 if (total - base * count) > 0 else 0) }}
               {% endif %}
             {% endif %}
           shot_anzahl: >
-            {% set ml = states('sensor.plantinator_bewasserung_p1_empfehlung_normalguss_ml') | float(0) %}
-            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(200) %}
-            {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | float(100) %}
-            {% if ml <= 0 or maxshot <= 0 %}
+            {% set total = states('sensor.plantinator_bewasserung_p1_empfehlung_normalguss_ml') | float(0) | round(0) | int %}
+            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(0) | round(0) | int %}
+            {% if total <= 0 or maxshot <= 0 %}
               0
-            {% elif ml <= maxshot %}
-              1
             {% else %}
-              {% set full = (ml // maxshot) | int %}
-              {% set rest = ml - (full * maxshot) %}
-              {% if rest == 0 %}
-                {{ full }}
-              {% elif rest < minrest %}
-                {{ full }}
-              {% else %}
-                {{ full + 1 }}
-              {% endif %}
+              {{ ((total + maxshot - 1) // maxshot) | int }}
             {% endif %}
           sekunden_pro_shot: >
-            {% set ml = states('sensor.plantinator_bewasserung_p1_empfehlung_normalguss_ml') | float(0) %}
-            {% set rate = states('input_number.plantinator_bewasserung_pumpe_ml_pro_sekunde') | float(50) %}
-            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(200) %}
-            {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | float(100) %}
-            {% if ml <= 0 or maxshot <= 0 or rate <= 0 %}
+            {% set total = states('sensor.plantinator_bewasserung_p1_empfehlung_normalguss_ml') | float(0) | round(0) | int %}
+            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(0) | round(0) | int %}
+            {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | float(0) | round(0) | int %}
+            {% set rate = states('input_number.plantinator_bewasserung_pumpe_ml_pro_sekunde') | float(0) %}
+            {% if total <= 0 or maxshot <= 0 or rate <= 0 %}
               0
-            {% elif ml <= maxshot %}
-              {{ (ml / rate) | round(2) }}
             {% else %}
-              {% set full = (ml // maxshot) | int %}
-              {% set rest = ml - (full * maxshot) %}
-              {% if rest == 0 %}
+              {% set full = (total // maxshot) | int %}
+              {% set rest = (total % maxshot) | int %}
+              {% if rest == 0 or (full > 0 and rest >= minrest) %}
                 {{ (maxshot / rate) | round(2) }}
-              {% elif rest < minrest and full > 0 %}
-                {{ ((maxshot + rest) / rate) | round(2) }}
-              {% else %}
+              {% elif full == 0 %}
                 {{ (rest / rate) | round(2) }}
+              {% else %}
+                {% set count = full + 1 %}
+                {% set base = (total // count) | int %}
+                {% set first = base + (1 if (total - base * count) > 0 else 0) %}
+                {{ (first / rate) | round(2) }}
               {% endif %}
             {% endif %}
           shot_sequence_ml: >
-            {% set ml = states('sensor.plantinator_bewasserung_p1_empfehlung_normalguss_ml') | float(0) %}
-            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(200) %}
-            {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | float(100) %}
-            {% if ml <= 0 or maxshot <= 0 %}
+            {% set total = states('sensor.plantinator_bewasserung_p1_empfehlung_normalguss_ml') | float(0) | round(0) | int %}
+            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(0) | round(0) | int %}
+            {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | float(0) | round(0) | int %}
+            {% if total <= 0 or maxshot <= 0 %}
               []
-            {% elif ml <= maxshot %}
-              [{{ ml | round(0) }}]
             {% else %}
-              {% set full = (ml // maxshot) | int %}
-              {% set rest = ml - (full * maxshot) %}
-              {% set ns = namespace(seq=[]) %}
+              {% set full = (total // maxshot) | int %}
+              {% set rest = (total % maxshot) | int %}
               {% if rest == 0 %}
-                {% for n in range(full) %}
-                  {% set ns.seq = ns.seq + [maxshot | round(0) | int] %}
-                {% endfor %}
-              {% elif rest < minrest and full > 0 %}
-                {% for n in range(full - 1) %}
-                  {% set ns.seq = ns.seq + [maxshot | round(0) | int] %}
-                {% endfor %}
-                {% set ns.seq = ns.seq + [(maxshot + rest) | round(0) | int] %}
+                {{ [maxshot] * full }}
+              {% elif full == 0 %}
+                {{ [rest] }}
+              {% elif rest >= minrest %}
+                {{ [maxshot] * full + [rest] }}
               {% else %}
-                {% for n in range(full) %}
-                  {% set ns.seq = ns.seq + [maxshot | round(0) | int] %}
+                {% set count = full + 1 %}
+                {% set base = (total // count) | int %}
+                {% set extra = (total - (base * count)) | int %}
+                {% set ns = namespace(seq=[]) %}
+                {% for n in range(count) %}
+                  {% set ns.seq = ns.seq + [base + (1 if n < extra else 0)] %}
                 {% endfor %}
-                {% set ns.seq = ns.seq + [rest | round(0) | int] %}
+                {{ ns.seq }}
               {% endif %}
-              {{ ns.seq }}
             {% endif %}
           shot_sequence_seconds: >
-            {% set ml = states('sensor.plantinator_bewasserung_p1_empfehlung_normalguss_ml') | float(0) %}
-            {% set rate = states('input_number.plantinator_bewasserung_pumpe_ml_pro_sekunde') | float(50) %}
-            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(200) %}
-            {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | float(100) %}
-            {% if ml <= 0 or maxshot <= 0 or rate <= 0 %}
+            {% set total = states('sensor.plantinator_bewasserung_p1_empfehlung_normalguss_ml') | float(0) | round(0) | int %}
+            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(0) | round(0) | int %}
+            {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | float(0) | round(0) | int %}
+            {% set rate = states('input_number.plantinator_bewasserung_pumpe_ml_pro_sekunde') | float(0) %}
+            {% if total <= 0 or maxshot <= 0 or rate <= 0 %}
               []
-            {% elif ml <= maxshot %}
-              [{{ (ml / rate) | round(2) }}]
             {% else %}
-              {% set full = (ml // maxshot) | int %}
-              {% set rest = ml - (full * maxshot) %}
-              {% set ns = namespace(seq=[]) %}
+              {% set full = (total // maxshot) | int %}
+              {% set rest = (total % maxshot) | int %}
               {% if rest == 0 %}
-                {% for n in range(full) %}
-                  {% set ns.seq = ns.seq + [(maxshot / rate) | round(2)] %}
-                {% endfor %}
-              {% elif rest < minrest and full > 0 %}
-                {% for n in range(full - 1) %}
-                  {% set ns.seq = ns.seq + [(maxshot / rate) | round(2)] %}
-                {% endfor %}
-                {% set ns.seq = ns.seq + [((maxshot + rest) / rate) | round(2)] %}
+                {% set amounts = [maxshot] * full %}
+              {% elif full == 0 %}
+                {% set amounts = [rest] %}
+              {% elif rest >= minrest %}
+                {% set amounts = [maxshot] * full + [rest] %}
               {% else %}
-                {% for n in range(full) %}
-                  {% set ns.seq = ns.seq + [(maxshot / rate) | round(2)] %}
+                {% set count = full + 1 %}
+                {% set base = (total // count) | int %}
+                {% set extra = (total - (base * count)) | int %}
+                {% set ns = namespace(amounts=[]) %}
+                {% for n in range(count) %}
+                  {% set ns.amounts = ns.amounts + [base + (1 if n < extra else 0)] %}
                 {% endfor %}
-                {% set ns.seq = ns.seq + [(rest / rate) | round(2)] %}
+                {% set amounts = ns.amounts %}
               {% endif %}
+              {% set ns = namespace(seq=[]) %}
+              {% for amount in amounts %}
+                {% set ns.seq = ns.seq + [(amount / rate) | round(2)] %}
+              {% endfor %}
               {{ ns.seq }}
             {% endif %}
           geplante_gesamtmenge_ml: >
-            {% set ml = states('sensor.plantinator_bewasserung_p1_empfehlung_normalguss_ml') | float(0) %}
-            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(200) %}
-            {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | float(100) %}
-            {% if ml <= 0 or maxshot <= 0 %}
-              0
-            {% elif ml <= maxshot %}
-              {{ ml | round(0) }}
-            {% else %}
-              {% set full = (ml // maxshot) | int %}
-              {% set rest = ml - (full * maxshot) %}
-              {% if rest == 0 %}
-                {{ (full * maxshot) | round(0) }}
-              {% elif rest < minrest and full > 0 %}
-                {{ ((full - 1) * maxshot + maxshot + rest) | round(0) }}
-              {% else %}
-                {{ (full * maxshot + rest) | round(0) }}
-              {% endif %}
-            {% endif %}
+            {% set total = states('sensor.plantinator_bewasserung_p1_empfehlung_normalguss_ml') | float(0) | round(0) | int %}
+            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(0) | round(0) | int %}
+            {{ total if total > 0 and maxshot > 0 else 0 }}
           pause_sekunden: >
             {% if states('sensor.plantinator_bewasserung_p1_gussbedarf') == 'notguss' %}
               {{ states('input_number.plantinator_bewasserung_shot_pause_notguss_sekunden') }}
@@ -235,7 +209,7 @@ template:
               {{ states('input_number.plantinator_bewasserung_shot_pause_normal_sekunden') }}
             {% endif %}
           gesamt_pumpenlaufzeit_sekunden: "{{ states('sensor.plantinator_bewasserung_p1_empfehlung_pumpenlaufzeit_sekunden') }}"
-          hinweis: "Planung, keine Ausführung."
+          hinweis: "Planung, keine Ausführung. Kleine Restmengen werden gleichmäßig verteilt; das Shot-Maximum bleibt hart."
 
       - name: Plantinator Bewasserung P2 Shot Plan
         unique_id: plantinator_bewasserung_p2_shot_plan
@@ -257,141 +231,115 @@ template:
           shot_max_anzahl: "{{ states('input_number.plantinator_bewasserung_shot_max_anzahl') }}"
           crop_shot_ml_effektiv: "{{ states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') }}"
           shot_ml: >
-            {% set ml = states('sensor.plantinator_bewasserung_p2_empfehlung_normalguss_ml') | float(0) %}
-            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(200) %}
-            {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | float(100) %}
-            {% if ml <= 0 or maxshot <= 0 %}
+            {% set total = states('sensor.plantinator_bewasserung_p2_empfehlung_normalguss_ml') | float(0) | round(0) | int %}
+            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(0) | round(0) | int %}
+            {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | float(0) | round(0) | int %}
+            {% if total <= 0 or maxshot <= 0 %}
               0
-            {% elif ml <= maxshot %}
-              {{ ml | round(0) }}
             {% else %}
-              {% set full = (ml // maxshot) | int %}
-              {% set rest = ml - (full * maxshot) %}
-              {% if rest == 0 %}
-                {{ maxshot | round(0) }}
-              {% elif rest < minrest and full > 0 %}
-                {{ (maxshot + rest) | round(0) }}
+              {% set full = (total // maxshot) | int %}
+              {% set rest = (total % maxshot) | int %}
+              {% if rest == 0 or (full > 0 and rest >= minrest) %}
+                {{ maxshot }}
+              {% elif full == 0 %}
+                {{ rest }}
               {% else %}
-                {{ rest | round(0) }}
+                {% set count = full + 1 %}
+                {% set base = (total // count) | int %}
+                {{ base + (1 if (total - base * count) > 0 else 0) }}
               {% endif %}
             {% endif %}
           shot_anzahl: >
-            {% set ml = states('sensor.plantinator_bewasserung_p2_empfehlung_normalguss_ml') | float(0) %}
-            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(200) %}
-            {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | float(100) %}
-            {% if ml <= 0 or maxshot <= 0 %}
+            {% set total = states('sensor.plantinator_bewasserung_p2_empfehlung_normalguss_ml') | float(0) | round(0) | int %}
+            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(0) | round(0) | int %}
+            {% if total <= 0 or maxshot <= 0 %}
               0
-            {% elif ml <= maxshot %}
-              1
             {% else %}
-              {% set full = (ml // maxshot) | int %}
-              {% set rest = ml - (full * maxshot) %}
-              {% if rest == 0 %}
-                {{ full }}
-              {% elif rest < minrest %}
-                {{ full }}
-              {% else %}
-                {{ full + 1 }}
-              {% endif %}
+              {{ ((total + maxshot - 1) // maxshot) | int }}
             {% endif %}
           sekunden_pro_shot: >
-            {% set ml = states('sensor.plantinator_bewasserung_p2_empfehlung_normalguss_ml') | float(0) %}
-            {% set rate = states('input_number.plantinator_bewasserung_pumpe_ml_pro_sekunde') | float(50) %}
-            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(200) %}
-            {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | float(100) %}
-            {% if ml <= 0 or maxshot <= 0 or rate <= 0 %}
+            {% set total = states('sensor.plantinator_bewasserung_p2_empfehlung_normalguss_ml') | float(0) | round(0) | int %}
+            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(0) | round(0) | int %}
+            {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | float(0) | round(0) | int %}
+            {% set rate = states('input_number.plantinator_bewasserung_pumpe_ml_pro_sekunde') | float(0) %}
+            {% if total <= 0 or maxshot <= 0 or rate <= 0 %}
               0
-            {% elif ml <= maxshot %}
-              {{ (ml / rate) | round(2) }}
             {% else %}
-              {% set full = (ml // maxshot) | int %}
-              {% set rest = ml - (full * maxshot) %}
-              {% if rest == 0 %}
+              {% set full = (total // maxshot) | int %}
+              {% set rest = (total % maxshot) | int %}
+              {% if rest == 0 or (full > 0 and rest >= minrest) %}
                 {{ (maxshot / rate) | round(2) }}
-              {% elif rest < minrest and full > 0 %}
-                {{ ((maxshot + rest) / rate) | round(2) }}
-              {% else %}
+              {% elif full == 0 %}
                 {{ (rest / rate) | round(2) }}
+              {% else %}
+                {% set count = full + 1 %}
+                {% set base = (total // count) | int %}
+                {% set first = base + (1 if (total - base * count) > 0 else 0) %}
+                {{ (first / rate) | round(2) }}
               {% endif %}
             {% endif %}
           shot_sequence_ml: >
-            {% set ml = states('sensor.plantinator_bewasserung_p2_empfehlung_normalguss_ml') | float(0) %}
-            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(200) %}
-            {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | float(100) %}
-            {% if ml <= 0 or maxshot <= 0 %}
+            {% set total = states('sensor.plantinator_bewasserung_p2_empfehlung_normalguss_ml') | float(0) | round(0) | int %}
+            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(0) | round(0) | int %}
+            {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | float(0) | round(0) | int %}
+            {% if total <= 0 or maxshot <= 0 %}
               []
-            {% elif ml <= maxshot %}
-              [{{ ml | round(0) }}]
             {% else %}
-              {% set full = (ml // maxshot) | int %}
-              {% set rest = ml - (full * maxshot) %}
-              {% set ns = namespace(seq=[]) %}
+              {% set full = (total // maxshot) | int %}
+              {% set rest = (total % maxshot) | int %}
               {% if rest == 0 %}
-                {% for n in range(full) %}
-                  {% set ns.seq = ns.seq + [maxshot | round(0) | int] %}
-                {% endfor %}
-              {% elif rest < minrest and full > 0 %}
-                {% for n in range(full - 1) %}
-                  {% set ns.seq = ns.seq + [maxshot | round(0) | int] %}
-                {% endfor %}
-                {% set ns.seq = ns.seq + [(maxshot + rest) | round(0) | int] %}
+                {{ [maxshot] * full }}
+              {% elif full == 0 %}
+                {{ [rest] }}
+              {% elif rest >= minrest %}
+                {{ [maxshot] * full + [rest] }}
               {% else %}
-                {% for n in range(full) %}
-                  {% set ns.seq = ns.seq + [maxshot | round(0) | int] %}
+                {% set count = full + 1 %}
+                {% set base = (total // count) | int %}
+                {% set extra = (total - (base * count)) | int %}
+                {% set ns = namespace(seq=[]) %}
+                {% for n in range(count) %}
+                  {% set ns.seq = ns.seq + [base + (1 if n < extra else 0)] %}
                 {% endfor %}
-                {% set ns.seq = ns.seq + [rest | round(0) | int] %}
+                {{ ns.seq }}
               {% endif %}
-              {{ ns.seq }}
             {% endif %}
           shot_sequence_seconds: >
-            {% set ml = states('sensor.plantinator_bewasserung_p2_empfehlung_normalguss_ml') | float(0) %}
-            {% set rate = states('input_number.plantinator_bewasserung_pumpe_ml_pro_sekunde') | float(50) %}
-            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(200) %}
-            {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | float(100) %}
-            {% if ml <= 0 or maxshot <= 0 or rate <= 0 %}
+            {% set total = states('sensor.plantinator_bewasserung_p2_empfehlung_normalguss_ml') | float(0) | round(0) | int %}
+            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(0) | round(0) | int %}
+            {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | float(0) | round(0) | int %}
+            {% set rate = states('input_number.plantinator_bewasserung_pumpe_ml_pro_sekunde') | float(0) %}
+            {% if total <= 0 or maxshot <= 0 or rate <= 0 %}
               []
-            {% elif ml <= maxshot %}
-              [{{ (ml / rate) | round(2) }}]
             {% else %}
-              {% set full = (ml // maxshot) | int %}
-              {% set rest = ml - (full * maxshot) %}
-              {% set ns = namespace(seq=[]) %}
+              {% set full = (total // maxshot) | int %}
+              {% set rest = (total % maxshot) | int %}
               {% if rest == 0 %}
-                {% for n in range(full) %}
-                  {% set ns.seq = ns.seq + [(maxshot / rate) | round(2)] %}
-                {% endfor %}
-              {% elif rest < minrest and full > 0 %}
-                {% for n in range(full - 1) %}
-                  {% set ns.seq = ns.seq + [(maxshot / rate) | round(2)] %}
-                {% endfor %}
-                {% set ns.seq = ns.seq + [((maxshot + rest) / rate) | round(2)] %}
+                {% set amounts = [maxshot] * full %}
+              {% elif full == 0 %}
+                {% set amounts = [rest] %}
+              {% elif rest >= minrest %}
+                {% set amounts = [maxshot] * full + [rest] %}
               {% else %}
-                {% for n in range(full) %}
-                  {% set ns.seq = ns.seq + [(maxshot / rate) | round(2)] %}
+                {% set count = full + 1 %}
+                {% set base = (total // count) | int %}
+                {% set extra = (total - (base * count)) | int %}
+                {% set ns = namespace(amounts=[]) %}
+                {% for n in range(count) %}
+                  {% set ns.amounts = ns.amounts + [base + (1 if n < extra else 0)] %}
                 {% endfor %}
-                {% set ns.seq = ns.seq + [(rest / rate) | round(2)] %}
+                {% set amounts = ns.amounts %}
               {% endif %}
+              {% set ns = namespace(seq=[]) %}
+              {% for amount in amounts %}
+                {% set ns.seq = ns.seq + [(amount / rate) | round(2)] %}
+              {% endfor %}
               {{ ns.seq }}
             {% endif %}
           geplante_gesamtmenge_ml: >
-            {% set ml = states('sensor.plantinator_bewasserung_p2_empfehlung_normalguss_ml') | float(0) %}
-            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(200) %}
-            {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | float(100) %}
-            {% if ml <= 0 or maxshot <= 0 %}
-              0
-            {% elif ml <= maxshot %}
-              {{ ml | round(0) }}
-            {% else %}
-              {% set full = (ml // maxshot) | int %}
-              {% set rest = ml - (full * maxshot) %}
-              {% if rest == 0 %}
-                {{ (full * maxshot) | round(0) }}
-              {% elif rest < minrest and full > 0 %}
-                {{ ((full - 1) * maxshot + maxshot + rest) | round(0) }}
-              {% else %}
-                {{ (full * maxshot + rest) | round(0) }}
-              {% endif %}
-            {% endif %}
+            {% set total = states('sensor.plantinator_bewasserung_p2_empfehlung_normalguss_ml') | float(0) | round(0) | int %}
+            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(0) | round(0) | int %}
+            {{ total if total > 0 and maxshot > 0 else 0 }}
           pause_sekunden: >
             {% if states('sensor.plantinator_bewasserung_p2_gussbedarf') == 'notguss' %}
               {{ states('input_number.plantinator_bewasserung_shot_pause_notguss_sekunden') }}
@@ -399,7 +347,7 @@ template:
               {{ states('input_number.plantinator_bewasserung_shot_pause_normal_sekunden') }}
             {% endif %}
           gesamt_pumpenlaufzeit_sekunden: "{{ states('sensor.plantinator_bewasserung_p2_empfehlung_pumpenlaufzeit_sekunden') }}"
-          hinweis: "Planung, keine Ausführung."
+          hinweis: "Planung, keine Ausführung. Kleine Restmengen werden gleichmäßig verteilt; das Shot-Maximum bleibt hart."
 
       - name: Plantinator Bewasserung P3 Shot Plan
         unique_id: plantinator_bewasserung_p3_shot_plan
@@ -421,141 +369,115 @@ template:
           shot_max_anzahl: "{{ states('input_number.plantinator_bewasserung_shot_max_anzahl') }}"
           crop_shot_ml_effektiv: "{{ states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') }}"
           shot_ml: >
-            {% set ml = states('sensor.plantinator_bewasserung_p3_empfehlung_normalguss_ml') | float(0) %}
-            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(200) %}
-            {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | float(100) %}
-            {% if ml <= 0 or maxshot <= 0 %}
+            {% set total = states('sensor.plantinator_bewasserung_p3_empfehlung_normalguss_ml') | float(0) | round(0) | int %}
+            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(0) | round(0) | int %}
+            {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | float(0) | round(0) | int %}
+            {% if total <= 0 or maxshot <= 0 %}
               0
-            {% elif ml <= maxshot %}
-              {{ ml | round(0) }}
             {% else %}
-              {% set full = (ml // maxshot) | int %}
-              {% set rest = ml - (full * maxshot) %}
-              {% if rest == 0 %}
-                {{ maxshot | round(0) }}
-              {% elif rest < minrest and full > 0 %}
-                {{ (maxshot + rest) | round(0) }}
+              {% set full = (total // maxshot) | int %}
+              {% set rest = (total % maxshot) | int %}
+              {% if rest == 0 or (full > 0 and rest >= minrest) %}
+                {{ maxshot }}
+              {% elif full == 0 %}
+                {{ rest }}
               {% else %}
-                {{ rest | round(0) }}
+                {% set count = full + 1 %}
+                {% set base = (total // count) | int %}
+                {{ base + (1 if (total - base * count) > 0 else 0) }}
               {% endif %}
             {% endif %}
           shot_anzahl: >
-            {% set ml = states('sensor.plantinator_bewasserung_p3_empfehlung_normalguss_ml') | float(0) %}
-            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(200) %}
-            {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | float(100) %}
-            {% if ml <= 0 or maxshot <= 0 %}
+            {% set total = states('sensor.plantinator_bewasserung_p3_empfehlung_normalguss_ml') | float(0) | round(0) | int %}
+            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(0) | round(0) | int %}
+            {% if total <= 0 or maxshot <= 0 %}
               0
-            {% elif ml <= maxshot %}
-              1
             {% else %}
-              {% set full = (ml // maxshot) | int %}
-              {% set rest = ml - (full * maxshot) %}
-              {% if rest == 0 %}
-                {{ full }}
-              {% elif rest < minrest %}
-                {{ full }}
-              {% else %}
-                {{ full + 1 }}
-              {% endif %}
+              {{ ((total + maxshot - 1) // maxshot) | int }}
             {% endif %}
           sekunden_pro_shot: >
-            {% set ml = states('sensor.plantinator_bewasserung_p3_empfehlung_normalguss_ml') | float(0) %}
-            {% set rate = states('input_number.plantinator_bewasserung_pumpe_ml_pro_sekunde') | float(50) %}
-            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(200) %}
-            {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | float(100) %}
-            {% if ml <= 0 or maxshot <= 0 or rate <= 0 %}
+            {% set total = states('sensor.plantinator_bewasserung_p3_empfehlung_normalguss_ml') | float(0) | round(0) | int %}
+            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(0) | round(0) | int %}
+            {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | float(0) | round(0) | int %}
+            {% set rate = states('input_number.plantinator_bewasserung_pumpe_ml_pro_sekunde') | float(0) %}
+            {% if total <= 0 or maxshot <= 0 or rate <= 0 %}
               0
-            {% elif ml <= maxshot %}
-              {{ (ml / rate) | round(2) }}
             {% else %}
-              {% set full = (ml // maxshot) | int %}
-              {% set rest = ml - (full * maxshot) %}
-              {% if rest == 0 %}
+              {% set full = (total // maxshot) | int %}
+              {% set rest = (total % maxshot) | int %}
+              {% if rest == 0 or (full > 0 and rest >= minrest) %}
                 {{ (maxshot / rate) | round(2) }}
-              {% elif rest < minrest and full > 0 %}
-                {{ ((maxshot + rest) / rate) | round(2) }}
-              {% else %}
+              {% elif full == 0 %}
                 {{ (rest / rate) | round(2) }}
+              {% else %}
+                {% set count = full + 1 %}
+                {% set base = (total // count) | int %}
+                {% set first = base + (1 if (total - base * count) > 0 else 0) %}
+                {{ (first / rate) | round(2) }}
               {% endif %}
             {% endif %}
           shot_sequence_ml: >
-            {% set ml = states('sensor.plantinator_bewasserung_p3_empfehlung_normalguss_ml') | float(0) %}
-            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(200) %}
-            {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | float(100) %}
-            {% if ml <= 0 or maxshot <= 0 %}
+            {% set total = states('sensor.plantinator_bewasserung_p3_empfehlung_normalguss_ml') | float(0) | round(0) | int %}
+            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(0) | round(0) | int %}
+            {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | float(0) | round(0) | int %}
+            {% if total <= 0 or maxshot <= 0 %}
               []
-            {% elif ml <= maxshot %}
-              [{{ ml | round(0) }}]
             {% else %}
-              {% set full = (ml // maxshot) | int %}
-              {% set rest = ml - (full * maxshot) %}
-              {% set ns = namespace(seq=[]) %}
+              {% set full = (total // maxshot) | int %}
+              {% set rest = (total % maxshot) | int %}
               {% if rest == 0 %}
-                {% for n in range(full) %}
-                  {% set ns.seq = ns.seq + [maxshot | round(0) | int] %}
-                {% endfor %}
-              {% elif rest < minrest and full > 0 %}
-                {% for n in range(full - 1) %}
-                  {% set ns.seq = ns.seq + [maxshot | round(0) | int] %}
-                {% endfor %}
-                {% set ns.seq = ns.seq + [(maxshot + rest) | round(0) | int] %}
+                {{ [maxshot] * full }}
+              {% elif full == 0 %}
+                {{ [rest] }}
+              {% elif rest >= minrest %}
+                {{ [maxshot] * full + [rest] }}
               {% else %}
-                {% for n in range(full) %}
-                  {% set ns.seq = ns.seq + [maxshot | round(0) | int] %}
+                {% set count = full + 1 %}
+                {% set base = (total // count) | int %}
+                {% set extra = (total - (base * count)) | int %}
+                {% set ns = namespace(seq=[]) %}
+                {% for n in range(count) %}
+                  {% set ns.seq = ns.seq + [base + (1 if n < extra else 0)] %}
                 {% endfor %}
-                {% set ns.seq = ns.seq + [rest | round(0) | int] %}
+                {{ ns.seq }}
               {% endif %}
-              {{ ns.seq }}
             {% endif %}
           shot_sequence_seconds: >
-            {% set ml = states('sensor.plantinator_bewasserung_p3_empfehlung_normalguss_ml') | float(0) %}
-            {% set rate = states('input_number.plantinator_bewasserung_pumpe_ml_pro_sekunde') | float(50) %}
-            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(200) %}
-            {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | float(100) %}
-            {% if ml <= 0 or maxshot <= 0 or rate <= 0 %}
+            {% set total = states('sensor.plantinator_bewasserung_p3_empfehlung_normalguss_ml') | float(0) | round(0) | int %}
+            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(0) | round(0) | int %}
+            {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | float(0) | round(0) | int %}
+            {% set rate = states('input_number.plantinator_bewasserung_pumpe_ml_pro_sekunde') | float(0) %}
+            {% if total <= 0 or maxshot <= 0 or rate <= 0 %}
               []
-            {% elif ml <= maxshot %}
-              [{{ (ml / rate) | round(2) }}]
             {% else %}
-              {% set full = (ml // maxshot) | int %}
-              {% set rest = ml - (full * maxshot) %}
-              {% set ns = namespace(seq=[]) %}
+              {% set full = (total // maxshot) | int %}
+              {% set rest = (total % maxshot) | int %}
               {% if rest == 0 %}
-                {% for n in range(full) %}
-                  {% set ns.seq = ns.seq + [(maxshot / rate) | round(2)] %}
-                {% endfor %}
-              {% elif rest < minrest and full > 0 %}
-                {% for n in range(full - 1) %}
-                  {% set ns.seq = ns.seq + [(maxshot / rate) | round(2)] %}
-                {% endfor %}
-                {% set ns.seq = ns.seq + [((maxshot + rest) / rate) | round(2)] %}
+                {% set amounts = [maxshot] * full %}
+              {% elif full == 0 %}
+                {% set amounts = [rest] %}
+              {% elif rest >= minrest %}
+                {% set amounts = [maxshot] * full + [rest] %}
               {% else %}
-                {% for n in range(full) %}
-                  {% set ns.seq = ns.seq + [(maxshot / rate) | round(2)] %}
+                {% set count = full + 1 %}
+                {% set base = (total // count) | int %}
+                {% set extra = (total - (base * count)) | int %}
+                {% set ns = namespace(amounts=[]) %}
+                {% for n in range(count) %}
+                  {% set ns.amounts = ns.amounts + [base + (1 if n < extra else 0)] %}
                 {% endfor %}
-                {% set ns.seq = ns.seq + [(rest / rate) | round(2)] %}
+                {% set amounts = ns.amounts %}
               {% endif %}
+              {% set ns = namespace(seq=[]) %}
+              {% for amount in amounts %}
+                {% set ns.seq = ns.seq + [(amount / rate) | round(2)] %}
+              {% endfor %}
               {{ ns.seq }}
             {% endif %}
           geplante_gesamtmenge_ml: >
-            {% set ml = states('sensor.plantinator_bewasserung_p3_empfehlung_normalguss_ml') | float(0) %}
-            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(200) %}
-            {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | float(100) %}
-            {% if ml <= 0 or maxshot <= 0 %}
-              0
-            {% elif ml <= maxshot %}
-              {{ ml | round(0) }}
-            {% else %}
-              {% set full = (ml // maxshot) | int %}
-              {% set rest = ml - (full * maxshot) %}
-              {% if rest == 0 %}
-                {{ (full * maxshot) | round(0) }}
-              {% elif rest < minrest and full > 0 %}
-                {{ ((full - 1) * maxshot + maxshot + rest) | round(0) }}
-              {% else %}
-                {{ (full * maxshot + rest) | round(0) }}
-              {% endif %}
-            {% endif %}
+            {% set total = states('sensor.plantinator_bewasserung_p3_empfehlung_normalguss_ml') | float(0) | round(0) | int %}
+            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(0) | round(0) | int %}
+            {{ total if total > 0 and maxshot > 0 else 0 }}
           pause_sekunden: >
             {% if states('sensor.plantinator_bewasserung_p3_gussbedarf') == 'notguss' %}
               {{ states('input_number.plantinator_bewasserung_shot_pause_notguss_sekunden') }}
@@ -563,7 +485,7 @@ template:
               {{ states('input_number.plantinator_bewasserung_shot_pause_normal_sekunden') }}
             {% endif %}
           gesamt_pumpenlaufzeit_sekunden: "{{ states('sensor.plantinator_bewasserung_p3_empfehlung_pumpenlaufzeit_sekunden') }}"
-          hinweis: "Planung, keine Ausführung."
+          hinweis: "Planung, keine Ausführung. Kleine Restmengen werden gleichmäßig verteilt; das Shot-Maximum bleibt hart."
 
       - name: Plantinator Bewasserung P4 Shot Plan
         unique_id: plantinator_bewasserung_p4_shot_plan
@@ -585,141 +507,115 @@ template:
           shot_max_anzahl: "{{ states('input_number.plantinator_bewasserung_shot_max_anzahl') }}"
           crop_shot_ml_effektiv: "{{ states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') }}"
           shot_ml: >
-            {% set ml = states('sensor.plantinator_bewasserung_p4_empfehlung_normalguss_ml') | float(0) %}
-            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(200) %}
-            {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | float(100) %}
-            {% if ml <= 0 or maxshot <= 0 %}
+            {% set total = states('sensor.plantinator_bewasserung_p4_empfehlung_normalguss_ml') | float(0) | round(0) | int %}
+            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(0) | round(0) | int %}
+            {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | float(0) | round(0) | int %}
+            {% if total <= 0 or maxshot <= 0 %}
               0
-            {% elif ml <= maxshot %}
-              {{ ml | round(0) }}
             {% else %}
-              {% set full = (ml // maxshot) | int %}
-              {% set rest = ml - (full * maxshot) %}
-              {% if rest == 0 %}
-                {{ maxshot | round(0) }}
-              {% elif rest < minrest and full > 0 %}
-                {{ (maxshot + rest) | round(0) }}
+              {% set full = (total // maxshot) | int %}
+              {% set rest = (total % maxshot) | int %}
+              {% if rest == 0 or (full > 0 and rest >= minrest) %}
+                {{ maxshot }}
+              {% elif full == 0 %}
+                {{ rest }}
               {% else %}
-                {{ rest | round(0) }}
+                {% set count = full + 1 %}
+                {% set base = (total // count) | int %}
+                {{ base + (1 if (total - base * count) > 0 else 0) }}
               {% endif %}
             {% endif %}
           shot_anzahl: >
-            {% set ml = states('sensor.plantinator_bewasserung_p4_empfehlung_normalguss_ml') | float(0) %}
-            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(200) %}
-            {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | float(100) %}
-            {% if ml <= 0 or maxshot <= 0 %}
+            {% set total = states('sensor.plantinator_bewasserung_p4_empfehlung_normalguss_ml') | float(0) | round(0) | int %}
+            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(0) | round(0) | int %}
+            {% if total <= 0 or maxshot <= 0 %}
               0
-            {% elif ml <= maxshot %}
-              1
             {% else %}
-              {% set full = (ml // maxshot) | int %}
-              {% set rest = ml - (full * maxshot) %}
-              {% if rest == 0 %}
-                {{ full }}
-              {% elif rest < minrest %}
-                {{ full }}
-              {% else %}
-                {{ full + 1 }}
-              {% endif %}
+              {{ ((total + maxshot - 1) // maxshot) | int }}
             {% endif %}
           sekunden_pro_shot: >
-            {% set ml = states('sensor.plantinator_bewasserung_p4_empfehlung_normalguss_ml') | float(0) %}
-            {% set rate = states('input_number.plantinator_bewasserung_pumpe_ml_pro_sekunde') | float(50) %}
-            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(200) %}
-            {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | float(100) %}
-            {% if ml <= 0 or maxshot <= 0 or rate <= 0 %}
+            {% set total = states('sensor.plantinator_bewasserung_p4_empfehlung_normalguss_ml') | float(0) | round(0) | int %}
+            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(0) | round(0) | int %}
+            {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | float(0) | round(0) | int %}
+            {% set rate = states('input_number.plantinator_bewasserung_pumpe_ml_pro_sekunde') | float(0) %}
+            {% if total <= 0 or maxshot <= 0 or rate <= 0 %}
               0
-            {% elif ml <= maxshot %}
-              {{ (ml / rate) | round(2) }}
             {% else %}
-              {% set full = (ml // maxshot) | int %}
-              {% set rest = ml - (full * maxshot) %}
-              {% if rest == 0 %}
+              {% set full = (total // maxshot) | int %}
+              {% set rest = (total % maxshot) | int %}
+              {% if rest == 0 or (full > 0 and rest >= minrest) %}
                 {{ (maxshot / rate) | round(2) }}
-              {% elif rest < minrest and full > 0 %}
-                {{ ((maxshot + rest) / rate) | round(2) }}
-              {% else %}
+              {% elif full == 0 %}
                 {{ (rest / rate) | round(2) }}
+              {% else %}
+                {% set count = full + 1 %}
+                {% set base = (total // count) | int %}
+                {% set first = base + (1 if (total - base * count) > 0 else 0) %}
+                {{ (first / rate) | round(2) }}
               {% endif %}
             {% endif %}
           shot_sequence_ml: >
-            {% set ml = states('sensor.plantinator_bewasserung_p4_empfehlung_normalguss_ml') | float(0) %}
-            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(200) %}
-            {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | float(100) %}
-            {% if ml <= 0 or maxshot <= 0 %}
+            {% set total = states('sensor.plantinator_bewasserung_p4_empfehlung_normalguss_ml') | float(0) | round(0) | int %}
+            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(0) | round(0) | int %}
+            {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | float(0) | round(0) | int %}
+            {% if total <= 0 or maxshot <= 0 %}
               []
-            {% elif ml <= maxshot %}
-              [{{ ml | round(0) }}]
             {% else %}
-              {% set full = (ml // maxshot) | int %}
-              {% set rest = ml - (full * maxshot) %}
-              {% set ns = namespace(seq=[]) %}
+              {% set full = (total // maxshot) | int %}
+              {% set rest = (total % maxshot) | int %}
               {% if rest == 0 %}
-                {% for n in range(full) %}
-                  {% set ns.seq = ns.seq + [maxshot | round(0) | int] %}
-                {% endfor %}
-              {% elif rest < minrest and full > 0 %}
-                {% for n in range(full - 1) %}
-                  {% set ns.seq = ns.seq + [maxshot | round(0) | int] %}
-                {% endfor %}
-                {% set ns.seq = ns.seq + [(maxshot + rest) | round(0) | int] %}
+                {{ [maxshot] * full }}
+              {% elif full == 0 %}
+                {{ [rest] }}
+              {% elif rest >= minrest %}
+                {{ [maxshot] * full + [rest] }}
               {% else %}
-                {% for n in range(full) %}
-                  {% set ns.seq = ns.seq + [maxshot | round(0) | int] %}
+                {% set count = full + 1 %}
+                {% set base = (total // count) | int %}
+                {% set extra = (total - (base * count)) | int %}
+                {% set ns = namespace(seq=[]) %}
+                {% for n in range(count) %}
+                  {% set ns.seq = ns.seq + [base + (1 if n < extra else 0)] %}
                 {% endfor %}
-                {% set ns.seq = ns.seq + [rest | round(0) | int] %}
+                {{ ns.seq }}
               {% endif %}
-              {{ ns.seq }}
             {% endif %}
           shot_sequence_seconds: >
-            {% set ml = states('sensor.plantinator_bewasserung_p4_empfehlung_normalguss_ml') | float(0) %}
-            {% set rate = states('input_number.plantinator_bewasserung_pumpe_ml_pro_sekunde') | float(50) %}
-            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(200) %}
-            {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | float(100) %}
-            {% if ml <= 0 or maxshot <= 0 or rate <= 0 %}
+            {% set total = states('sensor.plantinator_bewasserung_p4_empfehlung_normalguss_ml') | float(0) | round(0) | int %}
+            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(0) | round(0) | int %}
+            {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | float(0) | round(0) | int %}
+            {% set rate = states('input_number.plantinator_bewasserung_pumpe_ml_pro_sekunde') | float(0) %}
+            {% if total <= 0 or maxshot <= 0 or rate <= 0 %}
               []
-            {% elif ml <= maxshot %}
-              [{{ (ml / rate) | round(2) }}]
             {% else %}
-              {% set full = (ml // maxshot) | int %}
-              {% set rest = ml - (full * maxshot) %}
-              {% set ns = namespace(seq=[]) %}
+              {% set full = (total // maxshot) | int %}
+              {% set rest = (total % maxshot) | int %}
               {% if rest == 0 %}
-                {% for n in range(full) %}
-                  {% set ns.seq = ns.seq + [(maxshot / rate) | round(2)] %}
-                {% endfor %}
-              {% elif rest < minrest and full > 0 %}
-                {% for n in range(full - 1) %}
-                  {% set ns.seq = ns.seq + [(maxshot / rate) | round(2)] %}
-                {% endfor %}
-                {% set ns.seq = ns.seq + [((maxshot + rest) / rate) | round(2)] %}
+                {% set amounts = [maxshot] * full %}
+              {% elif full == 0 %}
+                {% set amounts = [rest] %}
+              {% elif rest >= minrest %}
+                {% set amounts = [maxshot] * full + [rest] %}
               {% else %}
-                {% for n in range(full) %}
-                  {% set ns.seq = ns.seq + [(maxshot / rate) | round(2)] %}
+                {% set count = full + 1 %}
+                {% set base = (total // count) | int %}
+                {% set extra = (total - (base * count)) | int %}
+                {% set ns = namespace(amounts=[]) %}
+                {% for n in range(count) %}
+                  {% set ns.amounts = ns.amounts + [base + (1 if n < extra else 0)] %}
                 {% endfor %}
-                {% set ns.seq = ns.seq + [(rest / rate) | round(2)] %}
+                {% set amounts = ns.amounts %}
               {% endif %}
+              {% set ns = namespace(seq=[]) %}
+              {% for amount in amounts %}
+                {% set ns.seq = ns.seq + [(amount / rate) | round(2)] %}
+              {% endfor %}
               {{ ns.seq }}
             {% endif %}
           geplante_gesamtmenge_ml: >
-            {% set ml = states('sensor.plantinator_bewasserung_p4_empfehlung_normalguss_ml') | float(0) %}
-            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(200) %}
-            {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | float(100) %}
-            {% if ml <= 0 or maxshot <= 0 %}
-              0
-            {% elif ml <= maxshot %}
-              {{ ml | round(0) }}
-            {% else %}
-              {% set full = (ml // maxshot) | int %}
-              {% set rest = ml - (full * maxshot) %}
-              {% if rest == 0 %}
-                {{ (full * maxshot) | round(0) }}
-              {% elif rest < minrest and full > 0 %}
-                {{ ((full - 1) * maxshot + maxshot + rest) | round(0) }}
-              {% else %}
-                {{ (full * maxshot + rest) | round(0) }}
-              {% endif %}
-            {% endif %}
+            {% set total = states('sensor.plantinator_bewasserung_p4_empfehlung_normalguss_ml') | float(0) | round(0) | int %}
+            {% set maxshot = states('sensor.plantinator_bewasserung_crop_shot_ml_effektiv') | float(0) | round(0) | int %}
+            {{ total if total > 0 and maxshot > 0 else 0 }}
           pause_sekunden: >
             {% if states('sensor.plantinator_bewasserung_p4_gussbedarf') == 'notguss' %}
               {{ states('input_number.plantinator_bewasserung_shot_pause_notguss_sekunden') }}
@@ -727,20 +623,47 @@ template:
               {{ states('input_number.plantinator_bewasserung_shot_pause_normal_sekunden') }}
             {% endif %}
           gesamt_pumpenlaufzeit_sekunden: "{{ states('sensor.plantinator_bewasserung_p4_empfehlung_pumpenlaufzeit_sekunden') }}"
-          hinweis: "Planung, keine Ausführung."
+          hinweis: "Planung, keine Ausführung. Kleine Restmengen werden gleichmäßig verteilt; das Shot-Maximum bleibt hart."
 
       - name: Plantinator Bewasserung Shot Plan Gesamtstatus
         unique_id: plantinator_bewasserung_shot_plan_gesamtstatus
         icon: mdi:format-list-checks
         state: >
           {% set maxa = states('input_number.plantinator_bewasserung_shot_max_anzahl') | int(10) %}
+          {% set minshot = states('input_number.plantinator_bewasserung_shot_min_ml') | int(0) %}
+          {% set maxshot = states('input_number.plantinator_bewasserung_shot_max_ml') | int(0) %}
+          {% set minrest = states('input_number.plantinator_bewasserung_shot_min_rest_ml') | int(0) %}
           {% set counts = [
             state_attr('sensor.plantinator_bewasserung_p1_shot_plan', 'shot_anzahl') | int(0),
             state_attr('sensor.plantinator_bewasserung_p2_shot_plan', 'shot_anzahl') | int(0),
             state_attr('sensor.plantinator_bewasserung_p3_shot_plan', 'shot_anzahl') | int(0),
             state_attr('sensor.plantinator_bewasserung_p4_shot_plan', 'shot_anzahl') | int(0)
           ] %}
-          {% if counts | max > maxa %}
+          {% set sequences = [
+            state_attr('sensor.plantinator_bewasserung_p1_shot_plan', 'shot_sequence_ml'),
+            state_attr('sensor.plantinator_bewasserung_p2_shot_plan', 'shot_sequence_ml'),
+            state_attr('sensor.plantinator_bewasserung_p3_shot_plan', 'shot_sequence_ml'),
+            state_attr('sensor.plantinator_bewasserung_p4_shot_plan', 'shot_sequence_ml')
+          ] %}
+          {% set ns = namespace(unter_exec_minimum=false) %}
+          {% for seq in sequences %}
+            {% if seq is iterable and seq is not string %}
+              {% for amount in seq %}
+                {% if not is_number(amount) or (amount | float(0)) < 25 %}
+                  {% set ns.unter_exec_minimum = true %}
+                {% endif %}
+              {% endfor %}
+            {% endif %}
+          {% endfor %}
+          {% if minshot <= 0 or maxshot <= 0 or minshot > maxshot %}
+            parameterfehler_shot_min_max
+          {% elif minrest < 0 or minrest > maxshot %}
+            parameterfehler_min_rest
+          {% elif maxa <= 0 %}
+            parameterfehler_max_anzahl
+          {% elif ns.unter_exec_minimum %}
+            planfehler_shot_unter_25ml
+          {% elif counts | max > maxa %}
             zu_viele_shots
           {% elif counts | max > 0 %}
             ok
@@ -753,7 +676,12 @@ template:
           p2_shot_anzahl: "{{ state_attr('sensor.plantinator_bewasserung_p2_shot_plan', 'shot_anzahl') }}"
           p3_shot_anzahl: "{{ state_attr('sensor.plantinator_bewasserung_p3_shot_plan', 'shot_anzahl') }}"
           p4_shot_anzahl: "{{ state_attr('sensor.plantinator_bewasserung_p4_shot_plan', 'shot_anzahl') }}"
-          hinweis: "Statussensor, reine Planung. EXEC muss bei Bedarf selbst blockieren."
+          shot_min_ml: "{{ states('input_number.plantinator_bewasserung_shot_min_ml') }}"
+          shot_max_ml: "{{ states('input_number.plantinator_bewasserung_shot_max_ml') }}"
+          shot_min_rest_ml: "{{ states('input_number.plantinator_bewasserung_shot_min_rest_ml') }}"
+          hinweis: >
+            Statussensor, reine Planung. Kleine Restmengen werden auf alle Shots
+            verteilt. Dadurch bleibt Shot-Maximum eine harte Obergrenze.
 
 script:
   plantinator_bewasserung_shot_plan_standardwerte_setzen:

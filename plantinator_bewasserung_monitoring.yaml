@@ -1,5 +1,6 @@
 ############################################################
 # PLANTINATOR BEWASSERUNG - MONITORING UND ALARM V1
+# Datei: plantinator_bewasserung_monitoring.yaml
 #
 # Zweck:
 # - Quittierbare, persistente Alarmverriegelung
@@ -870,6 +871,66 @@ template:
           start_feuchte: "{{ states('input_number.plantinator_bewasserung_p4_nacht_dryback_start') }}"
           verwendung: nur_protokollierung
 
+      - name: Plantinator Bewasserung Aktor Sicherheitsstatus
+        unique_id: plantinator_bewasserung_aktor_sicherheitsstatus
+        icon: mdi:shield-cog
+        state: >
+          {% set pumpe = states('input_text.plantinator_bewasserung_pumpe_entity') | trim %}
+          {% set hauptventil = states('input_text.plantinator_bewasserung_hauptventil_entity') | trim %}
+          {% set umwaelzung = states('input_text.plantinator_bewasserung_tank_umwalzung_entity') | trim %}
+          {% set anzahl = states('input_number.plantinator_bewasserung_anzahl_pflanzen') | int(4) %}
+          {% set exec_aktiv = is_state('input_boolean.plantinator_bewasserung_exec_laeuft', 'on') %}
+          {% set ns = namespace(offen=0, ventil_unverfuegbar=false) %}
+          {% for p in range(1, 5) %}
+            {% set ventil = states('input_text.plantinator_bewasserung_p' ~ p ~ '_ventil_entity') | trim %}
+            {% if ventil.startswith('switch.') and is_state(ventil, 'on') %}
+              {% set ns.offen = ns.offen + 1 %}
+            {% endif %}
+            {% if p <= anzahl
+                  and is_state('input_boolean.plantinator_bewasserung_p' ~ p ~ '_aktiv', 'on') %}
+              {% if ventil.startswith('switch.') and not has_value(ventil) %}
+                {% set ns.ventil_unverfuegbar = true %}
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+          {% if exec_aktiv and (not pumpe.startswith('switch.') or not has_value(pumpe)) %}
+            pumpe_unverfuegbar_im_lauf
+          {% elif exec_aktiv and hauptventil.startswith('switch.') and not has_value(hauptventil) %}
+            hauptventil_unverfuegbar_im_lauf
+          {% elif exec_aktiv and ns.ventil_unverfuegbar %}
+            ventil_unverfuegbar_im_lauf
+          {% elif is_state('input_boolean.plantinator_bewasserung_tank_umwalzung_laeuft', 'on')
+                and (not umwaelzung.startswith('switch.') or not has_value(umwaelzung)) %}
+            umwaelzung_unverfuegbar_im_lauf
+          {% elif ns.offen > 1 %}
+            mehrere_pflanzenventile_offen
+          {% elif is_state(pumpe, 'on') and not exec_aktiv %}
+            pumpe_unerwartet_an
+          {% elif is_state(pumpe, 'on') and ns.offen == 0 %}
+            pumpe_ohne_pflanzenventil
+          {% elif ns.offen > 0 and not exec_aktiv %}
+            pflanzenventil_unerwartet_offen
+          {% elif hauptventil.startswith('switch.')
+                and is_state(hauptventil, 'on') and not exec_aktiv %}
+            hauptventil_unerwartet_offen
+          {% elif umwaelzung.startswith('switch.')
+                and is_state(umwaelzung, 'on')
+                and is_state('input_boolean.plantinator_bewasserung_tank_umwalzung_laeuft', 'off') %}
+            umwaelzung_unerwartet_an
+          {% else %}
+            ok
+          {% endif %}
+        attributes:
+          pumpe: "{{ states('sensor.plantinator_bewasserung_pumpe_status_gemappt') }}"
+          hauptventil: "{{ states('sensor.plantinator_bewasserung_hauptventil_status_gemappt') }}"
+          ventil_p1: "{{ states('sensor.plantinator_bewasserung_p1_ventil_status_gemappt') }}"
+          ventil_p2: "{{ states('sensor.plantinator_bewasserung_p2_ventil_status_gemappt') }}"
+          ventil_p3: "{{ states('sensor.plantinator_bewasserung_p3_ventil_status_gemappt') }}"
+          ventil_p4: "{{ states('sensor.plantinator_bewasserung_p4_ventil_status_gemappt') }}"
+          umwaelzung: "{{ states('sensor.plantinator_bewasserung_tank_umwalzung_status_gemappt') }}"
+          exec_laeuft: "{{ states('input_boolean.plantinator_bewasserung_exec_laeuft') }}"
+          umwaelzung_laeuft: "{{ states('input_boolean.plantinator_bewasserung_tank_umwalzung_laeuft') }}"
+
       - name: Plantinator Bewasserung Kritischer Systemstatus
         unique_id: plantinator_bewasserung_kritischer_systemstatus
         icon: mdi:shield-alert
@@ -882,6 +943,8 @@ template:
             profil_fehler
           {% elif states('sensor.plantinator_bewasserung_sensoralter_status') != 'ok' %}
             sensoralter_{{ states('sensor.plantinator_bewasserung_sensoralter_status') }}
+          {% elif states('sensor.plantinator_bewasserung_aktor_sicherheitsstatus') != 'ok' %}
+            aktor_{{ states('sensor.plantinator_bewasserung_aktor_sicherheitsstatus') }}
           {% elif is_state('input_boolean.plantinator_bewasserung_wasserstand_verwenden', 'on')
                 and (not (went.startswith('binary_sensor.') or went.startswith('input_boolean.'))
                      or not has_value(went)) %}
@@ -896,6 +959,7 @@ template:
           mapping_status: "{{ states('sensor.plantinator_bewasserung_mapping_status') }}"
           profil_status: "{{ states('sensor.plantinator_bewasserung_profil_status') }}"
           sensoralter_status: "{{ states('sensor.plantinator_bewasserung_sensoralter_status') }}"
+          aktor_sicherheitsstatus: "{{ states('sensor.plantinator_bewasserung_aktor_sicherheitsstatus') }}"
           wasserstand_status: "{{ states('sensor.plantinator_bewasserung_wasserstand_status_gemappt') }}"
 
       - name: Plantinator Bewasserung Alarm Status
@@ -1158,6 +1222,27 @@ automation:
       - service: script.plantinator_bewasserung_alarm_ausloesen
         data:
           grund: wasserstand_im_lauf_nicht_sicher
+
+  - id: plantinator_bewasserung_aktorfehler_sofort_verriegeln
+    alias: Plantinator Bewässerung - Aktorfehler sofort verriegeln
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: sensor.plantinator_bewasserung_aktor_sicherheitsstatus
+        for: "00:00:02"
+    condition:
+      - condition: template
+        value_template: >
+          {{ states('sensor.plantinator_bewasserung_aktor_sicherheitsstatus')
+             not in ['ok', 'unknown', 'unavailable', 'none', ''] }}
+      - condition: state
+        entity_id: input_boolean.plantinator_bewasserung_alarm_verriegelt
+        state: "off"
+    action:
+      - service: script.plantinator_bewasserung_alarm_ausloesen
+        data:
+          grund: >
+            aktor_{{ states('sensor.plantinator_bewasserung_aktor_sicherheitsstatus') }}
 
   - id: plantinator_bewasserung_alarm_verriegelt_sicher_stop
     alias: Plantinator Bewasserung - Alarmverriegelung sicher Stop

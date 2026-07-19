@@ -14,7 +14,7 @@
 # - Bei Hauptschalter aus, Sperre an oder HA-Neustart: Umwaelzung aus
 #
 # Benoetigt:
-# - plantinator_bewasserung_mapping_v4.yaml
+# - plantinator_bewasserung_mapping.yaml
 #   (input_text.plantinator_bewasserung_tank_umwalzung_entity
 #    und input_boolean.plantinator_bewasserung_tank_umwalzung_verwenden)
 #

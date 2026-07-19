@@ -1,6 +1,6 @@
 ############################################################
 # PLANTINATOR BEWASSERUNG - STARTUP SAFETY V2 (Fixed)
-# Datei: plantinator_bewasserung_startup_safety_v2.yaml
+# Datei: plantinator_bewasserung_startup_safety.yaml
 #
 # Änderungen gegenüber Original:
 # - Pumpe und Ventile werden über das Mapping ermittelt

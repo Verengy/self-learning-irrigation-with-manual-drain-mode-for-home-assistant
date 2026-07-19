@@ -1,6 +1,6 @@
 ############################################################
 # PLANTINATOR BEWASSERUNG - MANUELLER MESS-DRAIN (Fixed)
-# Datei: plantinator_bewasserung_mess_drain_v2.yaml
+# Datei: plantinator_mess_drain.yaml
 #
 # Änderungen gegenüber Original:
 # - Fehlende drain_bestaetigt-Buttons ergänzt (P1-P4)

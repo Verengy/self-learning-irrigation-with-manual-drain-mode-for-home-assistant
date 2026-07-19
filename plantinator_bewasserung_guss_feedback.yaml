@@ -1,6 +1,6 @@
 ############################################################
 # PLANTINATOR BEWASSERUNG - GUSS FEEDBACK / LERNWERT V1
-# Datei: plantinator_bewasserung_guss_feedback_v1.yaml
+# Datei: plantinator_bewasserung_guss_feedback.yaml
 #
 # Zweck:
 # - Beobachtet normale EXEC-Güsse
@@ -129,7 +129,7 @@ input_number:
     name: Plantinator Bewasserung P1 letzter Normalguss ml
     icon: mdi:cup-water
     min: 0
-    max: 5000
+    max: 10000
     step: 1
     mode: box
     unit_of_measurement: "ml"
@@ -138,7 +138,7 @@ input_number:
     name: Plantinator Bewasserung P2 letzter Normalguss ml
     icon: mdi:cup-water
     min: 0
-    max: 5000
+    max: 10000
     step: 1
     mode: box
     unit_of_measurement: "ml"
@@ -147,7 +147,7 @@ input_number:
     name: Plantinator Bewasserung P3 letzter Normalguss ml
     icon: mdi:cup-water
     min: 0
-    max: 5000
+    max: 10000
     step: 1
     mode: box
     unit_of_measurement: "ml"
@@ -156,7 +156,7 @@ input_number:
     name: Plantinator Bewasserung P4 letzter Normalguss ml
     icon: mdi:cup-water
     min: 0
-    max: 5000
+    max: 10000
     step: 1
     mode: box
     unit_of_measurement: "ml"
@@ -447,7 +447,7 @@ script:
         selector:
           number:
             min: 0
-            max: 5000
+            max: 10000
             step: 1
     sequence:
       - variables:

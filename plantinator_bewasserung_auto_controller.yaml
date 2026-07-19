@@ -1,6 +1,6 @@
 ############################################################
 # PLANTINATOR BEWASSERUNG - AUTO CONTROLLER V3.3
-# Datei: plantinator_bewasserung_auto_controller_v3.yaml
+# Datei: plantinator_bewasserung_auto_controller.yaml
 #
 # Aenderungen gegenueber V2:
 # - Alle Aufruf-Skripte auf mode: restart (verhindert Zombie-States)

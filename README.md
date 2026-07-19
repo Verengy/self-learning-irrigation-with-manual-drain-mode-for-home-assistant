@@ -342,26 +342,19 @@ Für P1 bis P4:
 - **Bodenfeuchte Entity:** numerischer `sensor.*`
 - **Bodentemperatur Entity:** numerischer `sensor.*`
 
-Setze `input_number.plantinator_bewasserung_anzahl_pflanzen` passend zur Installation. Nur aktive Pflanzen innerhalb dieser Anzahl werden von Sensoralter und Automatik berücksichtigt.
-
-Dieser Helper ist in der gelieferten Dashboard-Datei derzeit nicht als Eingabefeld eingeblendet. Stelle ihn einmalig unter **Entwicklerwerkzeuge → Aktionen** ein:
-
-```yaml
-action: input_number.set_value
-target:
-  entity_id: input_number.plantinator_bewasserung_anzahl_pflanzen
-data:
-  value: 4
-```
-
-Ersetze `4` durch die tatsächliche Anzahl von 1 bis 4. Das Skript **Mapping Standardwerte setzen** setzt diesen Wert ebenfalls auf 4.
+Stelle **Anzahl Pflanzen** im Hauptmapping passend zur Installation auf 1 bis
+4. Nur aktive Pflanzen innerhalb dieser Anzahl werden von Sensoralter und
+Automatik berücksichtigt.
 
 #### Beobachtungssensoren
 
 Zulauf-, Klima- und PPFD-Sensoren sind optional. Sie werden für Monitoring und den Umweltfaktor verwendet. Nicht konfigurierte Beobachtungssensoren blockieren die Kernbewässerung nicht.
 
-> [!WARNING]
-> Das Skript **Mapping Standardwerte setzen** trägt installationsspezifische Beispiel-Entitäten wie `switch.pumpe_wasser` und `switch.ventil_pflanze_1` ein. Verwende dieses Skript nicht blind. Trage dein Mapping besser manuell ein oder ersetze unmittelbar danach jede Beispiel-ID, während Hauptschalter aus und Sperre ein bleiben.
+Das Skript **Sichere Mapping-Grundwerte setzen** setzt vier Pflanzen, neutrale
+Pflanzennamen und schaltet die optionalen Funktionen Wasserstand und
+Tank-Umwälzung aus. Es schreibt bewusst keine Pumpen-, Ventil- oder Sensor-ID.
+Diese Entity-IDs müssen immer zur tatsächlichen Installation passend manuell
+eingetragen werden.
 
 Der **Mapping Status** muss anschließend `ok` anzeigen.
 
@@ -380,12 +373,16 @@ Führe über die jeweiligen Dashboard-Seiten diese Skripte aus:
 7. **Monitoring Standardwerte setzen**
 8. **Umwälzung Standardwerte setzen**, falls das Modul verwendet wird
 9. **Crop-Standardwerte setzen**
+10. **Debug-Standardwerte setzen**, falls der optionale Logger verwendet wird
 
 Das Auto-Skript schaltet den Auto Controller aus und setzt die Tageszähler zurück. Das Feedback-Skript verwirft vorhandene Lernwert-Gültigkeiten. Verwende diese Standardskripte später deshalb nicht unbedacht auf einer bereits eingelernten Anlage.
 
-Das optionale Skript `script.plantinator_bewasserung_debug_logger_standardwerte_setzen` kann über **Entwicklerwerkzeuge → Aktionen** aufgerufen werden. Es schaltet den Logger aus und setzt sein Intervall auf 60 Sekunden.
+Die Debug-Standardwerte schalten den Logger aus und setzen sein Intervall auf
+60 Sekunden.
 
-**Mapping Standardwerte setzen** ist von dieser Liste absichtlich ausgenommen, weil es Beispiel-Entitäten einträgt.
+**Sichere Mapping-Grundwerte setzen** ist optional. Passe danach
+**Anzahl Pflanzen** und die Aktiv-Schalter an und trage sämtliche Entity-IDs
+manuell ein.
 
 ### 4. Profil einrichten
 
@@ -726,7 +723,13 @@ Die Seite zeigt für jede Pflanze:
 - Pause zwischen den Shots,
 - gesamte Pumpenlaufzeit.
 
-Größere Mengen werden anhand von **Shot Maximum** geteilt. Eine kleine Restmenge unter **Shot Minimum Rest** wird dem vorherigen letzten Shot zugeschlagen. Ein Notguss verwendet die kürzere Notguss-Pause.
+Größere Mengen werden anhand von **Shot Maximum** geteilt. Ist eine Restmenge
+kleiner als **Shot Minimum Rest**, verteilt der Plan die Gesamtmenge möglichst
+gleichmäßig auf alle Shots. Dadurch wird das harte Shot-Maximum niemals
+überschritten. Der Executor verwendet exakt die angezeigte ml-Sequenz und
+prüft nach jedem Shot den eindeutigen Erfolgsstatus. Sequenzen mit einem
+technisch nicht ausführbaren Einzelshot unter 25 ml werden sicher blockiert.
+Ein Notguss verwendet die kürzere Notguss-Pause.
 
 ### Feedback
 
@@ -943,6 +946,7 @@ Der Status ist nur `ok`, wenn:
 - Mapping Status `ok` ist,
 - Profil Status `ok` ist,
 - alle aktiven Pflanzen gültige und ausreichend aktuelle Feuchte- und Temperatursensoren haben,
+- der Aktor-Sicherheitsstatus `ok` ist,
 - ein aktivierter Wasserstandssensor gültig ist,
 - der Wasserstand dem ausgewählten sicheren Zustand entspricht.
 
@@ -956,10 +960,19 @@ Mögliche Statusgruppen:
 | `sensoralter_pX_bodentemperatur_ungueltig` | Temperatursensor fehlt oder ist nicht numerisch |
 | `sensoralter_pX_bodenfeuchte_veraltet` | Feuchtesensor ist älter als erlaubt |
 | `sensoralter_pX_bodentemperatur_veraltet` | Temperatursensor ist älter als erlaubt |
+| `aktor_pumpe_unerwartet_an` | Pumpe ist außerhalb eines EXEC-Laufs eingeschaltet |
+| `aktor_pumpe_ohne_pflanzenventil` | Pumpe läuft, ohne dass ein Pflanzenventil offen ist |
+| `aktor_pflanzenventil_unerwartet_offen` | Ein Pflanzenventil ist außerhalb eines EXEC-Laufs offen |
+| `aktor_mehrere_pflanzenventile_offen` | Mehr als ein Pflanzenventil ist gleichzeitig offen |
+| `aktor_*_unverfuegbar_im_lauf` | Ein benötigter Aktor wurde während des Laufs nicht mehr erreichbar |
 | `wasserstand_ungueltig` | Wasserstandsentität fehlt oder liefert keinen gültigen Zustand |
 | `wasserstand_nicht_sicher` | Wasserstand entspricht nicht dem ausgewählten sicheren Zustand |
 
-Bleibt ein kritischer Fehler zwei Minuten bestehen, wird der Alarm verriegelt. Während eines laufenden Wasserprozesses führt ein unsicherer Wasserstand bereits nach etwa zwei Sekunden zum Alarm und sicheren Stopp.
+Bleibt ein allgemeiner kritischer Fehler zwei Minuten bestehen, wird der Alarm
+verriegelt. Unsicherer Wasserstand während eines Wasserprozesses und
+widersprüchliche Aktorzustände führen bereits nach etwa zwei Sekunden zum
+Alarm und sicheren Stopp. Schlägt das Ein- oder Ausschalten von Pumpe oder
+Ventil im EXEC fehl, wird sofort verriegelt.
 
 ### Alarmstatus
 
@@ -1074,12 +1087,13 @@ Zusätzliche Diagnosemöglichkeiten:
 - Nur ein Wasserprozess kann gleichzeitig laufen.
 - Die Priorität der Automatik ist fest: Notguss P1 bis P4, danach Normalbedarf P1 bis P4.
 - Crop-Regel, Mindestpause und Tageslimit gelten als Auto-Freigaben. Manuelle Normal- und Shot-Starts müssen vom Bediener entsprechend geprüft werden.
-- Die Pflanzenanzahl ist als Helper vorhanden, aber in der gelieferten Dashboard-Datei nicht als Eingabefeld eingeblendet.
 - Externe Software muss ihre Stage und Lichtzeiten als Home-Assistant-Zustand oder -Attribut bereitstellen; direkte Netzwerk-APIs werden nicht selbst abgefragt.
 - Das Dryback-Ziel wird aus der Differenz zwischen Ziel und normaler Gießschwelle abgeleitet. Es ist nur so genau wie der Feuchtesensor und wird durch das globale Sicherheitsminimum begrenzt.
 - Manuelle Drain-EC- und pH-Werte werden nicht automatisch geregelt.
 - Der Umweltfaktor ist standardmäßig wirkungslos, bis seine Einflüsse bewusst größer als 0 % gesetzt werden.
-- Die phasenspezifische Shot-Zielgröße wird durch `Shot Minimum` und `Shot Maximum` begrenzt. Eine kleine Restmenge kann durch die bestehende Mindest-Restlogik dem letzten Shot zugeschlagen werden.
+- Die phasenspezifische Shot-Zielgröße wird durch `Shot Minimum` und
+  `Shot Maximum` begrenzt. Kleine Restmengen werden gleichmäßig verteilt,
+  sodass kein einzelner Shot das harte Maximum überschreitet.
 - Nach einem Home-Assistant-Neustart wird ein unterbrochener Guss nicht fortgesetzt.
 - Software kann eine physische Leckage-, Überlauf- oder Trockenlaufsicherung nicht ersetzen.
 

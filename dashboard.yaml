@@ -75,6 +75,8 @@ views:
             entities:
               - entity: sensor.plantinator_bewasserung_mapping_status
                 name: Mapping Status
+              - entity: sensor.plantinator_bewasserung_aktor_sicherheitsstatus
+                name: Aktor Sicherheitsstatus
               - entity: sensor.plantinator_bewasserung_profil_status
                 name: Profil Status
               - entity: sensor.plantinator_bewasserung_exec_freigabe
@@ -1227,6 +1229,8 @@ views:
             title: Hauptmapping
             show_header_toggle: false
             entities:
+              - entity: input_number.plantinator_bewasserung_anzahl_pflanzen
+                name: Anzahl Pflanzen
               - entity: input_text.plantinator_bewasserung_pumpe_entity
                 name: Pumpe Entity
               - entity: sensor.plantinator_bewasserung_pumpe_status_gemappt
@@ -1251,7 +1255,7 @@ views:
               - entity: input_boolean.plantinator_bewasserung_tank_umwalzung_verwenden
                 name: Tank-Umwalzung verwenden
               - entity: script.plantinator_bewasserung_mapping_standardwerte_setzen
-                name: Mapping Standardwerte setzen
+                name: Sichere Mapping-Grundwerte setzen
       - type: grid
         cards:
           - type: heading
@@ -1718,6 +1722,8 @@ views:
                 name: Alarm Status
               - entity: sensor.plantinator_bewasserung_kritischer_systemstatus
                 name: Aktueller Systemstatus
+              - entity: sensor.plantinator_bewasserung_aktor_sicherheitsstatus
+                name: Aktor Sicherheitsstatus
               - entity: input_text.plantinator_bewasserung_alarm_grund
                 name: Letzter Alarmgrund
               - entity: input_datetime.plantinator_bewasserung_alarm_zeit
@@ -2122,6 +2128,10 @@ views:
                 name: Test schreiben
               - entity: input_button.plantinator_bewasserung_debug_log_einmal
                 name: Snapshot schreiben
+              - entity: input_button.plantinator_bewasserung_debug_logdatei_leeren
+                name: Logdatei leeren
+              - entity: script.plantinator_bewasserung_debug_logger_standardwerte_setzen
+                name: Debug-Standardwerte setzen
       - type: grid
         cards:
           - type: heading
