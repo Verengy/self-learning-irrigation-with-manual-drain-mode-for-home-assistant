@@ -186,9 +186,12 @@ template:
               {% set ventil = states('input_text.plantinator_bewasserung_p' ~ i ~ '_ventil_entity') | trim %}
               {% set feuchte = states('input_text.plantinator_bewasserung_p' ~ i ~ '_bodenfeuchte_entity') | trim %}
               {% set bodentemp = states('input_text.plantinator_bewasserung_p' ~ i ~ '_bodentemperatur_entity') | trim %}
-              {% if not ventil.startswith('switch.') or not has_value(ventil) %}
-                {% set ns.fehler = ns.fehler + 1 %}
-              {% endif %}
+              {#
+                Pflanzenventile werden pflanzenbezogen freigegeben. Ein einzelnes
+                WLAN-Ventil darf daher nicht das Mapping aller anderen Pflanzen
+                ungültig machen. Syntax und Erreichbarkeit prüfen die jeweilige
+                Auto-Freigabe und der EXEC unmittelbar vor dem Guss.
+              #}
               {% if not feuchte.startswith('sensor.') or not has_value(feuchte) or not is_number(states(feuchte)) %}
                 {% set ns.fehler = ns.fehler + 1 %}
               {% endif %}

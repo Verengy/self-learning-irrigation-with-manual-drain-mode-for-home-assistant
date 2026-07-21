@@ -417,6 +417,7 @@ template:
              else 0 %}
           {% set max_tag = states('input_number.plantinator_bewasserung_max_ml_pro_tag') | float(1200) %}
           {% set empfehlung = states('sensor.plantinator_bewasserung_p1_empfehlung_normalguss_ml') | float(0) %}
+          {% set ventil = states('input_text.plantinator_bewasserung_p1_ventil_entity') | trim %}
           {% set anzahl = states('input_number.plantinator_bewasserung_anzahl_pflanzen') | int(4) %}
           {% set letzte = states('input_datetime.plantinator_bewasserung_auto_p1_letzter_start') %}
           {% set pause = states('input_number.plantinator_bewasserung_auto_mindestpause_pflanze_minuten') | int(45) %}
@@ -426,6 +427,10 @@ template:
           {% endif %}
           {% if 1 > anzahl or not is_state('input_boolean.plantinator_bewasserung_p1_aktiv', 'on') %}
             inaktiv
+          {% elif is_state('input_boolean.plantinator_bewasserung_p1_aktor_sperre', 'on') %}
+            aktor_gesperrt
+          {% elif not ventil.startswith('switch.') or not has_value(ventil) %}
+            aktor_nicht_bereit
           {% elif is_state('input_boolean.plantinator_bewasserung_p1_feedback_ausstehend', 'on') %}
             feedback_ausstehend
           {% elif bedarf not in ['ja', 'notguss'] %}
@@ -455,6 +460,7 @@ template:
              else 0 %}
           {% set max_tag = states('input_number.plantinator_bewasserung_max_ml_pro_tag') | float(1200) %}
           {% set empfehlung = states('sensor.plantinator_bewasserung_p2_empfehlung_normalguss_ml') | float(0) %}
+          {% set ventil = states('input_text.plantinator_bewasserung_p2_ventil_entity') | trim %}
           {% set anzahl = states('input_number.plantinator_bewasserung_anzahl_pflanzen') | int(4) %}
           {% set letzte = states('input_datetime.plantinator_bewasserung_auto_p2_letzter_start') %}
           {% set pause = states('input_number.plantinator_bewasserung_auto_mindestpause_pflanze_minuten') | int(45) %}
@@ -464,6 +470,10 @@ template:
           {% endif %}
           {% if 2 > anzahl or not is_state('input_boolean.plantinator_bewasserung_p2_aktiv', 'on') %}
             inaktiv
+          {% elif is_state('input_boolean.plantinator_bewasserung_p2_aktor_sperre', 'on') %}
+            aktor_gesperrt
+          {% elif not ventil.startswith('switch.') or not has_value(ventil) %}
+            aktor_nicht_bereit
           {% elif is_state('input_boolean.plantinator_bewasserung_p2_feedback_ausstehend', 'on') %}
             feedback_ausstehend
           {% elif bedarf not in ['ja', 'notguss'] %}
@@ -493,6 +503,7 @@ template:
              else 0 %}
           {% set max_tag = states('input_number.plantinator_bewasserung_max_ml_pro_tag') | float(1200) %}
           {% set empfehlung = states('sensor.plantinator_bewasserung_p3_empfehlung_normalguss_ml') | float(0) %}
+          {% set ventil = states('input_text.plantinator_bewasserung_p3_ventil_entity') | trim %}
           {% set anzahl = states('input_number.plantinator_bewasserung_anzahl_pflanzen') | int(4) %}
           {% set letzte = states('input_datetime.plantinator_bewasserung_auto_p3_letzter_start') %}
           {% set pause = states('input_number.plantinator_bewasserung_auto_mindestpause_pflanze_minuten') | int(45) %}
@@ -502,6 +513,10 @@ template:
           {% endif %}
           {% if 3 > anzahl or not is_state('input_boolean.plantinator_bewasserung_p3_aktiv', 'on') %}
             inaktiv
+          {% elif is_state('input_boolean.plantinator_bewasserung_p3_aktor_sperre', 'on') %}
+            aktor_gesperrt
+          {% elif not ventil.startswith('switch.') or not has_value(ventil) %}
+            aktor_nicht_bereit
           {% elif is_state('input_boolean.plantinator_bewasserung_p3_feedback_ausstehend', 'on') %}
             feedback_ausstehend
           {% elif bedarf not in ['ja', 'notguss'] %}
@@ -531,6 +546,7 @@ template:
              else 0 %}
           {% set max_tag = states('input_number.plantinator_bewasserung_max_ml_pro_tag') | float(1200) %}
           {% set empfehlung = states('sensor.plantinator_bewasserung_p4_empfehlung_normalguss_ml') | float(0) %}
+          {% set ventil = states('input_text.plantinator_bewasserung_p4_ventil_entity') | trim %}
           {% set anzahl = states('input_number.plantinator_bewasserung_anzahl_pflanzen') | int(4) %}
           {% set letzte = states('input_datetime.plantinator_bewasserung_auto_p4_letzter_start') %}
           {% set pause = states('input_number.plantinator_bewasserung_auto_mindestpause_pflanze_minuten') | int(45) %}
@@ -540,6 +556,10 @@ template:
           {% endif %}
           {% if 4 > anzahl or not is_state('input_boolean.plantinator_bewasserung_p4_aktiv', 'on') %}
             inaktiv
+          {% elif is_state('input_boolean.plantinator_bewasserung_p4_aktor_sperre', 'on') %}
+            aktor_gesperrt
+          {% elif not ventil.startswith('switch.') or not has_value(ventil) %}
+            aktor_nicht_bereit
           {% elif is_state('input_boolean.plantinator_bewasserung_p4_feedback_ausstehend', 'on') %}
             feedback_ausstehend
           {% elif bedarf not in ['ja', 'notguss'] %}

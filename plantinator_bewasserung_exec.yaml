@@ -34,6 +34,14 @@ input_boolean:
     name: Plantinator Bewasserung EXEC Abort
     icon: mdi:cancel
 
+  plantinator_bewasserung_pumpe_soll_laufen:
+    name: Plantinator Bewasserung Pumpe soll laufen
+    icon: mdi:pump
+
+  plantinator_bewasserung_hardware_sicher_aus:
+    name: Plantinator Bewasserung Hardware sicher aus
+    icon: mdi:shield-check
+
 counter:
   plantinator_bewasserung_stop_generation:
     name: Plantinator Bewasserung Stop-Generation
@@ -80,6 +88,23 @@ input_number:
     step: 1
     mode: box
     unit_of_measurement: "s"
+
+  plantinator_bewasserung_aktor_wiederholpause_sekunden:
+    name: Plantinator Bewasserung Aktor Wiederholpause Sekunden
+    icon: mdi:timer-refresh-outline
+    min: 1
+    max: 10
+    step: 1
+    mode: box
+    unit_of_measurement: "s"
+
+  plantinator_bewasserung_exec_aktive_pflanze:
+    name: Plantinator Bewasserung EXEC aktive Pflanze
+    icon: mdi:sprout
+    min: 0
+    max: 4
+    step: 1
+    mode: box
 
   plantinator_bewasserung_mess_drain_aktive_pflanze:
     name: Plantinator Bewasserung Mess-Drain aktive Pflanze
@@ -210,6 +235,10 @@ template:
             mapping_fehler
           {% elif states('sensor.plantinator_bewasserung_profil_status') != 'ok' %}
             profil_fehler
+          {% elif is_state('input_boolean.plantinator_bewasserung_hauptventil_aktor_sperre', 'on') %}
+            hauptventil_aktor_gesperrt
+          {% elif is_state('input_boolean.plantinator_bewasserung_pumpe_aktor_sperre', 'on') %}
+            pumpe_aktor_gesperrt
           {% elif not wasserstand_ok %}
             wasserstand_nicht_ok
           {% elif is_state('input_boolean.plantinator_bewasserung_mess_drain_laeuft', 'on') %}
@@ -225,6 +254,10 @@ template:
           alarm_verriegelt: "{{ states('input_boolean.plantinator_bewasserung_alarm_verriegelt') }}"
           alarm_grund: "{{ states('input_text.plantinator_bewasserung_alarm_grund') }}"
           sensoralter_status: "{{ states('sensor.plantinator_bewasserung_sensoralter_status') }}"
+          pumpe_aktor_sperre: "{{ states('input_boolean.plantinator_bewasserung_pumpe_aktor_sperre') }}"
+          pumpe_aktor_fehler: "{{ states('input_text.plantinator_bewasserung_pumpe_aktor_fehler') }}"
+          hauptventil_aktor_sperre: "{{ states('input_boolean.plantinator_bewasserung_hauptventil_aktor_sperre') }}"
+          hauptventil_aktor_fehler: "{{ states('input_text.plantinator_bewasserung_hauptventil_aktor_fehler') }}"
           wasserstand_verwenden: "{{ states('input_boolean.plantinator_bewasserung_wasserstand_verwenden') }}"
           wasserstand_entity: "{{ states('input_text.plantinator_bewasserung_wasserstand_entity') }}"
           wasserstand_sicherer_zustand: "{{ states('input_select.plantinator_bewasserung_wasserstand_sicherer_zustand') }}"
@@ -276,6 +309,12 @@ script:
           entity_id: input_number.plantinator_bewasserung_aktor_bestaetigungszeit_sekunden
         data:
           value: 8
+
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_aktor_wiederholpause_sekunden
+        data:
+          value: 2
 
       - service: input_text.set_value
         target:
@@ -391,23 +430,26 @@ script:
             - input_boolean.plantinator_bewasserung_mess_drain_stop_anforderung
             - input_boolean.plantinator_bewasserung_tank_umwalzung_stop_anforderung
 
+      - service: input_boolean.turn_off
+        target:
+          entity_id:
+            - input_boolean.plantinator_bewasserung_pumpe_soll_laufen
+            - input_boolean.plantinator_bewasserung_hardware_sicher_aus
+
       - variables:
           pumpe: "{{ states('input_text.plantinator_bewasserung_pumpe_entity') | trim }}"
-          pumpen_aus_befehl_ts: "{{ as_timestamp(now()) }}"
+          hauptventil: "{{ states('input_text.plantinator_bewasserung_hauptventil_entity') | trim }}"
+          umwaelzung: "{{ states('input_text.plantinator_bewasserung_tank_umwalzung_entity') | trim }}"
+          ventil_p1: "{{ states('input_text.plantinator_bewasserung_p1_ventil_entity') | trim }}"
+          ventil_p2: "{{ states('input_text.plantinator_bewasserung_p2_ventil_entity') | trim }}"
+          ventil_p3: "{{ states('input_text.plantinator_bewasserung_p3_ventil_entity') | trim }}"
+          ventil_p4: "{{ states('input_text.plantinator_bewasserung_p4_ventil_entity') | trim }}"
 
       - service: script.plantinator_bewasserung_pumpe_aus
 
-      # Auch bei einer noch veralteten WLAN-Anzeige "off" auf eine neue
-      # AUS-Rückmeldung nach dem Abschaltbefehl warten. So bleiben EXEC und
-      # das geöffnete Ventil während verzögerter Zustandsmeldungen aktiv.
-      - wait_template: >
-          {{ not pumpe.startswith('switch.')
-             or not has_value(pumpe)
-             or (
-               is_state(pumpe, 'off')
-               and as_timestamp(states[pumpe].last_updated, 0)
-                   >= (pumpen_aus_befehl_ts | float(0))
-             ) }}
+      # Unavailable/unknown gilt niemals als bestätigtes AUS. Ein bereits
+      # bestätigter off-Zustand ist beim Not-Stopp dagegen ausreichend.
+      - wait_template: "{{ pumpe.startswith('switch.') and has_value(pumpe) and is_state(pumpe, 'off') }}"
         timeout: >
           {{ states('input_number.plantinator_bewasserung_aktor_bestaetigungszeit_sekunden')
              | float(8) }}
@@ -420,6 +462,33 @@ script:
           seconds: 1
 
       - service: script.plantinator_bewasserung_alle_ventile_zu
+
+      - variables:
+          hardware_sicher: >
+            {% set ns = namespace(ok=true) %}
+            {% if not pumpe.startswith('switch.') or not has_value(pumpe) or not is_state(pumpe, 'off') %}
+              {% set ns.ok = false %}
+            {% endif %}
+            {% for aktor in [hauptventil, ventil_p1, ventil_p2, ventil_p3, ventil_p4] %}
+              {% if aktor.startswith('switch.')
+                    and (not has_value(aktor) or not is_state(aktor, 'off')) %}
+                {% set ns.ok = false %}
+              {% endif %}
+            {% endfor %}
+            {% if is_state('input_boolean.plantinator_bewasserung_tank_umwalzung_verwenden', 'on')
+                  and umwaelzung.startswith('switch.')
+                  and (not has_value(umwaelzung) or not is_state(umwaelzung, 'off')) %}
+              {% set ns.ok = false %}
+            {% endif %}
+            {{ ns.ok }}
+          hardware_details: >
+            Pumpe={{ states(pumpe) if pumpe.startswith('switch.') else 'mapping_fehlt' }},
+            Hauptventil={{ states(hauptventil) if hauptventil.startswith('switch.') else 'nicht_verwendet' }},
+            P1={{ states(ventil_p1) if ventil_p1.startswith('switch.') else 'nicht_gemappt' }},
+            P2={{ states(ventil_p2) if ventil_p2.startswith('switch.') else 'nicht_gemappt' }},
+            P3={{ states(ventil_p3) if ventil_p3.startswith('switch.') else 'nicht_gemappt' }},
+            P4={{ states(ventil_p4) if ventil_p4.startswith('switch.') else 'nicht_gemappt' }},
+            Umwälzung={{ states(umwaelzung) if umwaelzung.startswith('switch.') else 'nicht_verwendet' }}
 
       - service: input_boolean.turn_off
         target:
@@ -436,15 +505,49 @@ script:
 
       - service: input_number.set_value
         target:
-          entity_id: input_number.plantinator_bewasserung_mess_drain_aktive_pflanze
+          entity_id:
+            - input_number.plantinator_bewasserung_mess_drain_aktive_pflanze
+            - input_number.plantinator_bewasserung_exec_aktive_pflanze
         data:
           value: 0
 
-      - service: input_text.set_value
-        target:
-          entity_id: input_text.plantinator_bewasserung_exec_status
-        data:
-          value: sicher_stop
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ hardware_sicher | bool(false) }}"
+            sequence:
+              - service: input_boolean.turn_on
+                target:
+                  entity_id: input_boolean.plantinator_bewasserung_hardware_sicher_aus
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.plantinator_bewasserung_exec_status
+                data:
+                  value: sicher_stop_bestaetigt
+        default:
+          - service: input_text.set_value
+            target:
+              entity_id: input_text.plantinator_bewasserung_exec_status
+            data:
+              value: sicher_stop_nicht_bestaetigt
+          - service: input_text.set_value
+            target:
+              entity_id: input_text.plantinator_bewasserung_alarm_grund
+            data:
+              value: sicher_stop_nicht_bestaetigt
+          - service: input_datetime.set_datetime
+            target:
+              entity_id: input_datetime.plantinator_bewasserung_alarm_zeit
+            data:
+              datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+          - service: script.plantinator_bewasserung_sicherheitsereignis_melden
+            data:
+              stufe: kritisch
+              code: sicher_stop_nicht_bestaetigt
+              details: "{{ hardware_details }}"
+          - service: input_boolean.turn_on
+            target:
+              entity_id: input_boolean.plantinator_bewasserung_alarm_verriegelt
 
       - service: input_datetime.set_datetime
         target:
@@ -514,6 +617,7 @@ script:
           vorlauf: "{{ states('input_number.plantinator_bewasserung_ventil_vorlauf_sekunden') | float(1) }}"
           nachlauf: "{{ states('input_number.plantinator_bewasserung_ventil_nachlauf_sekunden') | float(1) }}"
           aktor_bestaetigung: "{{ states('input_number.plantinator_bewasserung_aktor_bestaetigungszeit_sekunden') | float(8) }}"
+          aktor_wiederholpause: "{{ states('input_number.plantinator_bewasserung_aktor_wiederholpause_sekunden') | float(2) }}"
           pumpe: "{{ states('input_text.plantinator_bewasserung_pumpe_entity') | trim }}"
           hauptventil: "{{ states('input_text.plantinator_bewasserung_hauptventil_entity') | trim }}"
           ventil: "{{ states('input_text.plantinator_bewasserung_p' ~ (pflanze | int) ~ '_ventil_entity') | trim }}"
@@ -521,6 +625,12 @@ script:
           p_aktiv: >
             {{ (pflanze | int) <= (states('input_number.plantinator_bewasserung_anzahl_pflanzen') | int(4))
                and is_state('input_boolean.plantinator_bewasserung_p' ~ (pflanze | int) ~ '_aktiv', 'on') }}
+          p_aktor_gesperrt: >
+            {{ is_state('input_boolean.plantinator_bewasserung_p' ~ (pflanze | int) ~ '_aktor_sperre', 'on') }}
+          hauptventil_aktor_gesperrt: >
+            {{ is_state('input_boolean.plantinator_bewasserung_hauptventil_aktor_sperre', 'on') }}
+          pumpe_aktor_gesperrt: >
+            {{ is_state('input_boolean.plantinator_bewasserung_pumpe_aktor_sperre', 'on') }}
           feedback_pending: "{{ is_state('input_boolean.plantinator_bewasserung_p' ~ (pflanze | int) ~ '_feedback_ausstehend', 'on') }}"
           max_normal: "{{ states('input_number.plantinator_bewasserung_max_ml_pro_normalguss') | float(0) }}"
           max_drain: "{{ states('input_number.plantinator_bewasserung_max_ml_mess_drain_guss') | float(0) }}"
@@ -645,6 +755,39 @@ script:
 
           - conditions:
               - condition: template
+                value_template: "{{ p_aktor_gesperrt }}"
+            sequence:
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.plantinator_bewasserung_exec_status
+                data:
+                  value: "blockiert_aktor_sperre_p{{ p }}"
+              - stop: "Das Pflanzenventil ist nach einem Aktorfehler vorübergehend gesperrt."
+
+          - conditions:
+              - condition: template
+                value_template: "{{ hauptventil_aktor_gesperrt }}"
+            sequence:
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.plantinator_bewasserung_exec_status
+                data:
+                  value: blockiert_hauptventil_aktor_sperre
+              - stop: "Das gemeinsame Hauptventil ist nach einem Aktorfehler vorübergehend gesperrt."
+
+          - conditions:
+              - condition: template
+                value_template: "{{ pumpe_aktor_gesperrt }}"
+            sequence:
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.plantinator_bewasserung_exec_status
+                data:
+                  value: blockiert_pumpe_aktor_sperre
+              - stop: "Die gemeinsame Pumpe ist nach einem unbestätigten Start vorübergehend gesperrt."
+
+          - conditions:
+              - condition: template
                 value_template: >
                   {{ (vorgang != 'mess_drain'
                       and (states('sensor.plantinator_bewasserung_mapping_status') != 'ok'
@@ -732,6 +875,18 @@ script:
                           value: blockiert_tank_umwalzung_stop_fehler
                       - stop: "Tank-Umwälzung konnte nicht gestoppt werden."
 
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_exec_aktive_pflanze
+        data:
+          value: "{{ p }}"
+
+      - service: input_boolean.turn_off
+        target:
+          entity_id:
+            - input_boolean.plantinator_bewasserung_pumpe_soll_laufen
+            - input_boolean.plantinator_bewasserung_hardware_sicher_aus
+
       - service: input_boolean.turn_on
         target:
           entity_id: input_boolean.plantinator_bewasserung_exec_laeuft
@@ -800,40 +955,137 @@ script:
               - condition: template
                 value_template: "{{ hauptventil not in ['', 'unknown', 'unavailable', 'none'] }}"
             sequence:
+              - variables:
+                  hauptventil_ein_befehl_ts_1: "{{ as_timestamp(now()) }}"
+
               - service: switch.turn_on
                 continue_on_error: true
                 target:
                   entity_id: "{{ hauptventil }}"
+
               - wait_template: >
-                  {{ is_state(hauptventil, 'on')
+                  {{ (is_state(hauptventil, 'on')
+                      and as_timestamp(states[hauptventil].last_updated, 0)
+                          >= (hauptventil_ein_befehl_ts_1 | float(0)))
                      or is_state('input_boolean.plantinator_bewasserung_exec_abort', 'on')
                      or (states('counter.plantinator_bewasserung_stop_generation') | int(0)) != (run_generation | int(0)) }}
                 timeout: "{{ aktor_bestaetigung }}"
                 continue_on_timeout: true
+
               - choose:
                   - conditions:
                       - condition: template
                         value_template: >
-                          {{ not is_state(hauptventil, 'on')
+                          {{ not (is_state(hauptventil, 'on')
+                                  and as_timestamp(states[hauptventil].last_updated, 0)
+                                      >= (hauptventil_ein_befehl_ts_1 | float(0)))
                              and is_state('input_boolean.plantinator_bewasserung_exec_abort', 'off')
                              and (states('counter.plantinator_bewasserung_stop_generation') | int(0)) == (run_generation | int(0)) }}
                     sequence:
-                      - service: script.plantinator_bewasserung_alle_ventile_zu
-                      - service: input_boolean.turn_off
+                      - service: switch.turn_off
+                        continue_on_error: true
                         target:
-                          entity_id: input_boolean.plantinator_bewasserung_exec_laeuft
-                      - service: input_text.set_value
+                          entity_id: "{{ hauptventil }}"
+
+                      - wait_template: "{{ is_state(hauptventil, 'off') }}"
+                        timeout: "{{ aktor_bestaetigung }}"
+                        continue_on_timeout: true
+
+                      - choose:
+                          - conditions:
+                              - condition: template
+                                value_template: "{{ not is_state(hauptventil, 'off') }}"
+                            sequence:
+                              - service: input_text.set_value
+                                target:
+                                  entity_id: input_text.plantinator_bewasserung_exec_status
+                                data:
+                                  value: hardwarefehler_hauptventil_aus_nicht_bestaetigt
+                              - service: script.plantinator_bewasserung_alarm_ausloesen
+                                data:
+                                  grund: hardwarefehler_hauptventil_aus_nicht_bestaetigt
+                              - stop: "Hauptventil konnte nach dem ersten Versuch nicht sicher ausgeschaltet werden."
+
+                      - wait_template: >
+                          {{ is_state('input_boolean.plantinator_bewasserung_exec_abort', 'on')
+                             or (states('counter.plantinator_bewasserung_stop_generation') | int(0)) != (run_generation | int(0)) }}
+                        timeout: "{{ aktor_wiederholpause }}"
+                        continue_on_timeout: true
+
+                      - variables:
+                          hauptventil_ein_befehl_ts_2: "{{ as_timestamp(now()) }}"
+
+                      - service: switch.turn_on
+                        continue_on_error: true
                         target:
-                          entity_id: input_text.plantinator_bewasserung_exec_status
-                        data:
-                          value: "hardwarefehler_hauptventil_p{{ p }}"
-                      - service: counter.increment
-                        target:
-                          entity_id: counter.plantinator_bewasserung_hardwarefehler_gesamt
-                      - service: script.plantinator_bewasserung_alarm_ausloesen
-                        data:
-                          grund: "hardwarefehler_hauptventil_p{{ p }}"
-                      - stop: "Hauptventil konnte nicht geöffnet werden."
+                          entity_id: "{{ hauptventil }}"
+
+                      - wait_template: >
+                          {{ (is_state(hauptventil, 'on')
+                              and as_timestamp(states[hauptventil].last_updated, 0)
+                                  >= (hauptventil_ein_befehl_ts_2 | float(0)))
+                             or is_state('input_boolean.plantinator_bewasserung_exec_abort', 'on')
+                             or (states('counter.plantinator_bewasserung_stop_generation') | int(0)) != (run_generation | int(0)) }}
+                        timeout: "{{ aktor_bestaetigung }}"
+                        continue_on_timeout: true
+
+                      - choose:
+                          - conditions:
+                              - condition: template
+                                value_template: >
+                                  {{ not (is_state(hauptventil, 'on')
+                                          and as_timestamp(states[hauptventil].last_updated, 0)
+                                              >= (hauptventil_ein_befehl_ts_2 | float(0)))
+                                     and is_state('input_boolean.plantinator_bewasserung_exec_abort', 'off')
+                                     and (states('counter.plantinator_bewasserung_stop_generation') | int(0)) == (run_generation | int(0)) }}
+                            sequence:
+                              - service: switch.turn_off
+                                continue_on_error: true
+                                target:
+                                  entity_id: "{{ hauptventil }}"
+                              - wait_template: "{{ is_state(hauptventil, 'off') }}"
+                                timeout: "{{ aktor_bestaetigung }}"
+                                continue_on_timeout: true
+
+                              - choose:
+                                  - conditions:
+                                      - condition: template
+                                        value_template: "{{ not is_state(hauptventil, 'off') }}"
+                                    sequence:
+                                      - service: input_text.set_value
+                                        target:
+                                          entity_id: input_text.plantinator_bewasserung_exec_status
+                                        data:
+                                          value: hardwarefehler_hauptventil_aus_nicht_bestaetigt
+                                      - service: script.plantinator_bewasserung_alarm_ausloesen
+                                        data:
+                                          grund: hardwarefehler_hauptventil_aus_nicht_bestaetigt
+                                      - stop: "Hauptventil konnte nach dem zweiten Versuch nicht sicher ausgeschaltet werden."
+
+                              - service: input_boolean.turn_on
+                                target:
+                                  entity_id: input_boolean.plantinator_bewasserung_hauptventil_aktor_sperre
+                              - service: input_text.set_value
+                                target:
+                                  entity_id: input_text.plantinator_bewasserung_hauptventil_aktor_fehler
+                                data:
+                                  value: oeffnen_nach_2_versuchen_fehlgeschlagen
+                              - service: input_text.set_value
+                                target:
+                                  entity_id: input_text.plantinator_bewasserung_exec_status
+                                data:
+                                  value: hardwarefehler_hauptventil_oeffnen
+                              - service: input_boolean.turn_off
+                                target:
+                                  entity_id: input_boolean.plantinator_bewasserung_exec_laeuft
+                              - service: script.plantinator_bewasserung_sicherheitsereignis_melden
+                                data:
+                                  stufe: warnung
+                                  code: hardwarefehler_hauptventil_oeffnen
+                                  details: >
+                                    Zwei Einschaltversuche ohne bestätigte EIN-Rückmeldung.
+                                    Hauptventil ist sicher AUS; Bewässerungsstarts wurden vorübergehend gesperrt.
+                              - stop: "Hauptventil konnte nach zwei Versuchen nicht geöffnet werden."
 
       - choose:
           - conditions:
@@ -853,13 +1105,21 @@ script:
                   value: "{{ vorgang }}_abgebrochen_vor_ventil_p{{ p }}_{{ ml | round(0) | int }}ml_{{ now().timestamp() | int }}"
               - stop: "Stop vor Öffnen des Pflanzenventils."
 
+      # Pflanzenventil: zwei vollständige Einschaltversuche. Jede
+      # Bestätigungszeit beginnt unmittelbar mit dem jeweiligen EIN-Befehl.
+      # Zwischen den Versuchen muss der sichere AUS-Zustand feststehen.
+      - variables:
+          ventil_ein_befehl_ts_1: "{{ as_timestamp(now()) }}"
+
       - service: switch.turn_on
         continue_on_error: true
         target:
           entity_id: "{{ ventil }}"
 
       - wait_template: >
-          {{ is_state(ventil, 'on')
+          {{ (is_state(ventil, 'on')
+              and as_timestamp(states[ventil].last_updated, 0)
+                  >= (ventil_ein_befehl_ts_1 | float(0)))
              or is_state('input_boolean.plantinator_bewasserung_exec_abort', 'on')
              or (states('counter.plantinator_bewasserung_stop_generation') | int(0)) != (run_generation | int(0)) }}
         timeout: "{{ aktor_bestaetigung }}"
@@ -869,26 +1129,125 @@ script:
           - conditions:
               - condition: template
                 value_template: >
-                  {{ not is_state(ventil, 'on')
+                  {{ not (is_state(ventil, 'on')
+                           and as_timestamp(states[ventil].last_updated, 0)
+                               >= (ventil_ein_befehl_ts_1 | float(0)))
                      and is_state('input_boolean.plantinator_bewasserung_exec_abort', 'off')
                      and (states('counter.plantinator_bewasserung_stop_generation') | int(0)) == (run_generation | int(0)) }}
             sequence:
-              - service: script.plantinator_bewasserung_alle_ventile_zu
-              - service: input_boolean.turn_off
+              - service: switch.turn_off
+                continue_on_error: true
                 target:
-                  entity_id: input_boolean.plantinator_bewasserung_exec_laeuft
-              - service: input_text.set_value
+                  entity_id: "{{ ventil }}"
+
+              - wait_template: >
+                  {{ is_state(ventil, 'off')
+                     or is_state('input_boolean.plantinator_bewasserung_exec_abort', 'on')
+                     or (states('counter.plantinator_bewasserung_stop_generation') | int(0)) != (run_generation | int(0)) }}
+                timeout: "{{ aktor_bestaetigung }}"
+                continue_on_timeout: true
+
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: >
+                          {{ not is_state(ventil, 'off')
+                             and is_state('input_boolean.plantinator_bewasserung_exec_abort', 'off')
+                             and (states('counter.plantinator_bewasserung_stop_generation') | int(0)) == (run_generation | int(0)) }}
+                    sequence:
+                      - service: input_text.set_value
+                        target:
+                          entity_id: input_text.plantinator_bewasserung_exec_status
+                        data:
+                          value: "hardwarefehler_ventil_aus_nicht_bestaetigt_p{{ p }}"
+                      - service: script.plantinator_bewasserung_alarm_ausloesen
+                        data:
+                          grund: "hardwarefehler_ventil_aus_nicht_bestaetigt_p{{ p }}"
+                      - stop: "Pflanzenventil konnte nach dem ersten Versuch nicht sicher ausgeschaltet werden."
+
+              - wait_template: >
+                  {{ is_state('input_boolean.plantinator_bewasserung_exec_abort', 'on')
+                     or (states('counter.plantinator_bewasserung_stop_generation') | int(0)) != (run_generation | int(0)) }}
+                timeout: "{{ aktor_wiederholpause }}"
+                continue_on_timeout: true
+
+              - variables:
+                  ventil_ein_befehl_ts_2: "{{ as_timestamp(now()) }}"
+
+              - service: switch.turn_on
+                continue_on_error: true
                 target:
-                  entity_id: input_text.plantinator_bewasserung_exec_status
-                data:
-                  value: "hardwarefehler_ventil_p{{ p }}"
-              - service: counter.increment
-                target:
-                  entity_id: counter.plantinator_bewasserung_hardwarefehler_gesamt
-              - service: script.plantinator_bewasserung_alarm_ausloesen
-                data:
-                  grund: "hardwarefehler_ventil_p{{ p }}"
-              - stop: "Pflanzenventil konnte nicht geöffnet werden."
+                  entity_id: "{{ ventil }}"
+
+              - wait_template: >
+                  {{ (is_state(ventil, 'on')
+                      and as_timestamp(states[ventil].last_updated, 0)
+                          >= (ventil_ein_befehl_ts_2 | float(0)))
+                     or is_state('input_boolean.plantinator_bewasserung_exec_abort', 'on')
+                     or (states('counter.plantinator_bewasserung_stop_generation') | int(0)) != (run_generation | int(0)) }}
+                timeout: "{{ aktor_bestaetigung }}"
+                continue_on_timeout: true
+
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: >
+                          {{ not (is_state(ventil, 'on')
+                                   and as_timestamp(states[ventil].last_updated, 0)
+                                       >= (ventil_ein_befehl_ts_2 | float(0)))
+                             and is_state('input_boolean.plantinator_bewasserung_exec_abort', 'off')
+                             and (states('counter.plantinator_bewasserung_stop_generation') | int(0)) == (run_generation | int(0)) }}
+                    sequence:
+                      - service: switch.turn_off
+                        continue_on_error: true
+                        target:
+                          entity_id: "{{ ventil }}"
+
+                      - wait_template: "{{ is_state(ventil, 'off') }}"
+                        timeout: "{{ aktor_bestaetigung }}"
+                        continue_on_timeout: true
+
+                      - choose:
+                          - conditions:
+                              - condition: template
+                                value_template: "{{ not is_state(ventil, 'off') }}"
+                            sequence:
+                              - service: input_text.set_value
+                                target:
+                                  entity_id: input_text.plantinator_bewasserung_exec_status
+                                data:
+                                  value: "hardwarefehler_ventil_aus_nicht_bestaetigt_p{{ p }}"
+                              - service: script.plantinator_bewasserung_alarm_ausloesen
+                                data:
+                                  grund: "hardwarefehler_ventil_aus_nicht_bestaetigt_p{{ p }}"
+                              - stop: "Pflanzenventil konnte nach dem zweiten Versuch nicht sicher ausgeschaltet werden."
+
+                      # Beide EIN-Versuche sind fehlgeschlagen, das Ventil ist
+                      # aber nachweislich AUS: nur diese Pflanze sperren.
+                      - service: input_boolean.turn_on
+                        target:
+                          entity_id: "input_boolean.plantinator_bewasserung_p{{ p }}_aktor_sperre"
+                      - service: input_text.set_value
+                        target:
+                          entity_id: "input_text.plantinator_bewasserung_p{{ p }}_aktor_fehler"
+                        data:
+                          value: "ventil_oeffnen_nach_2_versuchen_fehlgeschlagen"
+                      - service: input_text.set_value
+                        target:
+                          entity_id: input_text.plantinator_bewasserung_exec_status
+                        data:
+                          value: "hardwarefehler_ventil_oeffnen_p{{ p }}"
+                      - service: input_boolean.turn_off
+                        target:
+                          entity_id: input_boolean.plantinator_bewasserung_exec_laeuft
+                      - service: script.plantinator_bewasserung_sicherheitsereignis_melden
+                        data:
+                          stufe: warnung
+                          code: "hardwarefehler_ventil_oeffnen_p{{ p }}"
+                          details: >
+                            Zwei Einschaltversuche ohne bestätigte EIN-Rückmeldung.
+                            Ventil ist sicher AUS; nur Pflanze {{ p }} wurde gesperrt.
+                      - stop: "Pflanzenventil konnte nach zwei Versuchen nicht geöffnet werden; Pflanze vorübergehend gesperrt."
 
       - wait_template: >
           {{ is_state('input_boolean.plantinator_bewasserung_exec_abort', 'on')
@@ -915,19 +1274,167 @@ script:
                   entity_id: input_boolean.plantinator_bewasserung_exec_laeuft
               - stop: "Abort während Vorlauf."
 
-      # Die Soll-Laufzeit beginnt unmittelbar mit dem Einschaltbefehl.
-      # Eine verzögerte WLAN-Rückmeldung darf einen kurzen Shot nicht
-      # verlängern. Darum ist die "on"-Rückmeldung nur Diagnose und keine
-      # Voraussetzung für den Start der Dosierzeit.
+      # Die Soll-Laufzeit beginnt unmittelbar mit dem Einschaltbefehl. Die
+      # EIN-Rückmeldung wird innerhalb dieser bereits laufenden Zeit geprüft;
+      # die Prüfung darf den Shot niemals verlängern.
       - variables:
+          pumpen_ein_befehl_ts: "{{ as_timestamp(now()) }}"
           pumpen_ende_ts: "{{ as_timestamp(now()) + (dauer | float(0)) }}"
+
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.plantinator_bewasserung_pumpe_soll_laufen
 
       - service: switch.turn_on
         continue_on_error: true
         target:
           entity_id: "{{ pumpe }}"
 
-      # Hauptlauf der Pumpe – bricht bei Abort sofort ab
+      # Frische EIN-Rückmeldung höchstens bis zum früheren Zeitpunkt aus
+      # Bestätigungsfrist und berechnetem Shot-Ende abwarten.
+      - wait_template: >
+          {{ (is_state(pumpe, 'on')
+              and as_timestamp(states[pumpe].last_updated, 0)
+                  >= (pumpen_ein_befehl_ts | float(0)))
+             or is_state('input_boolean.plantinator_bewasserung_exec_abort', 'on')
+             or (states('counter.plantinator_bewasserung_stop_generation') | int(0)) != (run_generation | int(0)) }}
+        timeout: >
+          {{ [0.01,
+              [(aktor_bestaetigung | float(8)),
+               (pumpen_ende_ts | float(0)) - as_timestamp(now())] | min] | max }}
+        continue_on_timeout: true
+
+      - variables:
+          pumpe_ein_bestaetigt: >
+            {{ is_state(pumpe, 'on')
+               and as_timestamp(states[pumpe].last_updated, 0)
+                   >= (pumpen_ein_befehl_ts | float(0)) }}
+
+      # Fehlende EIN-Bestätigung: keine Menge als abgegeben verbuchen und
+      # niemals blind erneut einschalten. Ist AUS sicher, wird nur die
+      # gemeinsam genutzte Pumpe weich gesperrt; unsicheres AUS bleibt hart.
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ not (pumpe_ein_bestaetigt | bool(false))
+                     and is_state('input_boolean.plantinator_bewasserung_exec_abort', 'off')
+                     and (states('counter.plantinator_bewasserung_stop_generation') | int(0)) == (run_generation | int(0)) }}
+            sequence:
+              - variables:
+                  pumpe_vor_aus_sicher: >
+                    {{ pumpe.startswith('switch.') and has_value(pumpe)
+                       and is_state(pumpe, 'off') }}
+                  pumpen_aus_befehl_ts_fehlstart: "{{ as_timestamp(now()) }}"
+
+              - service: input_boolean.turn_off
+                target:
+                  entity_id: input_boolean.plantinator_bewasserung_pumpe_soll_laufen
+
+              - service: switch.turn_off
+                continue_on_error: true
+                target:
+                  entity_id: "{{ pumpe }}"
+
+              - wait_template: >
+                  {{ (pumpe_vor_aus_sicher | bool(false))
+                     or (is_state(pumpe, 'off')
+                         and as_timestamp(states[pumpe].last_updated, 0)
+                             >= (pumpen_aus_befehl_ts_fehlstart | float(0))) }}
+                timeout: "{{ aktor_bestaetigung }}"
+                continue_on_timeout: true
+
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: >
+                          {{ not ((pumpe_vor_aus_sicher | bool(false))
+                                  or (is_state(pumpe, 'off')
+                                      and as_timestamp(states[pumpe].last_updated, 0)
+                                          >= (pumpen_aus_befehl_ts_fehlstart | float(0)))) }}
+                    sequence:
+                      - service: input_text.set_value
+                        target:
+                          entity_id: input_text.plantinator_bewasserung_exec_status
+                        data:
+                          value: "hardwarefehler_pumpe_aus_p{{ p }}"
+                      - service: script.plantinator_bewasserung_alarm_ausloesen
+                        data:
+                          grund: "hardwarefehler_pumpe_aus_p{{ p }}"
+                      - stop: "Pumpe nach unbestätigtem Start nicht sicher ausgeschaltet."
+
+              - service: script.plantinator_bewasserung_alle_ventile_zu
+
+              - variables:
+                  fehlstart_hardware_sicher: >
+                    {{ pumpe.startswith('switch.') and has_value(pumpe) and is_state(pumpe, 'off')
+                       and ventil.startswith('switch.') and has_value(ventil) and is_state(ventil, 'off')
+                       and (hauptventil in ['', 'unknown', 'unavailable', 'none']
+                            or (hauptventil.startswith('switch.') and has_value(hauptventil)
+                                and is_state(hauptventil, 'off'))) }}
+
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ not (fehlstart_hardware_sicher | bool(false)) }}"
+                    sequence:
+                      - service: input_text.set_value
+                        target:
+                          entity_id: input_text.plantinator_bewasserung_exec_status
+                        data:
+                          value: "hardwarefehler_aus_nicht_bestaetigt_p{{ p }}"
+                      - service: script.plantinator_bewasserung_alarm_ausloesen
+                        data:
+                          grund: "hardwarefehler_aus_nicht_bestaetigt_p{{ p }}"
+                      - stop: "Sicherer AUS-Zustand nach unbestätigtem Pumpenstart fehlt."
+
+              - service: input_boolean.turn_on
+                target:
+                  entity_id:
+                    - input_boolean.plantinator_bewasserung_hardware_sicher_aus
+                    - input_boolean.plantinator_bewasserung_pumpe_aktor_sperre
+
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.plantinator_bewasserung_pumpe_aktor_fehler
+                data:
+                  value: einschalten_nicht_bestaetigt
+
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.plantinator_bewasserung_exec_status
+                data:
+                  value: "hardwarefehler_pumpe_ein_nicht_bestaetigt_p{{ p }}"
+
+              - service: input_number.set_value
+                target:
+                  entity_id: input_number.plantinator_bewasserung_exec_aktive_pflanze
+                data:
+                  value: 0
+
+              - service: input_boolean.turn_off
+                target:
+                  entity_id: input_boolean.plantinator_bewasserung_exec_laeuft
+
+              - service: input_datetime.set_datetime
+                target:
+                  entity_id: input_datetime.plantinator_bewasserung_exec_letztes_ende
+                data:
+                  datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+
+              - service: script.plantinator_bewasserung_sicherheitsereignis_melden
+                data:
+                  stufe: warnung
+                  code: "hardwarefehler_pumpe_ein_nicht_bestaetigt_p{{ p }}"
+                  details: >
+                    Keine frische EIN-Rückmeldung innerhalb der laufenden Shotzeit.
+                    Pumpe und Ventile sind sicher AUS; 0 ml wurden verbucht und
+                    alle neuen Bewässerungsstarts vorübergehend gesperrt.
+
+              - stop: "Pumpenstart nicht bestätigt; keine Wassermenge verbucht."
+
+      # Bei bestätigtem Pumpenstart nur die noch verbleibende absolute
+      # Soll-Laufzeit abwarten. Die Bestätigungsprüfung kommt nicht hinzu.
       - wait_template: >
           {{ is_state('input_boolean.plantinator_bewasserung_exec_abort', 'on')
              or (states('counter.plantinator_bewasserung_stop_generation') | int(0)) != (run_generation | int(0)) }}
@@ -937,6 +1444,10 @@ script:
 
       - variables:
           pumpen_aus_befehl_ts: "{{ as_timestamp(now()) }}"
+
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.plantinator_bewasserung_pumpe_soll_laufen
 
       - service: switch.turn_off
         continue_on_error: true
@@ -970,9 +1481,6 @@ script:
                   entity_id: input_text.plantinator_bewasserung_exec_status
                 data:
                   value: "hardwarefehler_pumpe_aus_p{{ p }}"
-              - service: counter.increment
-                target:
-                  entity_id: counter.plantinator_bewasserung_hardwarefehler_gesamt
               - service: script.plantinator_bewasserung_alarm_ausloesen
                 data:
                   grund: "hardwarefehler_pumpe_aus_p{{ p }}"
@@ -985,6 +1493,39 @@ script:
         continue_on_timeout: true
 
       - service: script.plantinator_bewasserung_alle_ventile_zu
+
+      - variables:
+          lauf_hardware_sicher: >
+            {{ pumpe.startswith('switch.') and has_value(pumpe) and is_state(pumpe, 'off')
+               and ventil.startswith('switch.') and has_value(ventil) and is_state(ventil, 'off')
+               and (hauptventil in ['', 'unknown', 'unavailable', 'none']
+                    or (hauptventil.startswith('switch.') and has_value(hauptventil)
+                        and is_state(hauptventil, 'off'))) }}
+
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ not (lauf_hardware_sicher | bool(false)) }}"
+            sequence:
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.plantinator_bewasserung_exec_status
+                data:
+                  value: "hardwarefehler_aus_nicht_bestaetigt_p{{ p }}"
+              - service: script.plantinator_bewasserung_alarm_ausloesen
+                data:
+                  grund: "hardwarefehler_aus_nicht_bestaetigt_p{{ p }}"
+              - stop: "Sicherer AUS-Zustand nach dem Guss nicht vollständig bestätigt."
+
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.plantinator_bewasserung_hardware_sicher_aus
+
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_exec_aktive_pflanze
+        data:
+          value: 0
 
       - service: input_boolean.turn_off
         target:
@@ -1539,6 +2080,23 @@ automation:
         to: "on"
     action:
       - service: script.plantinator_bewasserung_sicher_stop
+
+  - id: plantinator_bewasserung_exec_laufende_werte_zuruecksetzen
+    alias: Plantinator Bewässerung EXEC - Laufende Werte zurücksetzen
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: input_boolean.plantinator_bewasserung_exec_laeuft
+        to: "off"
+    action:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.plantinator_bewasserung_pumpe_soll_laufen
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_exec_aktive_pflanze
+        data:
+          value: 0
 
   - id: plantinator_bewasserung_exec_p1_normalguss_button
     alias: Plantinator Bewasserung EXEC - P1 Normalguss Button

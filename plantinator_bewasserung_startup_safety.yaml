@@ -39,6 +39,12 @@ script:
             - input_boolean.plantinator_bewasserung_mess_drain_stop_anforderung
             - input_boolean.plantinator_bewasserung_tank_umwalzung_stop_anforderung
 
+      - service: input_boolean.turn_off
+        target:
+          entity_id:
+            - input_boolean.plantinator_bewasserung_pumpe_soll_laufen
+            - input_boolean.plantinator_bewasserung_hardware_sicher_aus
+
       - service: input_text.set_value
         target:
           entity_id: input_text.plantinator_bewasserung_exec_status
@@ -164,10 +170,20 @@ script:
       - service: input_number.set_value
         target:
           entity_id:
+            - input_number.plantinator_bewasserung_exec_aktive_pflanze
             - input_number.plantinator_bewasserung_mess_drain_aktive_pflanze
             - input_number.plantinator_bewasserung_mess_drain_abgegeben_ml
         data:
           value: 0
+
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ hardware_sicher_aus | bool(false) }}"
+            sequence:
+              - service: input_boolean.turn_on
+                target:
+                  entity_id: input_boolean.plantinator_bewasserung_hardware_sicher_aus
 
       - service: input_text.set_value
         target:
@@ -200,6 +216,15 @@ script:
             - input_datetime.plantinator_bewasserung_shot_exec_letztes_ende
         data:
           datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ not (hardware_sicher_aus | bool(false)) }}"
+            sequence:
+              - service: script.plantinator_bewasserung_alarm_ausloesen
+                data:
+                  grund: startup_hardware_aus_nicht_bestaetigt
 
 automation:
   - id: plantinator_bewasserung_startup_sicher_stop

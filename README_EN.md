@@ -60,6 +60,7 @@ The project also provides:
 - [Automatic control in detail](#automatic-control-in-detail)
 - [Self-learning feedback](#self-learning-feedback)
 - [Monitoring and alarm latch](#monitoring-and-alarm-latch)
+- [Complete safety logic](SAFETY_EN.md)
 - [Maintenance and updates](#maintenance-and-updates)
 - [Troubleshooting](#troubleshooting)
 - [Known limitations](#known-limitations)
@@ -90,8 +91,12 @@ pump runtime in seconds = requested volume in ml / pump output in ml/s
 
 A flow meter is not required, so accurate pump calibration is essential. Pump
 runtime starts with the switch-on command and is therefore not extended by a
-delayed Wi-Fi state report. After the switch-off command, the controller waits
-up to the configurable actuator confirmation time for a new `off` report. It
+delayed Wi-Fi state report. The pump must report a fresh `on` within that
+runtime; otherwise it is switched off, 0 ml are recorded, and all starts are
+temporarily locked. Valve opening uses two separate attempts. Every
+`on` and `off` command gets its own configurable confirmation window, with a
+configurable delay between opening attempts. See the [complete safety
+logic](SAFETY_EN.md#confirmation-of-wi-fi-actuators) for the exact sequence. It
 cannot detect a blocked dripper, a disconnected hose, or the volume that
 physically flowed.
 
@@ -193,6 +198,8 @@ helpers.
 | [`plantinator_bewasserung_debug_logger.yaml`](plantinator_bewasserung_debug_logger.yaml) | Optional diagnostic logger |
 | [`dashboard.yaml`](dashboard.yaml) | Complete German Lovelace dashboard |
 | [`dashboard_en.yaml`](dashboard_en.yaml) | Complete English Lovelace dashboard with identical logic |
+| [`SAFETY.md`](SAFETY.md) | German fault classes, actuator confirmation, latch, and recovery documentation |
+| [`SAFETY_EN.md`](SAFETY_EN.md) | English safety documentation |
 
 All `plantinator*.yaml` files depend on one another and should be installed
 together. The dashboard files are not package files and must not be copied
@@ -535,12 +542,15 @@ are examples, not universal recommendations.
 | Maximum learned-value change per sample | 20% |
 | Full learning confidence after | 5 accepted samples |
 | Peak-drop diagnostic threshold | 3 moisture percentage points |
+| Wetback peak tolerance | ±0.5 moisture percentage points |
+| Maximum wetback top-up | 800 ml |
 
 > [!IMPORTANT]
 > When updating an installation that already has learned plant values, use
 > **Set New Protection Values (Keep Learned Values)** on the dashboard. It
 > only applies the feedback delay, outlier protection, update limit,
-> confidence target, and peak diagnostic defaults. **New Pot / Substrate –
+> confidence target, peak diagnostics, the wetback peak window, and maximum
+> top-up defaults. **New Pot / Substrate –
 > Reset Learning Baseline** is intended for a change of pot, pot size,
 > substrate, or a similarly fundamental change. It restores the learning and
 > feedback parameters listed above, clears learned values, validity flags,
@@ -585,6 +595,8 @@ Additional crop defaults:
 | Substrate profile | `coco` |
 | Substrate volume | 10 l |
 | Ramp-up shot factor | 60% |
+| Allowed peak window | Reference ±0.5 percentage points |
+| Maximum one-time top-up | 800 ml |
 
 `ramp_up` no longer has a fixed duration. After its earliest start time, each
 plant waits until `stored peak − ramp-up dryback` is reached. The complete
@@ -980,10 +992,36 @@ total volume = deficit × learned ml per percentage point
 ```
 
 The shot plan divides that total into smaller ramp-up shots, and Shot EXEC
-runs the complete list. Only after successful feedback is the stabilized
-reading stored as the new peak and **Ramp-Up Complete** set. Abort, alarm, or
-hardware failure does not perform this transition. Maintenance uses the same
-loss calculation with normal shots and the smaller maintenance dryback.
+runs the complete list. The main sequence, peak check, and one optional top-up
+form **one ramp-up transaction**. Automatic peak tracking uses the highest
+valid SMT100 reading since irrigation began. It must be inside the configurable
+window:
+
+```text
+lower limit = reference peak − peak tolerance
+upper limit = reference peak + peak tolerance
+```
+
+If the first measured peak is below the lower limit, one top-up is calculated
+from the missing percentage points and the plant-specific learned ml/%
+value. The delivered amount is the lower of the calculated amount and the
+amount still allowed by the top-up maximum, maximum irrigation, daily limit,
+shot maximum, and remaining shot count. For example, if 867 ml is calculated
+but only 800 ml remains allowed, the system delivers 800 ml instead of failing
+before the top-up starts.
+
+After a second feedback delay, the peak is checked again. A final low peak
+creates a persistent warning and leaves ramp-up incomplete, but does **not**
+globally lock the system. A high peak safely stops irrigation and latches the
+alarm. During a multi-shot top-up, the upper limit is checked before every
+additional shot. An invalid peak sensor safely ends the process with a warning
+but without a global lock. A real technical EXEC failure remains critical.
+
+On success, the reference peak remains unchanged. Measurements may move up or
+down inside the window without slowly shifting the next trigger. Only then is
+**Ramp-Up Complete** set. Abort, alarm, or hardware failure does not perform
+this transition. Maintenance uses the same loss calculation and peak safeguard
+with normal shots and the smaller maintenance dryback.
 
 At the next transition to lights on, ramp-up completion is reset exactly once
 per light day for every plant. A stored light-day key prevents a Home
@@ -1147,41 +1185,30 @@ quantity, not an exact physical substrate constant.
 
 ### Critical system status
 
-Status is only `ok` if:
+**Critical System Status** is limited to hazards in which an actuator runs
+unexpectedly, feedback is contradictory, or a safe off state can no longer be
+confirmed. Mapping, profile, sensor-age, and idle water-level faults block a
+start but do not by themselves latch the global alarm.
 
-- Mapping Status is `ok`;
-- Profile Status is `ok`;
-- all active plants have valid and sufficiently recent moisture and
-  temperature readings;
-- Actuator Safety Status is `ok`;
-- an enabled water-level sensor is valid;
-- water level matches the selected safe state.
-
-Possible status groups include:
+Important critical status groups include:
 
 | Internal status | Meaning |
 |---|---|
-| `mapping_fehler` | At least one required mapping is invalid |
-| `profil_fehler` | Pump, moisture, or temperature profile is invalid |
-| `sensoralter_pX_bodenfeuchte_ungueltig` | Moisture sensor is missing or non-numeric |
-| `sensoralter_pX_bodentemperatur_ungueltig` | Temperature sensor is missing or non-numeric |
-| `sensoralter_pX_bodenfeuchte_veraltet` | Moisture reading is older than allowed |
-| `sensoralter_pX_bodentemperatur_veraltet` | Temperature reading is older than allowed |
 | `aktor_pumpe_unerwartet_an` | Pump is on outside an EXEC run |
 | `aktor_pumpe_ohne_pflanzenventil` | Pump runs without an open plant valve |
 | `aktor_pflanzenventil_unerwartet_offen` | A plant valve is open outside an EXEC run |
 | `aktor_mehrere_pflanzenventile_offen` | More than one plant valve is open |
 | `aktor_*_unverfuegbar_im_lauf` | A required actuator became unavailable during a run |
-| `wasserstand_ungueltig` | Water-level entity is missing or invalid |
-| `wasserstand_nicht_sicher` | Water level does not match the selected safe state |
+| `hardwarefehler_*_aus_nicht_bestaetigt` | A possibly active actuator could not be confirmed off |
+| `sicher_stop_nicht_bestaetigt` | Safe Stop could not confirm every mapped actuator off |
 
-A general critical fault that persists for two minutes latches the alarm.
-During an active water process, unsafe water level and contradictory actuator
-states trigger the alarm and safe stop after approximately two seconds. For
-slow-reporting Wi-Fi actuators, EXEC waits no longer than the configurable
-actuator confirmation time when opening a valve and after switching the pump
-off. A missing confirmation then latches immediately. A delayed pump `on`
-report does not extend the calculated dosing time.
+Unsafe water level during an active water process, contradictory actuator
+states, and missing off confirmation trigger a safe stop and global latch. If
+only a plant valve fails both opening attempts while its off state is
+confirmed, only that plant is locked. After at least 60 seconds a self-test
+automatically clears that lock once the valve is available and reliably off.
+All fault classes and recovery rules are listed in the [complete safety
+logic](SAFETY_EN.md).
 
 ### Alarm status
 
@@ -1191,6 +1218,23 @@ report does not extend the calculated dosing time.
 | `verriegelt` | Alarm is stored and all pump processes remain blocked |
 | `fehler_nicht_quittierbar` | The cause still exists, so acknowledgement is rejected |
 
+### Critical notifications on iPhone
+
+Under **Monitoring → Monitoring Settings**, enter the notify service of the
+Home Assistant Companion App in **iPhone Push Service for Critical Alarms**,
+for example:
+
+```text
+notify.mobile_app_matzes_iphone
+```
+
+Find the exact name under **Developer Tools → Actions** by searching for
+`notify.mobile_app`. Latched critical alarms are sent with the iOS `critical`
+interruption level, sound, and full volume. Critical alerts must also be allowed
+for the Home Assistant app in the iPhone settings. Low-wetback warnings and
+isolated, safely switched-off actuator faults use `time-sensitive` alerts and
+are intentionally not sent as critical iPhone alerts.
+
 ### Correctly acknowledge an alarm
 
 1. Turn the main switch off or the system lock on.
@@ -1198,9 +1242,10 @@ report does not extend the calculated dosing time.
 3. Inspect the physical installation for leaks, dry running, detached hoses,
    and valve state.
 4. Correct mapping, sensor, or water-level faults.
-5. Wait until **Critical System Status** displays `ok`.
-6. Press **Acknowledge Alarm**.
-7. Only then restore permissions under supervision.
+5. Run **Safe Stop** and verify that **All Actuators Confirmed Safely Off** is on.
+6. Wait until **Critical System Status** displays `ok`.
+7. Press **Acknowledge Alarm**.
+8. Only then restore permissions under supervision.
 
 The acknowledgement button cannot bypass a safety condition.
 
@@ -1213,7 +1258,10 @@ Global safe stop:
 - stops the shot timer;
 - switches off pump and circulation;
 - closes the main and plant valves;
-- clears running and reservation flags.
+- verifies a valid `off` state for every mapped actuator;
+- clears running and reservation flags;
+- sets **All Actuators Confirmed Safely Off** only after successful
+  verification; otherwise the system remains or becomes globally latched.
 
 Turning off the main switch or enabling the system lock also triggers safe
 stop.

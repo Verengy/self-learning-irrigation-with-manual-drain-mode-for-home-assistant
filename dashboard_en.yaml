@@ -349,25 +349,55 @@ views:
       - type: grid
         cards:
           - type: heading
-            heading: Automation Parameters
+            heading: Plant Permissions
             heading_style: title
-            icon: mdi:tune
+            icon: mdi:sprout
           - type: entities
-            title: Parameters
+            title: P1 / P2
             show_header_toggle: false
             entities:
-              - entity: >-
-                  input_number.plantinator_bewasserung_auto_check_intervall_minuten
-                name: Check Interval Minutes
-              - entity: >-
-                  input_number.plantinator_bewasserung_auto_mindestpause_pflanze_minuten
-                name: Minimum Pause per Plant
-              - entity: input_number.plantinator_bewasserung_max_ml_pro_tag
-                name: Maximum ml per Day / Plant
-              - entity: sensor.plantinator_bewasserung_crop_normalguss_erlaubnis
-                name: Crop Normal-Irrigation Permission
-              - entity: sensor.plantinator_bewasserung_gesamt_gussbedarf
-                name: Total Irrigation Demand
+              - entity: sensor.plantinator_bewasserung_auto_p1_freigabe
+                name: P1 Automatic Permission
+              - entity: sensor.plantinator_bewasserung_p1_gussbedarf
+                name: P1 Irrigation Demand
+              - entity: sensor.plantinator_bewasserung_p1_empfehlung_normalguss_ml
+                name: P1 Recommendation ml
+              - entity: input_datetime.plantinator_bewasserung_auto_p1_letzter_start
+                name: P1 Last Automatic Start
+              - entity: sensor.plantinator_bewasserung_auto_p2_freigabe
+                name: P2 Automatic Permission
+              - entity: sensor.plantinator_bewasserung_p2_gussbedarf
+                name: P2 Irrigation Demand
+              - entity: sensor.plantinator_bewasserung_p2_empfehlung_normalguss_ml
+                name: P2 Recommendation ml
+              - entity: input_datetime.plantinator_bewasserung_auto_p2_letzter_start
+                name: P2 Last Automatic Start
+          - type: entities
+            title: P3 / P4
+            show_header_toggle: false
+            entities:
+              - entity: sensor.plantinator_bewasserung_auto_p3_freigabe
+                name: P3 Automatic Permission
+              - entity: sensor.plantinator_bewasserung_p3_gussbedarf
+                name: P3 Irrigation Demand
+              - entity: sensor.plantinator_bewasserung_p3_empfehlung_normalguss_ml
+                name: P3 Recommendation ml
+              - entity: input_datetime.plantinator_bewasserung_auto_p3_letzter_start
+                name: P3 Last Automatic Start
+              - entity: sensor.plantinator_bewasserung_auto_p4_freigabe
+                name: P4 Automatic Permission
+              - entity: sensor.plantinator_bewasserung_p4_gussbedarf
+                name: P4 Irrigation Demand
+              - entity: sensor.plantinator_bewasserung_p4_empfehlung_normalguss_ml
+                name: P4 Recommendation ml
+              - entity: input_datetime.plantinator_bewasserung_auto_p4_letzter_start
+                name: P4 Last Automatic Start
+      - type: grid
+        cards:
+          - type: heading
+            heading: Daily Status
+            heading_style: title
+            icon: mdi:calendar-today
           - type: entities
             title: Daily Counters
             show_header_toggle: false
@@ -452,49 +482,25 @@ views:
       - type: grid
         cards:
           - type: heading
-            heading: Plant Permissions
+            heading: Automation Parameters
             heading_style: title
-            icon: mdi:sprout
+            icon: mdi:tune
           - type: entities
-            title: P1 / P2
+            title: Parameters
             show_header_toggle: false
             entities:
-              - entity: sensor.plantinator_bewasserung_auto_p1_freigabe
-                name: P1 Automatic Permission
-              - entity: sensor.plantinator_bewasserung_p1_gussbedarf
-                name: P1 Irrigation Demand
-              - entity: sensor.plantinator_bewasserung_p1_empfehlung_normalguss_ml
-                name: P1 Recommendation ml
-              - entity: input_datetime.plantinator_bewasserung_auto_p1_letzter_start
-                name: P1 Last Automatic Start
-              - entity: sensor.plantinator_bewasserung_auto_p2_freigabe
-                name: P2 Automatic Permission
-              - entity: sensor.plantinator_bewasserung_p2_gussbedarf
-                name: P2 Irrigation Demand
-              - entity: sensor.plantinator_bewasserung_p2_empfehlung_normalguss_ml
-                name: P2 Recommendation ml
-              - entity: input_datetime.plantinator_bewasserung_auto_p2_letzter_start
-                name: P2 Last Automatic Start
-          - type: entities
-            title: P3 / P4
-            show_header_toggle: false
-            entities:
-              - entity: sensor.plantinator_bewasserung_auto_p3_freigabe
-                name: P3 Automatic Permission
-              - entity: sensor.plantinator_bewasserung_p3_gussbedarf
-                name: P3 Irrigation Demand
-              - entity: sensor.plantinator_bewasserung_p3_empfehlung_normalguss_ml
-                name: P3 Recommendation ml
-              - entity: input_datetime.plantinator_bewasserung_auto_p3_letzter_start
-                name: P3 Last Automatic Start
-              - entity: sensor.plantinator_bewasserung_auto_p4_freigabe
-                name: P4 Automatic Permission
-              - entity: sensor.plantinator_bewasserung_p4_gussbedarf
-                name: P4 Irrigation Demand
-              - entity: sensor.plantinator_bewasserung_p4_empfehlung_normalguss_ml
-                name: P4 Recommendation ml
-              - entity: input_datetime.plantinator_bewasserung_auto_p4_letzter_start
-                name: P4 Last Automatic Start
+              - entity: >-
+                  input_number.plantinator_bewasserung_auto_check_intervall_minuten
+                name: Check Interval Minutes
+              - entity: >-
+                  input_number.plantinator_bewasserung_auto_mindestpause_pflanze_minuten
+                name: Minimum Pause per Plant
+              - entity: input_number.plantinator_bewasserung_max_ml_pro_tag
+                name: Maximum ml per Day / Plant
+              - entity: sensor.plantinator_bewasserung_crop_normalguss_erlaubnis
+                name: Crop Normal-Irrigation Permission
+              - entity: sensor.plantinator_bewasserung_gesamt_gussbedarf
+                name: Total Irrigation Demand
   - title: EXEC
     path: plantinator-bewasserung-exec
     icon: mdi:water-pump
@@ -519,6 +525,12 @@ views:
                 name: EXEC Status Input
               - entity: input_boolean.plantinator_bewasserung_exec_laeuft
                 name: EXEC Running
+              - entity: input_number.plantinator_bewasserung_exec_aktive_pflanze
+                name: Active EXEC Plant
+              - entity: input_boolean.plantinator_bewasserung_pumpe_soll_laufen
+                name: Pump Should Be Running
+              - entity: input_boolean.plantinator_bewasserung_hardware_sicher_aus
+                name: All Actuators Confirmed Safely Off
               - entity: input_boolean.plantinator_bewasserung_exec_abort
                 name: EXEC Abort Flag
               - entity: counter.plantinator_bewasserung_stop_generation
@@ -599,39 +611,6 @@ views:
       - type: grid
         cards:
           - type: heading
-            heading: Manual Normal Irrigation
-            heading_style: title
-            icon: mdi:water-plus
-          - type: entities
-            title: Normal-Irrigation Settings
-            show_header_toggle: false
-            entities:
-              - entity: input_number.plantinator_bewasserung_manueller_testguss_ml
-                name: Manual Test Irrigation ml
-              - entity: sensor.plantinator_bewasserung_manueller_testguss_sekunden
-                name: Manual Test Irrigation Seconds
-              - entity: input_number.plantinator_bewasserung_ventil_vorlauf_sekunden
-                name: Valve Pre-Run
-              - entity: input_number.plantinator_bewasserung_ventil_nachlauf_sekunden
-                name: Valve Post-Run
-              - entity: >-
-                  input_number.plantinator_bewasserung_aktor_bestaetigungszeit_sekunden
-                name: Actuator Confirmation Max.
-          - type: entities
-            title: Normal-Irrigation Buttons
-            show_header_toggle: false
-            entities:
-              - entity: input_button.plantinator_bewasserung_p1_normalguss_start
-                name: P1 Normal-Irrigation Start
-              - entity: input_button.plantinator_bewasserung_p2_normalguss_start
-                name: P2 Normal-Irrigation Start
-              - entity: input_button.plantinator_bewasserung_p3_normalguss_start
-                name: P3 Normal-Irrigation Start
-              - entity: input_button.plantinator_bewasserung_p4_normalguss_start
-                name: P4 Normal-Irrigation Start
-      - type: grid
-        cards:
-          - type: heading
             heading: Actuators (via Mapping)
             heading_style: title
             icon: mdi:valve
@@ -653,55 +632,54 @@ views:
                 name: Reservoir Circulation
               - entity: sensor.plantinator_bewasserung_wasserstand_status_gemappt
                 name: Water Level
+      - type: grid
+        cards:
+          - type: heading
+            heading: Manual Actions
+            heading_style: title
+            icon: mdi:water-plus
+          - type: entities
+            title: Normal-Irrigation Buttons
+            show_header_toggle: false
+            entities:
+              - entity: input_button.plantinator_bewasserung_p1_normalguss_start
+                name: P1 Normal-Irrigation Start
+              - entity: input_button.plantinator_bewasserung_p2_normalguss_start
+                name: P2 Normal-Irrigation Start
+              - entity: input_button.plantinator_bewasserung_p3_normalguss_start
+                name: P3 Normal-Irrigation Start
+              - entity: input_button.plantinator_bewasserung_p4_normalguss_start
+                name: P4 Normal-Irrigation Start
+      - type: grid
+        cards:
+          - type: heading
+            heading: Manual Normal Irrigation
+            heading_style: title
+            icon: mdi:water-plus
+          - type: entities
+            title: Normal-Irrigation Settings
+            show_header_toggle: false
+            entities:
+              - entity: input_number.plantinator_bewasserung_manueller_testguss_ml
+                name: Manual Test Irrigation ml
+              - entity: sensor.plantinator_bewasserung_manueller_testguss_sekunden
+                name: Manual Test Irrigation Seconds
+              - entity: input_number.plantinator_bewasserung_ventil_vorlauf_sekunden
+                name: Valve Pre-Run
+              - entity: input_number.plantinator_bewasserung_ventil_nachlauf_sekunden
+                name: Valve Post-Run
+              - entity: >-
+                  input_number.plantinator_bewasserung_aktor_bestaetigungszeit_sekunden
+                name: Switch Feedback Max. (not runtime)
+              - entity: >-
+                  input_number.plantinator_bewasserung_aktor_wiederholpause_sekunden
+                name: Delay Before Second Actuator Attempt
   - title: Circulation
     path: plantinator-bewasserung-umwaelzung
     icon: mdi:autorenew
     type: sections
     max_columns: 4
     sections:
-      - type: grid
-        cards:
-          - type: heading
-            heading: Circulation Control
-            heading_style: title
-            icon: mdi:autorenew
-          - type: tile
-            entity: input_boolean.plantinator_bewasserung_tank_umwalzung_verwenden
-            name: Use Circulation
-            color: green
-          - type: tile
-            entity: >-
-              input_boolean.plantinator_bewasserung_tank_umwalzung_zyklisch_aktiv
-            name: Cyclic Mode Enabled
-            color: blue
-          - type: tile
-            entity: >-
-              input_boolean.plantinator_bewasserung_tank_umwalzung_pre_guss_aktiv
-            name: Pre-Irrigation Enabled
-            color: blue
-          - type: tile
-            entity: input_boolean.plantinator_bewasserung_tank_umwalzung_laeuft
-            name: Currently Running
-            color: orange
-          - type: entities
-            title: Manual Actions
-            show_header_toggle: false
-            entities:
-              - entity: >-
-                  input_button.plantinator_bewasserung_tank_umwalzung_manuell_start
-                name: Start Manually
-              - entity: >-
-                  input_button.plantinator_bewasserung_tank_umwalzung_manuell_stop
-                name: Stop Manually
-              - entity: script.plantinator_bewasserung_tank_umwalzung_zyklisch_lauf
-                name: Run Cycle Now
-              - entity: script.plantinator_bewasserung_tank_umwalzung_pre_guss_lauf
-                name: Run Pre-Irrigation Now
-              - entity: script.plantinator_bewasserung_tank_umwalzung_aus
-                name: Switch Off Now
-              - entity: >-
-                  script.plantinator_bewasserung_tank_umwalzung_standardwerte_setzen
-                name: Set Defaults
       - type: grid
         cards:
           - type: heading
@@ -731,6 +709,71 @@ views:
       - type: grid
         cards:
           - type: heading
+            heading: Circulation Control
+            heading_style: title
+            icon: mdi:autorenew
+          - type: tile
+            entity: input_boolean.plantinator_bewasserung_tank_umwalzung_verwenden
+            name: Use Circulation
+            color: green
+          - type: tile
+            entity: >-
+              input_boolean.plantinator_bewasserung_tank_umwalzung_zyklisch_aktiv
+            name: Cyclic Mode Enabled
+            color: blue
+          - type: tile
+            entity: >-
+              input_boolean.plantinator_bewasserung_tank_umwalzung_pre_guss_aktiv
+            name: Pre-Irrigation Enabled
+            color: blue
+          - type: tile
+            entity: input_boolean.plantinator_bewasserung_tank_umwalzung_laeuft
+            name: Currently Running
+            color: orange
+      - type: grid
+        cards:
+          - type: heading
+            heading: Manual Circulation
+            heading_style: title
+            icon: mdi:gesture-tap-button
+          - type: entities
+            title: Manual Actions
+            show_header_toggle: false
+            entities:
+              - entity: >-
+                  input_button.plantinator_bewasserung_tank_umwalzung_manuell_start
+                name: Start Manually
+              - entity: >-
+                  input_button.plantinator_bewasserung_tank_umwalzung_manuell_stop
+                name: Stop Manually
+              - entity: script.plantinator_bewasserung_tank_umwalzung_zyklisch_lauf
+                name: Run Cycle Now
+              - entity: script.plantinator_bewasserung_tank_umwalzung_pre_guss_lauf
+                name: Run Pre-Irrigation Now
+              - entity: script.plantinator_bewasserung_tank_umwalzung_aus
+                name: Switch Off Now
+              - entity: >-
+                  script.plantinator_bewasserung_tank_umwalzung_standardwerte_setzen
+                name: Set Defaults
+      - type: grid
+        cards:
+          - type: heading
+            heading: History
+            heading_style: title
+            icon: mdi:chart-timeline-variant
+          - type: history-graph
+            title: Circulation History
+            hours_to_show: 24
+            entities:
+              - entity: input_boolean.plantinator_bewasserung_tank_umwalzung_laeuft
+                name: Running
+              - entity: sensor.plantinator_bewasserung_tank_umwalzung_freigabe
+                name: Permission
+              - entity: sensor.plantinator_bewasserung_tank_umwalzung_status_gemappt
+                name: Actuator State
+      - type: grid
+        cards:
+          - type: heading
             heading: Circulation Parameters
             heading_style: title
             icon: mdi:tune
@@ -754,102 +797,12 @@ views:
               - entity: >-
                   input_number.plantinator_bewasserung_tank_umwalzung_pre_guss_min_pause_minuten
                 name: Minimum Pre-Irrigation Pause
-      - type: grid
-        cards:
-          - type: heading
-            heading: History
-            heading_style: title
-            icon: mdi:chart-timeline-variant
-          - type: history-graph
-            title: Circulation History
-            hours_to_show: 24
-            entities:
-              - entity: input_boolean.plantinator_bewasserung_tank_umwalzung_laeuft
-                name: Running
-              - entity: sensor.plantinator_bewasserung_tank_umwalzung_freigabe
-                name: Permission
-              - entity: sensor.plantinator_bewasserung_tank_umwalzung_status_gemappt
-                name: Actuator State
   - title: Shot Plan
     path: plantinator-bewasserung-shot-plan
     icon: mdi:format-list-numbered
     type: sections
     max_columns: 4
     sections:
-      - type: grid
-        cards:
-          - type: heading
-            heading: Shot Plan Basics
-            heading_style: title
-            icon: mdi:format-list-numbered
-          - type: entities
-            title: Global Shot Values
-            show_header_toggle: false
-            entities:
-              - entity: input_number.plantinator_bewasserung_shot_min_ml
-                name: Minimum Shot ml
-              - entity: input_number.plantinator_bewasserung_shot_max_ml
-                name: Maximum Shot ml
-              - entity: input_number.plantinator_bewasserung_shot_min_rest_ml
-                name: Minimum Shot Remainder ml
-              - entity: >-
-                  input_number.plantinator_bewasserung_shot_pause_normal_sekunden
-                name: Normal Pause
-              - entity: >-
-                  input_number.plantinator_bewasserung_shot_pause_notguss_sekunden
-                name: Emergency-Irrigation Pause
-              - entity: input_number.plantinator_bewasserung_shot_max_anzahl
-                name: Maximum Shot Count
-              - entity: sensor.plantinator_bewasserung_shot_plan_gesamtstatus
-                name: Shot Plan Overall Status
-              - entity: script.plantinator_bewasserung_shot_plan_standardwerte_setzen
-                name: Set Shot Plan Defaults
-          - type: markdown
-            title: Shot Sequences
-            content: >
-              | Plant | Plan | Count | Sequence ml | Sequence s | Total |
-
-              |---|---|---:|---|---|---:|
-
-              | P1 | {{ states('sensor.plantinator_bewasserung_p1_shot_plan') }}
-              | {{ state_attr('sensor.plantinator_bewasserung_p1_shot_plan',
-              'shot_anzahl') }} | {{
-              state_attr('sensor.plantinator_bewasserung_p1_shot_plan',
-              'shot_sequence_ml') }} | {{
-              state_attr('sensor.plantinator_bewasserung_p1_shot_plan',
-              'shot_sequence_seconds') }} | {{
-              state_attr('sensor.plantinator_bewasserung_p1_shot_plan',
-              'geplante_gesamtmenge_ml') }} ml |
-
-              | P2 | {{ states('sensor.plantinator_bewasserung_p2_shot_plan') }}
-              | {{ state_attr('sensor.plantinator_bewasserung_p2_shot_plan',
-              'shot_anzahl') }} | {{
-              state_attr('sensor.plantinator_bewasserung_p2_shot_plan',
-              'shot_sequence_ml') }} | {{
-              state_attr('sensor.plantinator_bewasserung_p2_shot_plan',
-              'shot_sequence_seconds') }} | {{
-              state_attr('sensor.plantinator_bewasserung_p2_shot_plan',
-              'geplante_gesamtmenge_ml') }} ml |
-
-              | P3 | {{ states('sensor.plantinator_bewasserung_p3_shot_plan') }}
-              | {{ state_attr('sensor.plantinator_bewasserung_p3_shot_plan',
-              'shot_anzahl') }} | {{
-              state_attr('sensor.plantinator_bewasserung_p3_shot_plan',
-              'shot_sequence_ml') }} | {{
-              state_attr('sensor.plantinator_bewasserung_p3_shot_plan',
-              'shot_sequence_seconds') }} | {{
-              state_attr('sensor.plantinator_bewasserung_p3_shot_plan',
-              'geplante_gesamtmenge_ml') }} ml |
-
-              | P4 | {{ states('sensor.plantinator_bewasserung_p4_shot_plan') }}
-              | {{ state_attr('sensor.plantinator_bewasserung_p4_shot_plan',
-              'shot_anzahl') }} | {{
-              state_attr('sensor.plantinator_bewasserung_p4_shot_plan',
-              'shot_sequence_ml') }} | {{
-              state_attr('sensor.plantinator_bewasserung_p4_shot_plan',
-              'shot_sequence_seconds') }} | {{
-              state_attr('sensor.plantinator_bewasserung_p4_shot_plan',
-              'geplante_gesamtmenge_ml') }} ml |
       - type: grid
         cards:
           - type: heading
@@ -1026,59 +979,86 @@ views:
                 entity: sensor.plantinator_bewasserung_p4_shot_plan
                 attribute: gesamt_pumpenlaufzeit_sekunden
                 name: Total Pump Runtime
+      - type: grid
+        cards:
+          - type: heading
+            heading: Shot Plan Basics
+            heading_style: title
+            icon: mdi:format-list-numbered
+          - type: markdown
+            title: Shot Sequences
+            content: >
+              | Plant | Plan | Count | Sequence ml | Sequence s | Total |
+
+              |---|---|---:|---|---|---:|
+
+              | P1 | {{ states('sensor.plantinator_bewasserung_p1_shot_plan') }}
+              | {{ state_attr('sensor.plantinator_bewasserung_p1_shot_plan',
+              'shot_anzahl') }} | {{
+              state_attr('sensor.plantinator_bewasserung_p1_shot_plan',
+              'shot_sequence_ml') }} | {{
+              state_attr('sensor.plantinator_bewasserung_p1_shot_plan',
+              'shot_sequence_seconds') }} | {{
+              state_attr('sensor.plantinator_bewasserung_p1_shot_plan',
+              'geplante_gesamtmenge_ml') }} ml |
+
+              | P2 | {{ states('sensor.plantinator_bewasserung_p2_shot_plan') }}
+              | {{ state_attr('sensor.plantinator_bewasserung_p2_shot_plan',
+              'shot_anzahl') }} | {{
+              state_attr('sensor.plantinator_bewasserung_p2_shot_plan',
+              'shot_sequence_ml') }} | {{
+              state_attr('sensor.plantinator_bewasserung_p2_shot_plan',
+              'shot_sequence_seconds') }} | {{
+              state_attr('sensor.plantinator_bewasserung_p2_shot_plan',
+              'geplante_gesamtmenge_ml') }} ml |
+
+              | P3 | {{ states('sensor.plantinator_bewasserung_p3_shot_plan') }}
+              | {{ state_attr('sensor.plantinator_bewasserung_p3_shot_plan',
+              'shot_anzahl') }} | {{
+              state_attr('sensor.plantinator_bewasserung_p3_shot_plan',
+              'shot_sequence_ml') }} | {{
+              state_attr('sensor.plantinator_bewasserung_p3_shot_plan',
+              'shot_sequence_seconds') }} | {{
+              state_attr('sensor.plantinator_bewasserung_p3_shot_plan',
+              'geplante_gesamtmenge_ml') }} ml |
+
+              | P4 | {{ states('sensor.plantinator_bewasserung_p4_shot_plan') }}
+              | {{ state_attr('sensor.plantinator_bewasserung_p4_shot_plan',
+              'shot_anzahl') }} | {{
+              state_attr('sensor.plantinator_bewasserung_p4_shot_plan',
+              'shot_sequence_ml') }} | {{
+              state_attr('sensor.plantinator_bewasserung_p4_shot_plan',
+              'shot_sequence_seconds') }} | {{
+              state_attr('sensor.plantinator_bewasserung_p4_shot_plan',
+              'geplante_gesamtmenge_ml') }} ml |
+          - type: entities
+            title: Global Shot Values
+            show_header_toggle: false
+            entities:
+              - entity: input_number.plantinator_bewasserung_shot_min_ml
+                name: Minimum Shot ml
+              - entity: input_number.plantinator_bewasserung_shot_max_ml
+                name: Maximum Shot ml
+              - entity: input_number.plantinator_bewasserung_shot_min_rest_ml
+                name: Minimum Shot Remainder ml
+              - entity: >-
+                  input_number.plantinator_bewasserung_shot_pause_normal_sekunden
+                name: Normal Pause
+              - entity: >-
+                  input_number.plantinator_bewasserung_shot_pause_notguss_sekunden
+                name: Emergency-Irrigation Pause
+              - entity: input_number.plantinator_bewasserung_shot_max_anzahl
+                name: Maximum Shot Count
+              - entity: sensor.plantinator_bewasserung_shot_plan_gesamtstatus
+                name: Shot Plan Overall Status
+              - entity: script.plantinator_bewasserung_shot_plan_standardwerte_setzen
+                name: Set Shot Plan Defaults
   - title: Feedback
     path: plantinator-bewasserung-feedback
     icon: mdi:brain
     type: sections
     max_columns: 4
     sections:
-      - type: grid
-        cards:
-          - type: heading
-            heading: Feedback Status
-            heading_style: title
-            icon: mdi:brain
-          - type: entities
-            title: Global Feedback Values
-            show_header_toggle: false
-            entities:
-              - entity: sensor.plantinator_bewasserung_feedback_status
-                name: Feedback Status
-              - entity: input_text.plantinator_bewasserung_feedback_status
-                name: Feedback Status Input
-              - entity: >-
-                  input_number.plantinator_bewasserung_feedback_wartezeit_minuten
-                name: Wait Time Minutes
-              - entity: input_number.plantinator_bewasserung_feedback_lernrate_prozent
-                name: Learning Rate Percent
-              - entity: >-
-                  input_number.plantinator_bewasserung_feedback_min_anstieg_prozent
-                name: Minimum Increase Percent
-              - entity: >-
-                  input_number.plantinator_bewasserung_feedback_min_ml_pro_prozent
-                name: Minimum ml per Percentage Point
-              - entity: >-
-                  input_number.plantinator_bewasserung_feedback_max_ml_pro_prozent
-                name: Maximum ml per Percentage Point
-              - entity: >-
-                  input_number.plantinator_bewasserung_feedback_ausreisser_pruefung_ab_anzahl
-                name: Begin Outlier Check After Accepted Samples
-              - entity: >-
-                  input_number.plantinator_bewasserung_feedback_ausreisser_max_abweichung_prozent
-                name: Maximum Deviation Before Outlier Rejection
-              - entity: >-
-                  input_number.plantinator_bewasserung_feedback_max_aenderung_pro_lernvorgang_prozent
-                name: Maximum Learned-Value Change per Sample
-              - entity: >-
-                  input_number.plantinator_bewasserung_feedback_vertrauen_voll_ab_anzahl
-                name: Full Confidence After Accepted Samples
-              - entity: >-
-                  input_number.plantinator_bewasserung_feedback_peak_abfall_warnung_prozent
-                name: Peak-Drop Diagnostic Threshold
-              - entity: script.plantinator_bewasserung_feedback_schutzwerte_setzen
-                name: Set New Protection Values (Keep Learned Values)
-              - entity: script.plantinator_bewasserung_feedback_standardwerte_setzen
-                name: New Pot / Substrate – Reset Learning Baseline
       - type: grid
         cards:
           - type: heading
@@ -1285,12 +1265,81 @@ views:
                 name: P3
               - entity: sensor.plantinator_bewasserung_p4_lernvertrauen
                 name: P4
+      - type: grid
+        cards:
+          - type: heading
+            heading: Feedback Status
+            heading_style: title
+            icon: mdi:brain
+          - type: entities
+            title: Global Feedback Values
+            show_header_toggle: false
+            entities:
+              - entity: sensor.plantinator_bewasserung_feedback_status
+                name: Feedback Status
+              - entity: input_text.plantinator_bewasserung_feedback_status
+                name: Feedback Status Input
+              - entity: >-
+                  input_number.plantinator_bewasserung_feedback_wartezeit_minuten
+                name: Wait Time Minutes
+              - entity: input_number.plantinator_bewasserung_feedback_lernrate_prozent
+                name: Learning Rate Percent
+              - entity: >-
+                  input_number.plantinator_bewasserung_feedback_min_anstieg_prozent
+                name: Minimum Increase Percent
+              - entity: >-
+                  input_number.plantinator_bewasserung_feedback_min_ml_pro_prozent
+                name: Minimum ml per Percentage Point
+              - entity: >-
+                  input_number.plantinator_bewasserung_feedback_max_ml_pro_prozent
+                name: Maximum ml per Percentage Point
+              - entity: >-
+                  input_number.plantinator_bewasserung_feedback_ausreisser_pruefung_ab_anzahl
+                name: Begin Outlier Check After Accepted Samples
+              - entity: >-
+                  input_number.plantinator_bewasserung_feedback_ausreisser_max_abweichung_prozent
+                name: Maximum Deviation Before Outlier Rejection
+              - entity: >-
+                  input_number.plantinator_bewasserung_feedback_max_aenderung_pro_lernvorgang_prozent
+                name: Maximum Learned-Value Change per Sample
+              - entity: >-
+                  input_number.plantinator_bewasserung_feedback_vertrauen_voll_ab_anzahl
+                name: Full Confidence After Accepted Samples
+              - entity: >-
+                  input_number.plantinator_bewasserung_feedback_peak_abfall_warnung_prozent
+                name: Peak-Drop Diagnostic Threshold
+              - entity: script.plantinator_bewasserung_feedback_schutzwerte_setzen
+                name: Set New Protection Values (Keep Learned Values)
+              - entity: script.plantinator_bewasserung_feedback_standardwerte_setzen
+                name: New Pot / Substrate – Reset Learning Baseline
   - title: Profile
     path: plantinator-bewasserung-profil
     icon: mdi:tune-variant
     type: sections
     max_columns: 4
     sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Profile Status
+            heading_style: title
+            icon: mdi:information-outline
+          - type: entities
+            title: Current State
+            show_header_toggle: false
+            entities:
+              - entity: sensor.plantinator_bewasserung_profil_status
+                name: Profile Status
+              - entity: sensor.plantinator_bewasserung_gesamt_gussbedarf
+                name: Overall Irrigation Demand
+              - entity: sensor.plantinator_bewasserung_p1_bodentemperatur_zustand
+                name: P1 Temperature State
+              - entity: sensor.plantinator_bewasserung_p2_bodentemperatur_zustand
+                name: P2 Temperature State
+              - entity: sensor.plantinator_bewasserung_p3_bodentemperatur_zustand
+                name: P3 Temperature State
+              - entity: sensor.plantinator_bewasserung_p4_bodentemperatur_zustand
+                name: P4 Temperature State
       - type: grid
         cards:
           - type: heading
@@ -1391,6 +1440,36 @@ views:
     type: sections
     max_columns: 4
     sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Mapping Status
+            heading_style: title
+            icon: mdi:map-check
+          - type: entities
+            title: Current Hardware Assignment
+            show_header_toggle: false
+            entities:
+              - entity: sensor.plantinator_bewasserung_mapping_status
+                name: Mapping Status
+              - entity: sensor.plantinator_bewasserung_beobachtung_mapping_status
+                name: Observation Mapping Status
+              - entity: sensor.plantinator_bewasserung_pumpe_status_gemappt
+                name: Pump
+              - entity: sensor.plantinator_bewasserung_hauptventil_status_gemappt
+                name: Main Valve
+              - entity: sensor.plantinator_bewasserung_wasserstand_status_gemappt
+                name: Water Level
+              - entity: sensor.plantinator_bewasserung_tank_umwalzung_status_gemappt
+                name: Tank Circulation
+              - entity: sensor.plantinator_bewasserung_p1_ventil_status_gemappt
+                name: Valve P1
+              - entity: sensor.plantinator_bewasserung_p2_ventil_status_gemappt
+                name: Valve P2
+              - entity: sensor.plantinator_bewasserung_p3_ventil_status_gemappt
+                name: Valve P3
+              - entity: sensor.plantinator_bewasserung_p4_ventil_status_gemappt
+                name: Valve P4
       - type: grid
         cards:
           - type: heading
@@ -1571,254 +1650,6 @@ views:
       - type: grid
         cards:
           - type: heading
-            heading: Universal Crop Sources
-            heading_style: title
-            icon: mdi:connection
-          - type: entities
-            title: Source Mapping
-            show_header_toggle: false
-            entities:
-              - entity: sensor.plantinator_bewasserung_crop_quellen_status
-                name: Source Status
-              - entity: input_text.plantinator_bewasserung_crop_stage_entity
-                name: Stage Entity
-              - entity: input_text.plantinator_bewasserung_crop_stage_attribut
-                name: Optional Stage Attribute
-              - entity: sensor.plantinator_bewasserung_plant_stage_roh
-                name: Raw Stage Value
-              - entity: input_text.plantinator_bewasserung_licht_an_entity
-                name: Lights-On Entity
-              - entity: input_text.plantinator_bewasserung_licht_an_attribut
-                name: Optional Lights-On Attribute
-              - entity: sensor.plantinator_bewasserung_licht_an_roh
-                name: Raw Lights-On Value
-              - entity: input_text.plantinator_bewasserung_licht_aus_entity
-                name: Lights-Off Entity
-              - entity: input_text.plantinator_bewasserung_licht_aus_attribut
-                name: Optional Lights-Off Attribute
-              - entity: sensor.plantinator_bewasserung_licht_aus_roh
-                name: Raw Lights-Off Value
-          - type: markdown
-            title: Mapping Principle
-            content: >
-              Enter the entity that provides the external software value in
-              Home Assistant. If the value is stored in an attribute instead
-              of the entity state, also enter the attribute name. Empty
-              sources automatically use the manual values.
-          - type: entities
-            title: Manual Fallback
-            show_header_toggle: false
-            entities:
-              - entity: input_select.plantinator_bewasserung_crop_stage_manuell
-                name: Internal Stage
-              - entity: input_datetime.plantinator_bewasserung_licht_an_manuell
-                name: Lights On
-              - entity: input_datetime.plantinator_bewasserung_licht_aus_manuell
-                name: Lights Off
-      - type: grid
-        cards:
-          - type: heading
-            heading: Stage Aliases
-            heading_style: title
-            icon: mdi:format-list-bulleted
-          - type: markdown
-            title: Translate External Names
-            content: >
-              Separate multiple names with commas. Matching is
-              case-insensitive. Spaces, hyphens, and slashes are treated like
-              underscores. Each external name may occur in exactly one list.
-          - type: entities
-            title: Alias Mapping
-            show_header_toggle: false
-            entities:
-              - entity: input_text.plantinator_bewasserung_crop_alias_keimung
-                name: Germination
-              - entity: input_text.plantinator_bewasserung_crop_alias_steckling
-                name: Clone
-              - entity: input_text.plantinator_bewasserung_crop_alias_early_veg
-                name: Early Veg
-              - entity: input_text.plantinator_bewasserung_crop_alias_mid_veg
-                name: Mid Veg
-              - entity: input_text.plantinator_bewasserung_crop_alias_late_veg
-                name: Late Veg
-              - entity: input_text.plantinator_bewasserung_crop_alias_early_flower
-                name: Early Flower
-              - entity: input_text.plantinator_bewasserung_crop_alias_mid_flower
-                name: Mid Flower
-              - entity: input_text.plantinator_bewasserung_crop_alias_late_flower
-                name: Late Flower
-      - type: grid
-        cards:
-          - type: heading
-            heading: Crop-Steering Settings
-            heading_style: title
-            icon: mdi:tune-variant
-          - type: tile
-            entity: input_boolean.plantinator_bewasserung_crop_individuelle_parameter
-            name: Custom Parameters
-            color: blue
-          - type: entities
-            title: Status / Actions
-            show_header_toggle: false
-            entities:
-              - entity: sensor.plantinator_bewasserung_crop_einstellungen_status
-                name: Settings Status
-              - entity: input_select.plantinator_bewasserung_crop_substratprofil
-                name: Substrate Profile
-              - entity: input_number.plantinator_bewasserung_crop_substratvolumen_liter
-                name: Substrate Volume
-              - entity: input_number.plantinator_bewasserung_crop_ramp_up_shot_faktor_prozent
-                name: Ramp-Up Shot Factor
-              - entity: script.plantinator_bewasserung_crop_maintenance_startwerte_setzen
-                name: Set Maintenance Starting Values Only
-              - entity: script.plantinator_bewasserung_crop_steering_standardwerte_setzen
-                name: Set Crop Defaults
-          - type: markdown
-            title: How the Values Work
-            content: >
-              **Start** and **Stop** limit the irrigation window relative to
-              the light period. After start, every plant waits for
-              `peak − dryback`. During **ramp-up**, the complete water loss is
-              restored with smaller shots in one complete sequence. After
-              successful feedback, **maintenance** uses normal shots and the
-              maintenance dryback of the active recipe. Both drybacks are
-              absolute differences in the moisture sensor's percentage
-              values. Shot min/max, maximum shot count, the
-              safety minimum, daily limit and every EXEC interlock remain
-              hard limits.
-      - type: grid
-        cards:
-          - type: heading
-            heading: Propagation Recipe
-            heading_style: title
-            icon: mdi:sprout-outline
-          - type: entities
-            title: Germination
-            show_header_toggle: false
-            entities:
-              - entity: input_number.plantinator_bewasserung_crop_start_nach_licht_an_keimung_minuten
-                name: Start After Lights On
-              - entity: input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_keimung_minuten
-                name: Stop Before Lights Off
-              - entity: input_number.plantinator_bewasserung_crop_dryback_ziel_keimung_prozent
-                name: Overnight Dryback
-              - entity: input_number.plantinator_bewasserung_crop_maintenance_dryback_keimung_prozent
-                name: Maintenance Dryback
-              - entity: input_number.plantinator_bewasserung_crop_shot_keimung_prozent
-                name: Shot as Substrate Volume
-          - type: entities
-            title: Clone
-            show_header_toggle: false
-            entities:
-              - entity: input_number.plantinator_bewasserung_crop_start_nach_licht_an_steckling_minuten
-                name: Start After Lights On
-              - entity: input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_steckling_minuten
-                name: Stop Before Lights Off
-              - entity: input_number.plantinator_bewasserung_crop_dryback_ziel_steckling_prozent
-                name: Overnight Dryback
-              - entity: input_number.plantinator_bewasserung_crop_maintenance_dryback_steckling_prozent
-                name: Maintenance Dryback
-              - entity: input_number.plantinator_bewasserung_crop_shot_steckling_prozent
-                name: Shot as Substrate Volume
-      - type: grid
-        cards:
-          - type: heading
-            heading: Vegetative Recipe
-            heading_style: title
-            icon: mdi:leaf
-          - type: entities
-            title: Early Veg
-            show_header_toggle: false
-            entities:
-              - entity: input_number.plantinator_bewasserung_crop_start_nach_licht_an_early_veg_minuten
-                name: Start After Lights On
-              - entity: input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_early_veg_minuten
-                name: Stop Before Lights Off
-              - entity: input_number.plantinator_bewasserung_crop_dryback_ziel_early_veg_prozent
-                name: Overnight Dryback
-              - entity: input_number.plantinator_bewasserung_crop_maintenance_dryback_early_veg_prozent
-                name: Maintenance Dryback
-              - entity: input_number.plantinator_bewasserung_crop_shot_early_veg_prozent
-                name: Shot as Substrate Volume
-          - type: entities
-            title: Mid Veg
-            show_header_toggle: false
-            entities:
-              - entity: input_number.plantinator_bewasserung_crop_start_nach_licht_an_mid_veg_minuten
-                name: Start After Lights On
-              - entity: input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_mid_veg_minuten
-                name: Stop Before Lights Off
-              - entity: input_number.plantinator_bewasserung_crop_dryback_ziel_mid_veg_prozent
-                name: Overnight Dryback
-              - entity: input_number.plantinator_bewasserung_crop_maintenance_dryback_mid_veg_prozent
-                name: Maintenance Dryback
-              - entity: input_number.plantinator_bewasserung_crop_shot_mid_veg_prozent
-                name: Shot as Substrate Volume
-          - type: entities
-            title: Late Veg
-            show_header_toggle: false
-            entities:
-              - entity: input_number.plantinator_bewasserung_crop_start_nach_licht_an_late_veg_minuten
-                name: Start After Lights On
-              - entity: input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_late_veg_minuten
-                name: Stop Before Lights Off
-              - entity: input_number.plantinator_bewasserung_crop_dryback_ziel_late_veg_prozent
-                name: Overnight Dryback
-              - entity: input_number.plantinator_bewasserung_crop_maintenance_dryback_late_veg_prozent
-                name: Maintenance Dryback
-              - entity: input_number.plantinator_bewasserung_crop_shot_late_veg_prozent
-                name: Shot as Substrate Volume
-      - type: grid
-        cards:
-          - type: heading
-            heading: Flowering Recipe
-            heading_style: title
-            icon: mdi:flower
-          - type: entities
-            title: Early Flower / Stretch
-            show_header_toggle: false
-            entities:
-              - entity: input_number.plantinator_bewasserung_crop_start_nach_licht_an_early_flower_minuten
-                name: Start After Lights On
-              - entity: input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_early_flower_minuten
-                name: Stop Before Lights Off
-              - entity: input_number.plantinator_bewasserung_crop_dryback_ziel_early_flower_prozent
-                name: Overnight Dryback
-              - entity: input_number.plantinator_bewasserung_crop_maintenance_dryback_early_flower_prozent
-                name: Maintenance Dryback
-              - entity: input_number.plantinator_bewasserung_crop_shot_early_flower_prozent
-                name: Shot as Substrate Volume
-          - type: entities
-            title: Mid Flower
-            show_header_toggle: false
-            entities:
-              - entity: input_number.plantinator_bewasserung_crop_start_nach_licht_an_mid_flower_minuten
-                name: Start After Lights On
-              - entity: input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_mid_flower_minuten
-                name: Stop Before Lights Off
-              - entity: input_number.plantinator_bewasserung_crop_dryback_ziel_mid_flower_prozent
-                name: Overnight Dryback
-              - entity: input_number.plantinator_bewasserung_crop_maintenance_dryback_mid_flower_prozent
-                name: Maintenance Dryback
-              - entity: input_number.plantinator_bewasserung_crop_shot_mid_flower_prozent
-                name: Shot as Substrate Volume
-          - type: entities
-            title: Late Flower
-            show_header_toggle: false
-            entities:
-              - entity: input_number.plantinator_bewasserung_crop_start_nach_licht_an_late_flower_minuten
-                name: Start After Lights On
-              - entity: input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_late_flower_minuten
-                name: Stop Before Lights Off
-              - entity: input_number.plantinator_bewasserung_crop_dryback_ziel_late_flower_prozent
-                name: Overnight Dryback
-              - entity: input_number.plantinator_bewasserung_crop_maintenance_dryback_late_flower_prozent
-                name: Maintenance Dryback
-              - entity: input_number.plantinator_bewasserung_crop_shot_late_flower_prozent
-                name: Shot as Substrate Volume
-      - type: grid
-        cards:
-          - type: heading
             heading: Internal Interpretation
             heading_style: title
             icon: mdi:leaf
@@ -1986,6 +1817,285 @@ views:
                 name: Minutes Until Lights Off
               - entity: sensor.plantinator_bewasserung_crop_tagesphase
                 name: Crop Day Phase
+      - type: grid
+        cards:
+          - type: heading
+            heading: Irrigation Safeguards
+            heading_style: title
+            icon: mdi:shield-check
+          - type: entities
+            title: Peak / Top-Up / Alarm
+            show_header_toggle: false
+            entities:
+              - entity: input_text.plantinator_bewasserung_wetback_status
+                name: Peak / Top-Up Status
+              - entity: sensor.plantinator_bewasserung_alarm_status
+                name: Alarm Status
+              - entity: sensor.plantinator_bewasserung_kritischer_systemstatus
+                name: Critical System Status
+              - entity: sensor.plantinator_bewasserung_exec_status
+                name: EXEC Status
+              - entity: sensor.plantinator_bewasserung_shot_exec_status
+                name: Shot-EXEC Status
+              - entity: timer.plantinator_bewasserung_shot_exec_wartezeit
+                name: Shot-EXEC Wait Time
+      - type: grid
+        cards:
+          - type: heading
+            heading: Universal Crop Sources
+            heading_style: title
+            icon: mdi:connection
+          - type: entities
+            title: Source Mapping
+            show_header_toggle: false
+            entities:
+              - entity: sensor.plantinator_bewasserung_crop_quellen_status
+                name: Source Status
+              - entity: input_text.plantinator_bewasserung_crop_stage_entity
+                name: Stage Entity
+              - entity: input_text.plantinator_bewasserung_crop_stage_attribut
+                name: Optional Stage Attribute
+              - entity: sensor.plantinator_bewasserung_plant_stage_roh
+                name: Raw Stage Value
+              - entity: input_text.plantinator_bewasserung_licht_an_entity
+                name: Lights-On Entity
+              - entity: input_text.plantinator_bewasserung_licht_an_attribut
+                name: Optional Lights-On Attribute
+              - entity: sensor.plantinator_bewasserung_licht_an_roh
+                name: Raw Lights-On Value
+              - entity: input_text.plantinator_bewasserung_licht_aus_entity
+                name: Lights-Off Entity
+              - entity: input_text.plantinator_bewasserung_licht_aus_attribut
+                name: Optional Lights-Off Attribute
+              - entity: sensor.plantinator_bewasserung_licht_aus_roh
+                name: Raw Lights-Off Value
+          - type: markdown
+            title: Mapping Principle
+            content: >
+              Enter the entity that provides the external software value in
+              Home Assistant. If the value is stored in an attribute instead
+              of the entity state, also enter the attribute name. Empty
+              sources automatically use the manual values.
+          - type: entities
+            title: Manual Fallback
+            show_header_toggle: false
+            entities:
+              - entity: input_select.plantinator_bewasserung_crop_stage_manuell
+                name: Internal Stage
+              - entity: input_datetime.plantinator_bewasserung_licht_an_manuell
+                name: Lights On
+              - entity: input_datetime.plantinator_bewasserung_licht_aus_manuell
+                name: Lights Off
+      - type: grid
+        cards:
+          - type: heading
+            heading: Stage Aliases
+            heading_style: title
+            icon: mdi:format-list-bulleted
+          - type: markdown
+            title: Translate External Names
+            content: >
+              Separate multiple names with commas. Matching is
+              case-insensitive. Spaces, hyphens, and slashes are treated like
+              underscores. Each external name may occur in exactly one list.
+          - type: entities
+            title: Alias Mapping
+            show_header_toggle: false
+            entities:
+              - entity: input_text.plantinator_bewasserung_crop_alias_keimung
+                name: Germination
+              - entity: input_text.plantinator_bewasserung_crop_alias_steckling
+                name: Clone
+              - entity: input_text.plantinator_bewasserung_crop_alias_early_veg
+                name: Early Veg
+              - entity: input_text.plantinator_bewasserung_crop_alias_mid_veg
+                name: Mid Veg
+              - entity: input_text.plantinator_bewasserung_crop_alias_late_veg
+                name: Late Veg
+              - entity: input_text.plantinator_bewasserung_crop_alias_early_flower
+                name: Early Flower
+              - entity: input_text.plantinator_bewasserung_crop_alias_mid_flower
+                name: Mid Flower
+              - entity: input_text.plantinator_bewasserung_crop_alias_late_flower
+                name: Late Flower
+      - type: grid
+        cards:
+          - type: heading
+            heading: Crop-Steering Settings
+            heading_style: title
+            icon: mdi:tune-variant
+          - type: tile
+            entity: input_boolean.plantinator_bewasserung_crop_individuelle_parameter
+            name: Custom Parameters
+            color: blue
+          - type: entities
+            title: Parameters / Actions
+            show_header_toggle: false
+            entities:
+              - entity: input_select.plantinator_bewasserung_crop_substratprofil
+                name: Substrate Profile
+              - entity: input_number.plantinator_bewasserung_crop_substratvolumen_liter
+                name: Substrate Volume
+              - entity: input_number.plantinator_bewasserung_crop_ramp_up_shot_faktor_prozent
+                name: Ramp-Up Shot Factor
+              - entity: input_number.plantinator_bewasserung_wetback_peak_toleranz_prozent
+                name: Peak OK Window (±)
+              - entity: input_number.plantinator_bewasserung_wetback_nachguss_max_ml
+                name: Maximum Top-Up
+              - entity: script.plantinator_bewasserung_crop_maintenance_startwerte_setzen
+                name: Set Maintenance Starting Values Only
+              - entity: script.plantinator_bewasserung_crop_steering_standardwerte_setzen
+                name: Set Crop Defaults
+          - type: markdown
+            title: How the Values Work
+            content: >
+              **Start** and **Stop** limit the irrigation window relative to
+              the light period. After start, every plant waits for
+              `peak − dryback`. During **ramp-up**, the complete water loss is
+              restored with smaller shots in one complete sequence. The main
+              sequence, feedback and one optional top-up are one ramp-up
+              transaction. The measured peak must be inside the configurable
+              `reference ± peak tolerance` window. Below it, one bounded top-up
+              is attempted. If the calculated amount exceeds the remaining
+              allowance, only the allowed amount is delivered. A final low peak
+              creates a warning without locking the system. A high peak safely
+              stops irrigation and alarm-locks the system. After successful
+              feedback, **maintenance** uses normal shots and the maintenance
+              dryback of the active recipe. Both drybacks are
+              absolute differences in the moisture sensor's percentage
+              values. Shot min/max, maximum shot count, the
+              safety minimum, daily limit and every EXEC interlock remain
+              hard limits.
+      - type: grid
+        cards:
+          - type: heading
+            heading: Propagation Recipe
+            heading_style: title
+            icon: mdi:sprout-outline
+          - type: entities
+            title: Germination
+            show_header_toggle: false
+            entities:
+              - entity: input_number.plantinator_bewasserung_crop_start_nach_licht_an_keimung_minuten
+                name: Start After Lights On
+              - entity: input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_keimung_minuten
+                name: Stop Before Lights Off
+              - entity: input_number.plantinator_bewasserung_crop_dryback_ziel_keimung_prozent
+                name: Overnight Dryback
+              - entity: input_number.plantinator_bewasserung_crop_maintenance_dryback_keimung_prozent
+                name: Maintenance Dryback
+              - entity: input_number.plantinator_bewasserung_crop_shot_keimung_prozent
+                name: Shot as Substrate Volume
+          - type: entities
+            title: Clone
+            show_header_toggle: false
+            entities:
+              - entity: input_number.plantinator_bewasserung_crop_start_nach_licht_an_steckling_minuten
+                name: Start After Lights On
+              - entity: input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_steckling_minuten
+                name: Stop Before Lights Off
+              - entity: input_number.plantinator_bewasserung_crop_dryback_ziel_steckling_prozent
+                name: Overnight Dryback
+              - entity: input_number.plantinator_bewasserung_crop_maintenance_dryback_steckling_prozent
+                name: Maintenance Dryback
+              - entity: input_number.plantinator_bewasserung_crop_shot_steckling_prozent
+                name: Shot as Substrate Volume
+      - type: grid
+        cards:
+          - type: heading
+            heading: Vegetative Recipe
+            heading_style: title
+            icon: mdi:leaf
+          - type: entities
+            title: Early Veg
+            show_header_toggle: false
+            entities:
+              - entity: input_number.plantinator_bewasserung_crop_start_nach_licht_an_early_veg_minuten
+                name: Start After Lights On
+              - entity: input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_early_veg_minuten
+                name: Stop Before Lights Off
+              - entity: input_number.plantinator_bewasserung_crop_dryback_ziel_early_veg_prozent
+                name: Overnight Dryback
+              - entity: input_number.plantinator_bewasserung_crop_maintenance_dryback_early_veg_prozent
+                name: Maintenance Dryback
+              - entity: input_number.plantinator_bewasserung_crop_shot_early_veg_prozent
+                name: Shot as Substrate Volume
+          - type: entities
+            title: Mid Veg
+            show_header_toggle: false
+            entities:
+              - entity: input_number.plantinator_bewasserung_crop_start_nach_licht_an_mid_veg_minuten
+                name: Start After Lights On
+              - entity: input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_mid_veg_minuten
+                name: Stop Before Lights Off
+              - entity: input_number.plantinator_bewasserung_crop_dryback_ziel_mid_veg_prozent
+                name: Overnight Dryback
+              - entity: input_number.plantinator_bewasserung_crop_maintenance_dryback_mid_veg_prozent
+                name: Maintenance Dryback
+              - entity: input_number.plantinator_bewasserung_crop_shot_mid_veg_prozent
+                name: Shot as Substrate Volume
+          - type: entities
+            title: Late Veg
+            show_header_toggle: false
+            entities:
+              - entity: input_number.plantinator_bewasserung_crop_start_nach_licht_an_late_veg_minuten
+                name: Start After Lights On
+              - entity: input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_late_veg_minuten
+                name: Stop Before Lights Off
+              - entity: input_number.plantinator_bewasserung_crop_dryback_ziel_late_veg_prozent
+                name: Overnight Dryback
+              - entity: input_number.plantinator_bewasserung_crop_maintenance_dryback_late_veg_prozent
+                name: Maintenance Dryback
+              - entity: input_number.plantinator_bewasserung_crop_shot_late_veg_prozent
+                name: Shot as Substrate Volume
+      - type: grid
+        cards:
+          - type: heading
+            heading: Flowering Recipe
+            heading_style: title
+            icon: mdi:flower
+          - type: entities
+            title: Early Flower / Stretch
+            show_header_toggle: false
+            entities:
+              - entity: input_number.plantinator_bewasserung_crop_start_nach_licht_an_early_flower_minuten
+                name: Start After Lights On
+              - entity: input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_early_flower_minuten
+                name: Stop Before Lights Off
+              - entity: input_number.plantinator_bewasserung_crop_dryback_ziel_early_flower_prozent
+                name: Overnight Dryback
+              - entity: input_number.plantinator_bewasserung_crop_maintenance_dryback_early_flower_prozent
+                name: Maintenance Dryback
+              - entity: input_number.plantinator_bewasserung_crop_shot_early_flower_prozent
+                name: Shot as Substrate Volume
+          - type: entities
+            title: Mid Flower
+            show_header_toggle: false
+            entities:
+              - entity: input_number.plantinator_bewasserung_crop_start_nach_licht_an_mid_flower_minuten
+                name: Start After Lights On
+              - entity: input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_mid_flower_minuten
+                name: Stop Before Lights Off
+              - entity: input_number.plantinator_bewasserung_crop_dryback_ziel_mid_flower_prozent
+                name: Overnight Dryback
+              - entity: input_number.plantinator_bewasserung_crop_maintenance_dryback_mid_flower_prozent
+                name: Maintenance Dryback
+              - entity: input_number.plantinator_bewasserung_crop_shot_mid_flower_prozent
+                name: Shot as Substrate Volume
+          - type: entities
+            title: Late Flower
+            show_header_toggle: false
+            entities:
+              - entity: input_number.plantinator_bewasserung_crop_start_nach_licht_an_late_flower_minuten
+                name: Start After Lights On
+              - entity: input_number.plantinator_bewasserung_crop_stop_vor_licht_aus_late_flower_minuten
+                name: Stop Before Lights Off
+              - entity: input_number.plantinator_bewasserung_crop_dryback_ziel_late_flower_prozent
+                name: Overnight Dryback
+              - entity: input_number.plantinator_bewasserung_crop_maintenance_dryback_late_flower_prozent
+                name: Maintenance Dryback
+              - entity: input_number.plantinator_bewasserung_crop_shot_late_flower_prozent
+                name: Shot as Substrate Volume
   - title: Monitoring
     path: plantinator-bewasserung-monitoring
     icon: mdi:chart-multiline
@@ -2008,6 +2118,14 @@ views:
                 name: Current System Status
               - entity: sensor.plantinator_bewasserung_aktor_sicherheitsstatus
                 name: Actuator Safety Status
+              - entity: input_boolean.plantinator_bewasserung_hardware_sicher_aus
+                name: All Actuators Confirmed Safely Off
+              - entity: input_text.plantinator_bewasserung_sicherheitsstufe
+                name: Latest Safety Level
+              - entity: input_text.plantinator_bewasserung_letztes_sicherheitsereignis
+                name: Latest Safety Event
+              - entity: input_datetime.plantinator_bewasserung_sicherheitsereignis_zeit
+                name: Safety Event Time
               - entity: input_text.plantinator_bewasserung_alarm_grund
                 name: Last Alarm Reason
               - entity: input_datetime.plantinator_bewasserung_alarm_zeit
@@ -2016,8 +2134,6 @@ views:
                 name: Acknowledge Alarm
               - entity: sensor.plantinator_bewasserung_sensoralter_status
                 name: Sensor-Age Status
-              - entity: input_number.plantinator_bewasserung_sensor_max_alter_minuten
-                name: Maximum Age
               - entity: sensor.plantinator_bewasserung_p1_sensoralter
                 name: P1 Sensor Age
               - entity: sensor.plantinator_bewasserung_p2_sensoralter
@@ -2026,8 +2142,38 @@ views:
                 name: P3 Sensor Age
               - entity: sensor.plantinator_bewasserung_p4_sensoralter
                 name: P4 Sensor Age
-              - entity: script.plantinator_bewasserung_monitoring_standardwerte_setzen
-                name: Set Monitoring Defaults
+          - type: entities
+            title: Actuator Locks and Run State
+            show_header_toggle: false
+            entities:
+              - entity: input_number.plantinator_bewasserung_exec_aktive_pflanze
+                name: Active EXEC Plant
+              - entity: input_boolean.plantinator_bewasserung_pumpe_soll_laufen
+                name: Pump Should Be Running
+              - entity: input_boolean.plantinator_bewasserung_pumpe_aktor_sperre
+                name: Pump Locked
+              - entity: input_text.plantinator_bewasserung_pumpe_aktor_fehler
+                name: Pump Lock Reason
+              - entity: input_boolean.plantinator_bewasserung_hauptventil_aktor_sperre
+                name: Main Valve Locked
+              - entity: input_text.plantinator_bewasserung_hauptventil_aktor_fehler
+                name: Main Valve Lock Reason
+              - entity: input_boolean.plantinator_bewasserung_p1_aktor_sperre
+                name: P1 Locked
+              - entity: input_text.plantinator_bewasserung_p1_aktor_fehler
+                name: P1 Lock Reason
+              - entity: input_boolean.plantinator_bewasserung_p2_aktor_sperre
+                name: P2 Locked
+              - entity: input_text.plantinator_bewasserung_p2_aktor_fehler
+                name: P2 Lock Reason
+              - entity: input_boolean.plantinator_bewasserung_p3_aktor_sperre
+                name: P3 Locked
+              - entity: input_text.plantinator_bewasserung_p3_aktor_fehler
+                name: P3 Lock Reason
+              - entity: input_boolean.plantinator_bewasserung_p4_aktor_sperre
+                name: P4 Locked
+              - entity: input_text.plantinator_bewasserung_p4_aktor_fehler
+                name: P4 Lock Reason
       - type: grid
         cards:
           - type: heading
@@ -2057,42 +2203,16 @@ views:
                 name: Input-Water Sensor Status
               - entity: sensor.plantinator_bewasserung_klima_faktor_roh
                 name: Raw Climate Factor
-              - entity: input_number.plantinator_bewasserung_klima_einfluss_prozent
-                name: Climate Influence (Diagnostic)
               - entity: sensor.plantinator_bewasserung_licht_faktor_roh
                 name: Raw Light Factor
-              - entity: input_number.plantinator_bewasserung_licht_einfluss_prozent
-                name: Light Influence (Diagnostic)
               - entity: sensor.plantinator_bewasserung_zulauf_faktor_roh
                 name: Raw Input-Water Factor
-              - entity: input_number.plantinator_bewasserung_zulauf_einfluss_prozent
-                name: Input-Water Influence (Diagnostic)
-              - entity: >-
-                  input_number.plantinator_bewasserung_umwelt_max_korrektur_prozent
-                name: Maximum Diagnostic Correction
       - type: grid
         cards:
           - type: heading
-            heading: Reference Values
+            heading: Current Environmental Values
             heading_style: title
-            icon: mdi:tune
-          - type: entities
-            title: Target / Reference
-            show_header_toggle: false
-            entities:
-              - entity: input_number.plantinator_bewasserung_vpd_referenz
-                name: VPD Reference
-              - entity: input_number.plantinator_bewasserung_ppfd_referenz
-                name: PPFD Reference
-              - entity: input_number.plantinator_bewasserung_dli_referenz
-                name: DLI Reference
-              - entity: input_number.plantinator_bewasserung_zulauf_ec_referenz
-                name: Input-Water EC Reference
-              - entity: input_number.plantinator_bewasserung_zulauf_ph_referenz
-                name: Input-Water pH Reference
-              - entity: >-
-                  input_number.plantinator_bewasserung_zulauf_temperatur_referenz
-                name: Input-Water Temperature Reference
+            icon: mdi:gauge
           - type: entities
             title: Current Readings
             show_header_toggle: false
@@ -2181,12 +2301,82 @@ views:
                 name: pH
               - entity: sensor.plantinator_bewasserung_zulauf_temperatur
                 name: Temperature
+      - type: grid
+        cards:
+          - type: heading
+            heading: Reference Values
+            heading_style: title
+            icon: mdi:tune
+          - type: entities
+            title: Target / Reference
+            show_header_toggle: false
+            entities:
+              - entity: input_number.plantinator_bewasserung_vpd_referenz
+                name: VPD Reference
+              - entity: input_number.plantinator_bewasserung_ppfd_referenz
+                name: PPFD Reference
+              - entity: input_number.plantinator_bewasserung_dli_referenz
+                name: DLI Reference
+              - entity: input_number.plantinator_bewasserung_zulauf_ec_referenz
+                name: Input-Water EC Reference
+              - entity: input_number.plantinator_bewasserung_zulauf_ph_referenz
+                name: Input-Water pH Reference
+              - entity: >-
+                  input_number.plantinator_bewasserung_zulauf_temperatur_referenz
+                name: Input-Water Temperature Reference
+      - type: grid
+        cards:
+          - type: heading
+            heading: Monitoring Settings
+            heading_style: title
+            icon: mdi:tune-vertical
+          - type: entities
+            title: Sensor Age / Diagnostic Influence
+            show_header_toggle: false
+            entities:
+              - entity: input_number.plantinator_bewasserung_sensor_max_alter_minuten
+                name: Maximum Age
+              - entity: input_text.plantinator_bewasserung_kritischer_push_dienst
+                name: iPhone Push Service for Critical Alarms
+              - entity: input_number.plantinator_bewasserung_klima_einfluss_prozent
+                name: Climate Influence (Diagnostic)
+              - entity: input_number.plantinator_bewasserung_licht_einfluss_prozent
+                name: Light Influence (Diagnostic)
+              - entity: input_number.plantinator_bewasserung_zulauf_einfluss_prozent
+                name: Input-Water Influence (Diagnostic)
+              - entity: >-
+                  input_number.plantinator_bewasserung_umwelt_max_korrektur_prozent
+                name: Maximum Diagnostic Correction
+              - entity: script.plantinator_bewasserung_monitoring_standardwerte_setzen
+                name: Set Monitoring Defaults
   - title: Measuring Drain
     path: plantinator-bewasserung-mess-drain
     icon: mdi:water-check
     type: sections
     max_columns: 4
     sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Measuring-Drain Live Status
+            heading_style: title
+            icon: mdi:water-check
+          - type: entities
+            title: Current Run
+            show_header_toggle: false
+            entities:
+              - entity: sensor.plantinator_bewasserung_mess_drain_status
+                name: Measuring-Drain Status
+              - entity: input_text.plantinator_bewasserung_mess_drain_lauf_status
+                name: Measuring-Drain Run Status
+              - entity: input_boolean.plantinator_bewasserung_mess_drain_laeuft
+                name: Measuring Drain Running
+              - entity: input_number.plantinator_bewasserung_mess_drain_aktive_pflanze
+                name: Active Plant
+              - entity: input_number.plantinator_bewasserung_mess_drain_abgegeben_ml
+                name: Successfully Dispensed
+              - entity: sensor.plantinator_bewasserung_exec_status
+                name: Technical EXEC Status
       - type: grid
         cards:
           - type: heading
@@ -2229,33 +2419,6 @@ views:
       - type: grid
         cards:
           - type: heading
-            heading: Measuring-Drain Parameters
-            heading_style: title
-            icon: mdi:tune
-          - type: entities
-            title: Parameters
-            show_header_toggle: false
-            entities:
-              - entity: sensor.plantinator_bewasserung_mess_drain_status
-                name: Measuring-Drain Status
-              - entity: sensor.plantinator_bewasserung_exec_status
-                name: Technical EXEC Status
-              - entity: input_text.plantinator_bewasserung_mess_drain_lauf_status
-                name: Measuring-Drain Run Status
-              - entity: input_number.plantinator_bewasserung_max_ml_mess_drain_guss
-                name: Maximum Measuring-Drain ml
-              - entity: input_number.plantinator_bewasserung_mess_drain_puls_ml
-                name: Measuring-Drain Pulse ml
-              - entity: sensor.plantinator_bewasserung_mess_drain_puls_sekunden
-                name: Measuring-Drain Pulse Seconds
-              - entity: >-
-                  input_number.plantinator_bewasserung_mess_drain_pulspause_sekunden
-                name: Measuring-Drain Pulse Pause
-              - entity: sensor.plantinator_bewasserung_mess_drain_geplante_pulse
-                name: Planned Pulses
-      - type: grid
-        cards:
-          - type: heading
             heading: Manual Drain EC / pH Values
             heading_style: title
             icon: mdi:flask
@@ -2283,12 +2446,126 @@ views:
                 name: P4 Drain EC
               - entity: input_number.plantinator_bewasserung_p4_drain_ph_manuell
                 name: P4 Drain pH
+      - type: grid
+        cards:
+          - type: heading
+            heading: Measuring-Drain Parameters
+            heading_style: title
+            icon: mdi:tune
+          - type: entities
+            title: Parameters
+            show_header_toggle: false
+            entities:
+              - entity: sensor.plantinator_bewasserung_mess_drain_status
+                name: Measuring-Drain Status
+              - entity: sensor.plantinator_bewasserung_exec_status
+                name: Technical EXEC Status
+              - entity: input_text.plantinator_bewasserung_mess_drain_lauf_status
+                name: Measuring-Drain Run Status
+              - entity: input_number.plantinator_bewasserung_max_ml_mess_drain_guss
+                name: Maximum Measuring-Drain ml
+              - entity: input_number.plantinator_bewasserung_mess_drain_puls_ml
+                name: Measuring-Drain Pulse ml
+              - entity: sensor.plantinator_bewasserung_mess_drain_puls_sekunden
+                name: Measuring-Drain Pulse Seconds
+              - entity: >-
+                  input_number.plantinator_bewasserung_mess_drain_pulspause_sekunden
+                name: Measuring-Drain Pulse Pause
+              - entity: sensor.plantinator_bewasserung_mess_drain_geplante_pulse
+                name: Planned Pulses
   - title: Debug
     path: plantinator-bewasserung-debug
     icon: mdi:bug
     type: sections
     max_columns: 4
     sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Live Diagnostics
+            heading_style: title
+            icon: mdi:clipboard-pulse
+          - type: markdown
+            title: Current Diagnostics
+            content: >
+              | Area | Value |
+
+              |---|---|
+
+              | Debug Core Status | {{
+              states('sensor.plantinator_bewasserung_debug_kernstatus') }} |
+
+              | Automatic Status | {{
+              states('sensor.plantinator_bewasserung_auto_status') }} |
+
+              | Basic Permission | {{
+              states('sensor.plantinator_bewasserung_auto_grundfreigabe') }} |
+
+              | EXEC Permission | {{
+              states('sensor.plantinator_bewasserung_exec_freigabe') }} |
+
+              | Shot EXEC Permission | {{
+              states('sensor.plantinator_bewasserung_shot_exec_freigabe') }} |
+
+              | Shot EXEC Status | {{
+              states('sensor.plantinator_bewasserung_shot_exec_status') }} |
+
+              | Shot EXEC Running | {{
+              states('input_boolean.plantinator_bewasserung_shot_exec_laeuft')
+              }} |
+
+              | Shot EXEC Reserved | {{
+              states('input_boolean.plantinator_bewasserung_shot_exec_reserviert')
+              }} |
+
+              | EXEC Running | {{
+              states('input_boolean.plantinator_bewasserung_exec_laeuft') }} |
+
+              | EXEC Abort | {{
+              states('input_boolean.plantinator_bewasserung_exec_abort') }} |
+
+              | Circulation Permission | {{
+              states('sensor.plantinator_bewasserung_tank_umwalzung_freigabe')
+              }} |
+
+              | Circulation Running | {{
+              states('input_boolean.plantinator_bewasserung_tank_umwalzung_laeuft')
+              }} |
+
+              | Pump | {{
+              states('sensor.plantinator_bewasserung_pumpe_status_gemappt') }} |
+
+              | Valve P1 | {{
+              states('sensor.plantinator_bewasserung_p1_ventil_status_gemappt')
+              }} |
+
+              | Valve P2 | {{
+              states('sensor.plantinator_bewasserung_p2_ventil_status_gemappt')
+              }} |
+
+              | Valve P3 | {{
+              states('sensor.plantinator_bewasserung_p3_ventil_status_gemappt')
+              }} |
+
+              | Valve P4 | {{
+              states('sensor.plantinator_bewasserung_p4_ventil_status_gemappt')
+              }} |
+          - type: entities
+            title: Scripts / Buttons
+            show_header_toggle: false
+            entities:
+              - entity: script.plantinator_bewasserung_p1_shot_plan_ausfuehren
+                name: P1 Execute Shot
+              - entity: script.plantinator_bewasserung_p2_shot_plan_ausfuehren
+                name: P2 Execute Shot
+              - entity: script.plantinator_bewasserung_p3_shot_plan_ausfuehren
+                name: P3 Execute Shot
+              - entity: script.plantinator_bewasserung_p4_shot_plan_ausfuehren
+                name: P4 Execute Shot
+              - entity: script.plantinator_bewasserung_shot_exec_sicher_stop
+                name: Shot EXEC Safe Stop
+              - entity: script.plantinator_bewasserung_sicher_stop
+                name: EXEC Safe Stop
       - type: grid
         cards:
           - type: heading
@@ -2416,90 +2693,3 @@ views:
                 name: Clear Log File
               - entity: script.plantinator_bewasserung_debug_logger_standardwerte_setzen
                 name: Set Debug Defaults
-      - type: grid
-        cards:
-          - type: heading
-            heading: Live Diagnostics
-            heading_style: title
-            icon: mdi:clipboard-pulse
-          - type: markdown
-            title: Current Diagnostics
-            content: >
-              | Area | Value |
-
-              |---|---|
-
-              | Debug Core Status | {{
-              states('sensor.plantinator_bewasserung_debug_kernstatus') }} |
-
-              | Automatic Status | {{
-              states('sensor.plantinator_bewasserung_auto_status') }} |
-
-              | Basic Permission | {{
-              states('sensor.plantinator_bewasserung_auto_grundfreigabe') }} |
-
-              | EXEC Permission | {{
-              states('sensor.plantinator_bewasserung_exec_freigabe') }} |
-
-              | Shot EXEC Permission | {{
-              states('sensor.plantinator_bewasserung_shot_exec_freigabe') }} |
-
-              | Shot EXEC Status | {{
-              states('sensor.plantinator_bewasserung_shot_exec_status') }} |
-
-              | Shot EXEC Running | {{
-              states('input_boolean.plantinator_bewasserung_shot_exec_laeuft')
-              }} |
-
-              | Shot EXEC Reserved | {{
-              states('input_boolean.plantinator_bewasserung_shot_exec_reserviert')
-              }} |
-
-              | EXEC Running | {{
-              states('input_boolean.plantinator_bewasserung_exec_laeuft') }} |
-
-              | EXEC Abort | {{
-              states('input_boolean.plantinator_bewasserung_exec_abort') }} |
-
-              | Circulation Permission | {{
-              states('sensor.plantinator_bewasserung_tank_umwalzung_freigabe')
-              }} |
-
-              | Circulation Running | {{
-              states('input_boolean.plantinator_bewasserung_tank_umwalzung_laeuft')
-              }} |
-
-              | Pump | {{
-              states('sensor.plantinator_bewasserung_pumpe_status_gemappt') }} |
-
-              | Valve P1 | {{
-              states('sensor.plantinator_bewasserung_p1_ventil_status_gemappt')
-              }} |
-
-              | Valve P2 | {{
-              states('sensor.plantinator_bewasserung_p2_ventil_status_gemappt')
-              }} |
-
-              | Valve P3 | {{
-              states('sensor.plantinator_bewasserung_p3_ventil_status_gemappt')
-              }} |
-
-              | Valve P4 | {{
-              states('sensor.plantinator_bewasserung_p4_ventil_status_gemappt')
-              }} |
-          - type: entities
-            title: Scripts / Buttons
-            show_header_toggle: false
-            entities:
-              - entity: script.plantinator_bewasserung_p1_shot_plan_ausfuehren
-                name: P1 Execute Shot
-              - entity: script.plantinator_bewasserung_p2_shot_plan_ausfuehren
-                name: P2 Execute Shot
-              - entity: script.plantinator_bewasserung_p3_shot_plan_ausfuehren
-                name: P3 Execute Shot
-              - entity: script.plantinator_bewasserung_p4_shot_plan_ausfuehren
-                name: P4 Execute Shot
-              - entity: script.plantinator_bewasserung_shot_exec_sicher_stop
-                name: Shot EXEC Safe Stop
-              - entity: script.plantinator_bewasserung_sicher_stop
-                name: EXEC Safe Stop
