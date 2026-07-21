@@ -784,6 +784,14 @@ Assistant utility meters.
 Manual normal irrigation uses **Manual Test Irrigation ml**. It does not
 automatically use the calculated recommendation.
 
+Under **Manual Actions**, **Current Pump Remaining Time** shows the remaining
+pure pump runtime of the active single irrigation. The daily totals for all
+four plants are displayed directly below the start buttons. A successfully
+completed manual irrigation is automatically added to the affected plant's
+daily and lifetime totals. If a run is aborted after the pump starts, only the
+partial volume calculated from pump runtime and the calibrated flow rate is
+booked; an abort before pump start books no water.
+
 1. Enter the requested volume.
 2. Verify all safety statuses.
 3. Press the start button for one plant.
@@ -1053,8 +1061,12 @@ but do not change the hard emergency threshold.
 ### Debug
 
 The Debug page shows automatic decisions, permissions, flags, and mapped
-actuator states. If the File logger is configured, it can write test messages,
-single snapshots, or periodic snapshots.
+actuator states. It also persistently stores the latest 20 warnings and
+critical errors with timestamp, level, code, and details, newest first. The
+list starts after the first full restart with this version and can be cleared
+from the dashboard. Informational events are not counted as errors. With the
+file logger configured, it can write test messages, individual snapshots, or
+periodic snapshots.
 
 The periodic logger is off by default. Enabling it clears the existing target
 file before new snapshots are written.

@@ -52,6 +52,13 @@ counter:
     maximum: 2147483647
     restore: true
 
+timer:
+  plantinator_bewasserung_exec_pumpen_restzeit:
+    name: Plantinator Bewasserung EXEC Pumpen-Restzeit
+    icon: mdi:timer-sand
+    duration: "00:00:10"
+    restore: false
+
 input_number:
   plantinator_bewasserung_manueller_testguss_ml:
     name: Plantinator Bewasserung manueller Testguss ml
@@ -281,6 +288,10 @@ script:
             - input_boolean.plantinator_bewasserung_mess_drain_drain_bestaetigt
             - input_boolean.plantinator_bewasserung_tank_umwalzung_stop_anforderung
 
+      - service: timer.cancel
+        target:
+          entity_id: timer.plantinator_bewasserung_exec_pumpen_restzeit
+
   plantinator_bewasserung_exec_standardwerte_setzen:
     alias: Plantinator Bewasserung EXEC Standardwerte setzen
     icon: mdi:tune
@@ -325,6 +336,10 @@ script:
       - service: input_boolean.turn_off
         target:
           entity_id: input_boolean.plantinator_bewasserung_exec_abort
+
+      - service: timer.cancel
+        target:
+          entity_id: timer.plantinator_bewasserung_exec_pumpen_restzeit
 
       - service: input_boolean.turn_off
         target:
@@ -435,6 +450,10 @@ script:
           entity_id:
             - input_boolean.plantinator_bewasserung_pumpe_soll_laufen
             - input_boolean.plantinator_bewasserung_hardware_sicher_aus
+
+      - service: timer.cancel
+        target:
+          entity_id: timer.plantinator_bewasserung_exec_pumpen_restzeit
 
       - variables:
           pumpe: "{{ states('input_text.plantinator_bewasserung_pumpe_entity') | trim }}"
@@ -1281,6 +1300,13 @@ script:
           pumpen_ein_befehl_ts: "{{ as_timestamp(now()) }}"
           pumpen_ende_ts: "{{ as_timestamp(now()) + (dauer | float(0)) }}"
 
+      - service: timer.start
+        target:
+          entity_id: timer.plantinator_bewasserung_exec_pumpen_restzeit
+        data:
+          duration: >
+            {{ [1, (dauer | float(0)) | round(0, 'ceil') | int(1)] | max }}
+
       - service: input_boolean.turn_on
         target:
           entity_id: input_boolean.plantinator_bewasserung_pumpe_soll_laufen
@@ -1330,6 +1356,10 @@ script:
               - service: input_boolean.turn_off
                 target:
                   entity_id: input_boolean.plantinator_bewasserung_pumpe_soll_laufen
+
+              - service: timer.cancel
+                target:
+                  entity_id: timer.plantinator_bewasserung_exec_pumpen_restzeit
 
               - service: switch.turn_off
                 continue_on_error: true
@@ -1445,6 +1475,10 @@ script:
       - variables:
           pumpen_aus_befehl_ts: "{{ as_timestamp(now()) }}"
 
+      - service: timer.cancel
+        target:
+          entity_id: timer.plantinator_bewasserung_exec_pumpen_restzeit
+
       - service: input_boolean.turn_off
         target:
           entity_id: input_boolean.plantinator_bewasserung_pumpe_soll_laufen
@@ -1521,6 +1555,16 @@ script:
         target:
           entity_id: input_boolean.plantinator_bewasserung_hardware_sicher_aus
 
+      # Bei einem Abbruch nur die bis zum Abschaltbefehl rechnerisch
+      # abgegebene Menge buchen. Ein regulär beendeter Guss bleibt durch die
+      # Begrenzung auf die Sollmenge exakt bei der angeforderten Menge.
+      - variables:
+          abgegeben_ml: >
+            {% set lauf_s = [0, (pumpen_aus_befehl_ts | float(0))
+                                  - (pumpen_ein_befehl_ts | float(0))] | max %}
+            {{ ([ml | float(0), lauf_s * (rate | float(0))] | min)
+               | round(0) | int }}
+
       - service: input_number.set_value
         target:
           entity_id: input_number.plantinator_bewasserung_exec_aktive_pflanze
@@ -1539,7 +1583,7 @@ script:
           value: >
             {% if is_state('input_boolean.plantinator_bewasserung_exec_abort', 'on')
                   or (states('counter.plantinator_bewasserung_stop_generation') | int(0)) != (run_generation | int(0)) %}
-              {{ vorgang }}_abgebrochen_nach_pumpenstart_p{{ p }}_{{ ml | round(0) | int }}ml_{{ now().timestamp() | int }}
+              {{ vorgang }}_abgebrochen_nach_pumpenstart_p{{ p }}_{{ abgegeben_ml }}ml_{{ now().timestamp() | int }}
             {% else %}
               {{ vorgang }}_fertig_p{{ p }}_{{ ml | round(0) | int }}ml_{{ now().timestamp() | int }}
             {% endif %}
@@ -2089,6 +2133,9 @@ automation:
         entity_id: input_boolean.plantinator_bewasserung_exec_laeuft
         to: "off"
     action:
+      - service: timer.cancel
+        target:
+          entity_id: timer.plantinator_bewasserung_exec_pumpen_restzeit
       - service: input_boolean.turn_off
         target:
           entity_id: input_boolean.plantinator_bewasserung_pumpe_soll_laufen

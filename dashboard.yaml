@@ -531,6 +531,8 @@ views:
                 name: EXEC Status Input
               - entity: input_boolean.plantinator_bewasserung_exec_laeuft
                 name: EXEC läuft
+              - entity: timer.plantinator_bewasserung_exec_pumpen_restzeit
+                name: Aktuelle Pumpen-Restzeit
               - entity: input_number.plantinator_bewasserung_exec_aktive_pflanze
                 name: Aktive EXEC-Pflanze
               - entity: input_boolean.plantinator_bewasserung_pumpe_soll_laufen
@@ -648,14 +650,26 @@ views:
             title: Normalguss Buttons
             show_header_toggle: false
             entities:
+              - entity: timer.plantinator_bewasserung_exec_pumpen_restzeit
+                name: Aktuelle Pumpen-Restzeit
+              - entity: input_number.plantinator_bewasserung_exec_aktive_pflanze
+                name: Aktive Pflanze
               - entity: input_button.plantinator_bewasserung_p1_normalguss_start
                 name: P1 Normalguss Start
+              - entity: input_number.plantinator_bewasserung_p1_heute_ml
+                name: P1 heute gesamt
               - entity: input_button.plantinator_bewasserung_p2_normalguss_start
                 name: P2 Normalguss Start
+              - entity: input_number.plantinator_bewasserung_p2_heute_ml
+                name: P2 heute gesamt
               - entity: input_button.plantinator_bewasserung_p3_normalguss_start
                 name: P3 Normalguss Start
+              - entity: input_number.plantinator_bewasserung_p3_heute_ml
+                name: P3 heute gesamt
               - entity: input_button.plantinator_bewasserung_p4_normalguss_start
                 name: P4 Normalguss Start
+              - entity: input_number.plantinator_bewasserung_p4_heute_ml
+                name: P4 heute gesamt
       - type: grid
         cards:
           - type: heading
@@ -2486,6 +2500,33 @@ views:
     type: sections
     max_columns: 4
     sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Letzte 20 Fehler
+            heading_style: title
+            icon: mdi:alert-circle-outline
+          - type: markdown
+            title: Warnungen und kritische Fehler
+            content: |
+              {% set ns = namespace(anzahl=0) %}
+              {% for i in range(1, 21) %}
+                {% set nr = '%02d' | format(i) %}
+                {% set eintrag = states('input_text.plantinator_bewasserung_fehlerhistorie_' ~ nr) %}
+                {% if eintrag not in ['', 'leer', 'unknown', 'unavailable', 'none'] %}
+                  {% set ns.anzahl = ns.anzahl + 1 %}
+              **{{ ns.anzahl }}.** {{ '🔴' if 'KRITISCH' in eintrag else '🟠' }} `{{ eintrag }}`<br>
+                {% endif %}
+              {% endfor %}
+              {% if ns.anzahl == 0 %}
+              ✅ Seit dem Einrichten oder Leeren der Historie wurden keine Warnungen oder kritischen Fehler gespeichert.
+              {% endif %}
+          - type: entities
+            title: Fehlerhistorie verwalten
+            show_header_toggle: false
+            entities:
+              - entity: script.plantinator_bewasserung_fehlerhistorie_leeren
+                name: Alle 20 Einträge löschen
       - type: grid
         cards:
           - type: heading

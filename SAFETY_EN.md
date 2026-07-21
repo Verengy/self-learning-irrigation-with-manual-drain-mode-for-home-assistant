@@ -105,7 +105,10 @@ has not been confirmed.
 Every safety event has a level (`info`, `warnung`, or `kritisch`), code,
 details, and timestamp. These values appear on the Monitoring dashboard. The
 Home Assistant logbook provides the timeline, while the persistent
-notification shows the latest entry.
+notification shows the latest entry. In addition, **Debug → Last 20 Errors**
+persistently keeps the newest warnings and critical events independently of
+the optional debug file logger. Informational events are intentionally omitted
+from that list.
 
 The notify service configured under **Monitoring Settings** receives:
 

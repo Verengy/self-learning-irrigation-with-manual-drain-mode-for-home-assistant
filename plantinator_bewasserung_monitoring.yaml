@@ -265,6 +265,89 @@ input_text:
     icon: mdi:pump-off
     max: 255
 
+  # Persistente Ringhistorie: Platz 01 ist immer der neueste Fehler.
+  # Gespeichert werden Warnungen und kritische Ereignisse, keine Infos.
+  plantinator_bewasserung_fehlerhistorie_01:
+    name: Plantinator Bewässerung Fehlerhistorie 01
+    icon: mdi:alert-circle-outline
+    max: 255
+  plantinator_bewasserung_fehlerhistorie_02:
+    name: Plantinator Bewässerung Fehlerhistorie 02
+    icon: mdi:alert-circle-outline
+    max: 255
+  plantinator_bewasserung_fehlerhistorie_03:
+    name: Plantinator Bewässerung Fehlerhistorie 03
+    icon: mdi:alert-circle-outline
+    max: 255
+  plantinator_bewasserung_fehlerhistorie_04:
+    name: Plantinator Bewässerung Fehlerhistorie 04
+    icon: mdi:alert-circle-outline
+    max: 255
+  plantinator_bewasserung_fehlerhistorie_05:
+    name: Plantinator Bewässerung Fehlerhistorie 05
+    icon: mdi:alert-circle-outline
+    max: 255
+  plantinator_bewasserung_fehlerhistorie_06:
+    name: Plantinator Bewässerung Fehlerhistorie 06
+    icon: mdi:alert-circle-outline
+    max: 255
+  plantinator_bewasserung_fehlerhistorie_07:
+    name: Plantinator Bewässerung Fehlerhistorie 07
+    icon: mdi:alert-circle-outline
+    max: 255
+  plantinator_bewasserung_fehlerhistorie_08:
+    name: Plantinator Bewässerung Fehlerhistorie 08
+    icon: mdi:alert-circle-outline
+    max: 255
+  plantinator_bewasserung_fehlerhistorie_09:
+    name: Plantinator Bewässerung Fehlerhistorie 09
+    icon: mdi:alert-circle-outline
+    max: 255
+  plantinator_bewasserung_fehlerhistorie_10:
+    name: Plantinator Bewässerung Fehlerhistorie 10
+    icon: mdi:alert-circle-outline
+    max: 255
+  plantinator_bewasserung_fehlerhistorie_11:
+    name: Plantinator Bewässerung Fehlerhistorie 11
+    icon: mdi:alert-circle-outline
+    max: 255
+  plantinator_bewasserung_fehlerhistorie_12:
+    name: Plantinator Bewässerung Fehlerhistorie 12
+    icon: mdi:alert-circle-outline
+    max: 255
+  plantinator_bewasserung_fehlerhistorie_13:
+    name: Plantinator Bewässerung Fehlerhistorie 13
+    icon: mdi:alert-circle-outline
+    max: 255
+  plantinator_bewasserung_fehlerhistorie_14:
+    name: Plantinator Bewässerung Fehlerhistorie 14
+    icon: mdi:alert-circle-outline
+    max: 255
+  plantinator_bewasserung_fehlerhistorie_15:
+    name: Plantinator Bewässerung Fehlerhistorie 15
+    icon: mdi:alert-circle-outline
+    max: 255
+  plantinator_bewasserung_fehlerhistorie_16:
+    name: Plantinator Bewässerung Fehlerhistorie 16
+    icon: mdi:alert-circle-outline
+    max: 255
+  plantinator_bewasserung_fehlerhistorie_17:
+    name: Plantinator Bewässerung Fehlerhistorie 17
+    icon: mdi:alert-circle-outline
+    max: 255
+  plantinator_bewasserung_fehlerhistorie_18:
+    name: Plantinator Bewässerung Fehlerhistorie 18
+    icon: mdi:alert-circle-outline
+    max: 255
+  plantinator_bewasserung_fehlerhistorie_19:
+    name: Plantinator Bewässerung Fehlerhistorie 19
+    icon: mdi:alert-circle-outline
+    max: 255
+  plantinator_bewasserung_fehlerhistorie_20:
+    name: Plantinator Bewässerung Fehlerhistorie 20
+    icon: mdi:alert-circle-outline
+    max: 255
+
 input_datetime:
   plantinator_bewasserung_alarm_zeit:
     name: Plantinator Bewasserung Alarm Zeit
@@ -1119,6 +1202,116 @@ script:
                 data:
                   value: "{{ states('sensor.plantinator_bewasserung_ppfd_stundenintegral') | float(0) }}"
 
+  plantinator_bewasserung_fehlerhistorie_eintrag_speichern:
+    alias: Plantinator Bewässerung Fehlerhistorie Eintrag speichern
+    icon: mdi:history
+    mode: queued
+    max: 50
+    fields:
+      zeit:
+        name: Zeitpunkt
+        required: true
+        selector:
+          text:
+      stufe:
+        name: Fehlerstufe
+        required: true
+        selector:
+          text:
+      code:
+        name: Fehlercode
+        required: true
+        selector:
+          text:
+      details:
+        name: Details
+        required: false
+        selector:
+          text:
+    sequence:
+      - variables:
+          neuer_eintrag: >
+            {{ (zeit | string ~ ' | ' ~ stufe | upper ~ ' | ' ~ code | string ~
+                (' – ' ~ details | string if details | default('') | string | trim else ''))[:255] }}
+
+      # Von hinten nach vorne verschieben, damit kein Eintrag überschrieben
+      # wird, bevor er in den nächsten Platz kopiert wurde.
+      - repeat:
+          for_each:
+            - 20
+            - 19
+            - 18
+            - 17
+            - 16
+            - 15
+            - 14
+            - 13
+            - 12
+            - 11
+            - 10
+            - 9
+            - 8
+            - 7
+            - 6
+            - 5
+            - 4
+            - 3
+            - 2
+          sequence:
+            - variables:
+                ziel: >
+                  input_text.plantinator_bewasserung_fehlerhistorie_{{ '%02d' | format(repeat.item) }}
+                quelle: >
+                  input_text.plantinator_bewasserung_fehlerhistorie_{{ '%02d' | format(repeat.item - 1) }}
+            - service: input_text.set_value
+              target:
+                entity_id: "{{ ziel }}"
+              data:
+                value: >
+                  {% set alt = states(quelle) %}
+                  {{ alt if alt not in ['unknown', 'unavailable', 'none', ''] else 'leer' }}
+
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_fehlerhistorie_01
+        data:
+          value: "{{ neuer_eintrag }}"
+
+  plantinator_bewasserung_fehlerhistorie_leeren:
+    alias: Plantinator Bewässerung Fehlerhistorie leeren
+    icon: mdi:delete-sweep-outline
+    mode: single
+    sequence:
+      - repeat:
+          for_each:
+            - 1
+            - 2
+            - 3
+            - 4
+            - 5
+            - 6
+            - 7
+            - 8
+            - 9
+            - 10
+            - 11
+            - 12
+            - 13
+            - 14
+            - 15
+            - 16
+            - 17
+            - 18
+            - 19
+            - 20
+          sequence:
+            - service: input_text.set_value
+              target:
+                entity_id: >
+                  input_text.plantinator_bewasserung_fehlerhistorie_{{ '%02d' | format(repeat.item) }}
+              data:
+                value: leer
+
   plantinator_bewasserung_sicherheitsereignis_melden:
     alias: Plantinator Bewässerung Sicherheitsereignis melden
     icon: mdi:shield-alert-outline
@@ -1168,6 +1361,24 @@ script:
           entity_id: input_datetime.plantinator_bewasserung_sicherheitsereignis_zeit
         data:
           datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+
+      # Nicht blockierend speichern: Das Archiv darf eine Sicherheitsreaktion
+      # niemals verzögern oder bei einem eigenen Fehler abbrechen.
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ ereignisstufe in ['warnung', 'kritisch'] }}"
+            sequence:
+              - service: script.turn_on
+                continue_on_error: true
+                target:
+                  entity_id: script.plantinator_bewasserung_fehlerhistorie_eintrag_speichern
+                data:
+                  variables:
+                    zeit: "{{ now().strftime('%d.%m.%Y %H:%M:%S') }}"
+                    stufe: "{{ ereignisstufe }}"
+                    code: "{{ ereigniscode }}"
+                    details: "{{ ereignisdetails }}"
 
       # Das Logbuch ist die dauerhafte, zeitlich sortierte Fehlerhistorie.
       - service: logbook.log

@@ -736,6 +736,14 @@ Die Tageszähler werden täglich um 00:05 Uhr zurückgesetzt. Wochen- und Monats
 
 Der manuelle Normalguss verwendet den Wert **Manueller Testguss ml**. Er verwendet nicht automatisch die berechnete Pflanzenempfehlung.
 
+Im Bereich **Manuelle Aktionen** zeigt **Aktuelle Pumpen-Restzeit** die noch
+verbleibende reine Pumpenlaufzeit des laufenden Einzelgusses. Direkt unter den
+vier Starttasten stehen außerdem die Tagesmengen der Pflanzen. Ein erfolgreich
+beendeter manueller Normalguss wird automatisch zur Tages- und Gesamtmenge der
+betroffenen Pflanze addiert. Bei einem Abbruch nach Pumpenstart wird nur die aus
+Pumpenlaufzeit und kalibrierter Förderrate berechnete Teilmenge verbucht; ein
+Abbruch vor Pumpenstart verbucht nichts.
+
 1. Gewünschte Menge einstellen.
 2. Sicherheitsstatus kontrollieren.
 3. Starttaste der Pflanze drücken.
@@ -978,7 +986,13 @@ nicht die harte Notfallgrenze.
 
 ### Debug
 
-Die Debug-Seite zeigt die Auto-Entscheidung, Freigaben, Flags und gemappten Aktorzustände. Mit eingerichtetem File-Logger können Testmeldungen, einzelne Snapshots oder periodische Snapshots geschrieben werden.
+Die Debug-Seite zeigt die Auto-Entscheidung, Freigaben, Flags und gemappten
+Aktorzustände. Zusätzlich speichert sie die letzten 20 Warnungen und kritischen
+Fehler dauerhaft mit Zeitpunkt, Stufe, Code und Details; der neueste Eintrag
+steht oben. Die Liste beginnt nach dem ersten vollständigen Neustart mit dieser
+Version und kann im Dashboard geleert werden. Reine Info-Ereignisse werden
+nicht als Fehler gezählt. Mit eingerichtetem File-Logger können Testmeldungen,
+einzelne Snapshots oder periodische Snapshots geschrieben werden.
 
 Der periodische Logger ist standardmäßig aus. Beim Einschalten wird die bestehende Zieldatei geleert und anschließend neu beschrieben.
 

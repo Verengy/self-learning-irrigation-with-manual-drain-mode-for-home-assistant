@@ -110,7 +110,10 @@ Jedes Sicherheitsereignis besitzt eine Stufe (`info`, `warnung` oder
 `kritisch`), einen Code, Details und einen Zeitstempel. Diese Werte sind im
 Monitoring-Dashboard sichtbar. Das Home-Assistant-Logbuch dient als
 dauerhafte zeitliche Übersicht; die letzte persistente Benachrichtigung zeigt
-den aktuellsten Eintrag.
+den aktuellsten Eintrag. Zusätzlich hält **Debug → Letzte 20 Fehler** die
+neuesten Warnungen und kritischen Ereignisse dauerhaft und unabhängig vom
+optionalen Debug-File-Logger vor. Info-Ereignisse erscheinen dort bewusst
+nicht.
 
 Der in **Monitoring Einstellungen** eingetragene Notify-Dienst erhält:
 
