@@ -42,15 +42,23 @@ The eight seconds therefore do **not** begin at the first switch-off attempt
 and are not one shared total timeout. Every checked valve command gets an
 independent window.
 
-The pump deliberately works differently: its calculated runtime starts
-immediately with the pump `turn_on`. At the same time, the system waits for a
-**fresh** `on` report, but only until the earlier end of the feedback timeout
-or calculated runtime. A three-second shot therefore does not receive eight
-additional seconds. If `on` is confirmed after one second, two seconds of
-requested runtime remain. If confirmation is still missing at shot end, the
-pump is switched off immediately, **0 ml** are recorded, and the shared pump
-is temporarily locked. The pump is not started a second time because missing
-feedback could otherwise cause an unknown extra volume.
+The pump deliberately works differently. Before every new run, the system
+first sends `turn_off` and confirms a safe `off` state. If the pump was already
+reliably `off`, this step completes immediately. If `off` cannot be confirmed
+before the start, irrigation does not begin; the system performs a safe stop
+and sets the global latch.
+
+Only after this confirmed OFF state does the system send `turn_on`. The
+subsequent state change to `on` therefore unambiguously confirms the current
+start and does not need an additional check of Home Assistant's
+`last_updated` timestamp. Calculated runtime starts immediately with the pump
+`turn_on`. The system waits for `on` only until the earlier end of the feedback
+timeout or calculated runtime. A three-second shot therefore does not receive
+eight additional seconds. If `on` is confirmed after one second, two seconds
+of requested runtime remain. If confirmation is still missing at shot end,
+the pump is switched off immediately, **0 ml** are recorded, and the shared
+pump is temporarily locked. The pump is not started a second time because
+missing feedback could otherwise cause an unknown extra volume.
 
 At the calculated shot end, `turn_off` is sent immediately. Only **after that
 off command** may the system wait up to eight seconds for the confirmed safe
@@ -65,7 +73,8 @@ requested on-time.
 | Plant valve unavailable | affected plant locked only | automatic after at least 60 s once reachable and `off` | time-sensitive warning |
 | Both plant-valve opening attempts fail, but `off` is confirmed | affected plant locked only | automatic after at least 60 s with reliable `off` | time-sensitive warning |
 | Main valve unavailable or fails both opening attempts, but `off` is confirmed | all new starts blocked without global alarm latch | automatic after at least 60 s with reliable `off` | time-sensitive warning |
-| Pump start has no fresh `on` confirmation, but safe `off` is confirmed afterwards | 0 ml recorded and all new starts blocked by the pump lock | automatic after at least 60 s once the pump is reachable and reliably `off` | time-sensitive warning |
+| Pump cannot be confirmed safely `off` before a new irrigation | safe stop and global latch | manual only after confirmed safe off | critical alert |
+| Pump start after confirmed `off` has no `on` confirmation, but safe `off` is confirmed afterwards | 0 ml recorded and all new starts blocked by the pump lock | automatic after at least 60 s once the pump is reachable and reliably `off` | time-sensitive warning |
 | Wetback target too low, invalid wetback sensor, or noncritical top-up failure | sequence ends or top-up is skipped | automatic on a later valid cycle | time-sensitive warning |
 | Pump, plant valve, or main valve cannot be confirmed `off` after a run | safe stop and global latch | manual only after correction and confirmed safe off | critical alert |
 | Pump unexpectedly on or pump on without an open plant valve | safe stop and global latch | manual only | critical alert |

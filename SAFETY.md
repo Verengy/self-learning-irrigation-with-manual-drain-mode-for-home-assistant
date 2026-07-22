@@ -43,16 +43,24 @@ Die acht Sekunden beginnen daher **nicht** beim ersten Ausschaltversuch und
 laufen nicht als gemeinsame Gesamtfrist. Jeder geprüfte Ventilbefehl erhält
 seine eigene Bestätigungsfrist.
 
-Für die Pumpe gilt bewusst etwas anderes: Ihre berechnete Laufzeit startet
-unmittelbar mit dem Pumpen-`turn_on`. Gleichzeitig wird auf eine **neue**
-`on`-Rückmeldung gewartet, jedoch höchstens bis zum früheren Ende aus
-Bestätigungsfrist und berechneter Laufzeit. Ein 3-Sekunden-Shot erhält also
-keine zusätzlichen 8 Sekunden. Wird `on` nach einer Sekunde bestätigt, bleiben
-noch zwei Sekunden Soll-Laufzeit. Fehlt die Bestätigung bis zum Shot-Ende,
-wird sofort ausgeschaltet, **0 ml** werden verbucht und die gemeinsame Pumpe
-vorübergehend gesperrt. Ein automatischer zweiter Pumpenstart erfolgt nicht,
-weil bei fehlender Rückmeldung sonst eine unbekannte Zusatzmenge fließen
-könnte.
+Für die Pumpe gilt bewusst etwas anderes. Vor jedem neuen Lauf wird zuerst
+`turn_off` gesendet und ein sicherer `off`-Zustand bestätigt. War die Pumpe
+bereits zuverlässig `off`, ist dieser Schritt sofort erfüllt. Kann `off` vor
+dem Start nicht bestätigt werden, beginnt keine Bewässerung; das System führt
+einen sicheren Stopp aus und verriegelt kritisch.
+
+Erst nach diesem bestätigten AUS-Zustand wird `turn_on` gesendet. Der folgende
+Zustandswechsel auf `on` ist dadurch eindeutig die Rückmeldung des aktuellen
+Starts und benötigt keine zusätzliche Prüfung des Home-Assistant-Zeitstempels
+`last_updated`. Die berechnete Laufzeit startet unmittelbar mit dem
+Pumpen-`turn_on`. Auf `on` wird höchstens bis zum früheren Ende aus
+Bestätigungsfrist und berechneter Laufzeit gewartet. Ein 3-Sekunden-Shot erhält
+also keine zusätzlichen 8 Sekunden. Wird `on` nach einer Sekunde bestätigt,
+bleiben noch zwei Sekunden Soll-Laufzeit. Fehlt die Bestätigung bis zum
+Shot-Ende, wird sofort ausgeschaltet, **0 ml** werden verbucht und die
+gemeinsame Pumpe vorübergehend gesperrt. Ein automatischer zweiter Pumpenstart
+erfolgt nicht, weil bei fehlender Rückmeldung sonst eine unbekannte Zusatzmenge
+fließen könnte.
 
 Nach dem berechneten Shot-Ende wird sofort `turn_off` gesendet. Erst **ab
 diesem Ausschaltbefehl** stehen maximal 8 Sekunden zur Verfügung, um die
@@ -67,7 +75,8 @@ weder den Shot noch die eingeschaltete Sollzeit der Pumpe.
 | Pflanzenventil nicht erreichbar | nur betroffene Pflanze gesperrt | nach mindestens 60 s automatisch, wenn das Ventil wieder erreichbar und `off` ist | zeitkritische Warnung |
 | Zwei Öffnungsversuche eines Pflanzenventils fehlgeschlagen, `off` aber bestätigt | nur betroffene Pflanze gesperrt | nach mindestens 60 s automatisch bei zuverlässig gemeldetem `off` | zeitkritische Warnung |
 | Hauptventil nicht erreichbar oder zweimal nicht geöffnet, `off` aber bestätigt | alle neuen Starts blockiert, keine globale Alarmverriegelung | nach mindestens 60 s automatisch bei zuverlässig gemeldetem `off` | zeitkritische Warnung |
-| Pumpenstart nicht frisch als `on` bestätigt, anschließend `off` aber sicher bestätigt | 0 ml verbucht und alle neuen Starts über Pumpensperre blockiert | nach mindestens 60 s automatisch bei erreichbarer Pumpe mit sicherem `off` | zeitkritische Warnung |
+| Pumpe ist vor einem neuen Guss nicht sicher `off` bestätigt | sicherer Stopp und globale Verriegelung | nur manuell nach bestätigtem sicheren AUS | kritische Meldung |
+| Pumpenstart nach bestätigtem `off` nicht als `on` bestätigt, anschließend `off` aber sicher bestätigt | 0 ml verbucht und alle neuen Starts über Pumpensperre blockiert | nach mindestens 60 s automatisch bei erreichbarer Pumpe mit sicherem `off` | zeitkritische Warnung |
 | Wetback-Ziel zu niedrig, Wetback-Sensor ungültig oder unkritischer Nachgießfehler | Sequenz beendet bzw. Nachgießen unterlassen | automatisch beim nächsten gültigen Zyklus | zeitkritische Warnung |
 | Pumpe, Pflanzenventil oder Hauptventil lässt sich nach einem Lauf nicht sicher `off` bestätigen | sicherer Stopp und globale Verriegelung | nur manuell nach behobener Ursache und bestätigtem sicheren AUS | kritische Meldung |
 | Pumpe unerwartet an oder Pumpe ohne offenes Pflanzenventil | sicherer Stopp und globale Verriegelung | nur manuell | kritische Meldung |

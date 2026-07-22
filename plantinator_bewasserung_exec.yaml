@@ -61,7 +61,7 @@ timer:
 
 input_number:
   plantinator_bewasserung_manueller_testguss_ml:
-    name: Plantinator Bewasserung manueller Testguss ml
+    name: Bewässerung manueller Einzelguss Menge
     icon: mdi:cup-water
     min: 25
     max: 500
@@ -153,19 +153,19 @@ input_text:
 
 input_button:
   plantinator_bewasserung_p1_normalguss_start:
-    name: Plantinator Bewasserung P1 Normalguss Start
+    name: Bewässerung P1 Einzelguss starten
     icon: mdi:water-plus
 
   plantinator_bewasserung_p2_normalguss_start:
-    name: Plantinator Bewasserung P2 Normalguss Start
+    name: Bewässerung P2 Einzelguss starten
     icon: mdi:water-plus
 
   plantinator_bewasserung_p3_normalguss_start:
-    name: Plantinator Bewasserung P3 Normalguss Start
+    name: Bewässerung P3 Einzelguss starten
     icon: mdi:water-plus
 
   plantinator_bewasserung_p4_normalguss_start:
-    name: Plantinator Bewasserung P4 Normalguss Start
+    name: Bewässerung P4 Einzelguss starten
     icon: mdi:water-plus
 
 input_datetime:
@@ -199,7 +199,7 @@ template:
           letzter_start: "{{ states('input_datetime.plantinator_bewasserung_exec_letzter_start') }}"
           letztes_ende: "{{ states('input_datetime.plantinator_bewasserung_exec_letztes_ende') }}"
 
-      - name: Plantinator Bewasserung manueller Testguss Sekunden
+      - name: Bewässerung manueller Einzelguss Laufzeit
         unique_id: plantinator_bewasserung_manueller_testguss_sekunden
         icon: mdi:timer-outline
         unit_of_measurement: "s"
@@ -934,13 +934,53 @@ script:
         data:
           datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
 
+      # Die Pumpe muss vor jedem neuen Einschaltbefehl nachweislich AUS sein.
+      # War sie bereits zuverlässig AUS, ist keine frische AUS-Meldung nötig.
+      # Andernfalls wird eine eigene Rückmeldung auf den Ausschaltbefehl
+      # abgewartet. Erst von diesem bestätigten AUS-Zustand aus darf der
+      # anschließende Wechsel auf EIN bewertet werden.
+      - variables:
+          pumpe_vor_start_sicher_aus: >
+            {{ pumpe.startswith('switch.') and has_value(pumpe)
+               and is_state(pumpe, 'off') }}
+          pumpen_aus_befehl_ts_vor_start: "{{ as_timestamp(now()) }}"
+
       - service: script.plantinator_bewasserung_pumpe_aus
 
       - wait_template: >
-          {{ is_state('input_boolean.plantinator_bewasserung_exec_abort', 'on')
+          {{ (pumpe_vor_start_sicher_aus | bool(false))
+             or (is_state(pumpe, 'off')
+                 and as_timestamp(states[pumpe].last_updated, 0)
+                     >= (pumpen_aus_befehl_ts_vor_start | float(0)))
+             or is_state('input_boolean.plantinator_bewasserung_exec_abort', 'on')
              or (states('counter.plantinator_bewasserung_stop_generation') | int(0)) != (run_generation | int(0)) }}
-        timeout: "00:00:01"
+        timeout: "{{ aktor_bestaetigung }}"
         continue_on_timeout: true
+
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ not ((pumpe_vor_start_sicher_aus | bool(false))
+                          or (is_state(pumpe, 'off')
+                              and as_timestamp(states[pumpe].last_updated, 0)
+                                  >= (pumpen_aus_befehl_ts_vor_start | float(0))))
+                     and is_state('input_boolean.plantinator_bewasserung_exec_abort', 'off')
+                     and (states('counter.plantinator_bewasserung_stop_generation') | int(0)) == (run_generation | int(0)) }}
+            sequence:
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.plantinator_bewasserung_exec_status
+                data:
+                  value: "hardwarefehler_pumpe_aus_vor_start_p{{ p }}"
+
+              - service: script.plantinator_bewasserung_sicher_stop
+
+              - service: script.plantinator_bewasserung_alarm_ausloesen
+                data:
+                  grund: "hardwarefehler_pumpe_aus_vor_start_p{{ p }}"
+
+              - stop: "Pumpe war vor dem Guss nicht sicher AUS bestätigt."
 
       - service: script.plantinator_bewasserung_alle_ventile_zu
 
@@ -1316,12 +1356,13 @@ script:
         target:
           entity_id: "{{ pumpe }}"
 
-      # Frische EIN-Rückmeldung höchstens bis zum früheren Zeitpunkt aus
-      # Bestätigungsfrist und berechnetem Shot-Ende abwarten.
+      # Nach dem zuvor bestätigten AUS-Zustand reicht der Zustandswechsel auf
+      # EIN als eindeutige Rückmeldung. Eine zusätzliche last_updated-Prüfung
+      # ist hier unnötig und kann schnelle ESPHome-Rückmeldungen fälschlich
+      # verwerfen. Höchstens bis zum früheren Zeitpunkt aus Bestätigungsfrist
+      # und berechnetem Shot-Ende warten.
       - wait_template: >
-          {{ (is_state(pumpe, 'on')
-              and as_timestamp(states[pumpe].last_updated, 0)
-                  >= (pumpen_ein_befehl_ts | float(0)))
+          {{ is_state(pumpe, 'on')
              or is_state('input_boolean.plantinator_bewasserung_exec_abort', 'on')
              or (states('counter.plantinator_bewasserung_stop_generation') | int(0)) != (run_generation | int(0)) }}
         timeout: >
@@ -1331,10 +1372,7 @@ script:
         continue_on_timeout: true
 
       - variables:
-          pumpe_ein_bestaetigt: >
-            {{ is_state(pumpe, 'on')
-               and as_timestamp(states[pumpe].last_updated, 0)
-                   >= (pumpen_ein_befehl_ts | float(0)) }}
+          pumpe_ein_bestaetigt: "{{ is_state(pumpe, 'on') }}"
 
       # Fehlende EIN-Bestätigung: keine Menge als abgegeben verbuchen und
       # niemals blind erneut einschalten. Ist AUS sicher, wird nur die
@@ -1457,7 +1495,8 @@ script:
                   stufe: warnung
                   code: "hardwarefehler_pumpe_ein_nicht_bestaetigt_p{{ p }}"
                   details: >
-                    Keine frische EIN-Rückmeldung innerhalb der laufenden Shotzeit.
+                    Nach zuvor bestätigtem AUS keine EIN-Rückmeldung innerhalb
+                    der laufenden Shotzeit.
                     Pumpe und Ventile sind sicher AUS; 0 ml wurden verbucht und
                     alle neuen Bewässerungsstarts vorübergehend gesperrt.
 

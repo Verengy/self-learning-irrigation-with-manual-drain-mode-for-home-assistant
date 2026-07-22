@@ -637,47 +637,79 @@ views:
       - type: grid
         cards:
           - type: heading
-            heading: Manual Actions
+            heading: Start Single Irrigation
             heading_style: title
             icon: mdi:water-plus
+          - type: tile
+            entity: input_button.plantinator_bewasserung_p1_normalguss_start
+            name: P1 Single Irrigation
+            icon: mdi:numeric-1-circle
+            color: blue
+            tap_action:
+              action: call-service
+              service: input_button.press
+              target:
+                entity_id: input_button.plantinator_bewasserung_p1_normalguss_start
+          - type: tile
+            entity: input_button.plantinator_bewasserung_p2_normalguss_start
+            name: P2 Single Irrigation
+            icon: mdi:numeric-2-circle
+            color: blue
+            tap_action:
+              action: call-service
+              service: input_button.press
+              target:
+                entity_id: input_button.plantinator_bewasserung_p2_normalguss_start
+          - type: tile
+            entity: input_button.plantinator_bewasserung_p3_normalguss_start
+            name: P3 Single Irrigation
+            icon: mdi:numeric-3-circle
+            color: blue
+            tap_action:
+              action: call-service
+              service: input_button.press
+              target:
+                entity_id: input_button.plantinator_bewasserung_p3_normalguss_start
+          - type: tile
+            entity: input_button.plantinator_bewasserung_p4_normalguss_start
+            name: P4 Single Irrigation
+            icon: mdi:numeric-4-circle
+            color: blue
+            tap_action:
+              action: call-service
+              service: input_button.press
+              target:
+                entity_id: input_button.plantinator_bewasserung_p4_normalguss_start
           - type: entities
-            title: Normal-Irrigation Buttons
+            title: Run Status / Daily Totals
             show_header_toggle: false
             entities:
               - entity: timer.plantinator_bewasserung_exec_pumpen_restzeit
                 name: Current Pump Remaining Time
               - entity: input_number.plantinator_bewasserung_exec_aktive_pflanze
                 name: Active Plant
-              - entity: input_button.plantinator_bewasserung_p1_normalguss_start
-                name: P1 Normal-Irrigation Start
               - entity: input_number.plantinator_bewasserung_p1_heute_ml
                 name: P1 Total Today
-              - entity: input_button.plantinator_bewasserung_p2_normalguss_start
-                name: P2 Normal-Irrigation Start
               - entity: input_number.plantinator_bewasserung_p2_heute_ml
                 name: P2 Total Today
-              - entity: input_button.plantinator_bewasserung_p3_normalguss_start
-                name: P3 Normal-Irrigation Start
               - entity: input_number.plantinator_bewasserung_p3_heute_ml
                 name: P3 Total Today
-              - entity: input_button.plantinator_bewasserung_p4_normalguss_start
-                name: P4 Normal-Irrigation Start
               - entity: input_number.plantinator_bewasserung_p4_heute_ml
                 name: P4 Total Today
       - type: grid
         cards:
           - type: heading
-            heading: Manual Normal Irrigation
+            heading: Manual Single Irrigation
             heading_style: title
             icon: mdi:water-plus
           - type: entities
-            title: Normal-Irrigation Settings
+            title: Single-Irrigation Settings
             show_header_toggle: false
             entities:
               - entity: input_number.plantinator_bewasserung_manueller_testguss_ml
-                name: Manual Test Irrigation ml
+                name: Single-Irrigation Volume
               - entity: sensor.plantinator_bewasserung_manueller_testguss_sekunden
-                name: Manual Test Irrigation Seconds
+                name: Calculated Runtime
               - entity: input_number.plantinator_bewasserung_ventil_vorlauf_sekunden
                 name: Valve Pre-Run
               - entity: input_number.plantinator_bewasserung_ventil_nachlauf_sekunden

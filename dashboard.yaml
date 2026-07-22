@@ -643,47 +643,79 @@ views:
       - type: grid
         cards:
           - type: heading
-            heading: Manuelle Aktionen
+            heading: Einzelguss starten
             heading_style: title
             icon: mdi:water-plus
+          - type: tile
+            entity: input_button.plantinator_bewasserung_p1_normalguss_start
+            name: P1 Einzelguss
+            icon: mdi:numeric-1-circle
+            color: blue
+            tap_action:
+              action: call-service
+              service: input_button.press
+              target:
+                entity_id: input_button.plantinator_bewasserung_p1_normalguss_start
+          - type: tile
+            entity: input_button.plantinator_bewasserung_p2_normalguss_start
+            name: P2 Einzelguss
+            icon: mdi:numeric-2-circle
+            color: blue
+            tap_action:
+              action: call-service
+              service: input_button.press
+              target:
+                entity_id: input_button.plantinator_bewasserung_p2_normalguss_start
+          - type: tile
+            entity: input_button.plantinator_bewasserung_p3_normalguss_start
+            name: P3 Einzelguss
+            icon: mdi:numeric-3-circle
+            color: blue
+            tap_action:
+              action: call-service
+              service: input_button.press
+              target:
+                entity_id: input_button.plantinator_bewasserung_p3_normalguss_start
+          - type: tile
+            entity: input_button.plantinator_bewasserung_p4_normalguss_start
+            name: P4 Einzelguss
+            icon: mdi:numeric-4-circle
+            color: blue
+            tap_action:
+              action: call-service
+              service: input_button.press
+              target:
+                entity_id: input_button.plantinator_bewasserung_p4_normalguss_start
           - type: entities
-            title: Normalguss Buttons
+            title: Laufstatus / Tagesmengen
             show_header_toggle: false
             entities:
               - entity: timer.plantinator_bewasserung_exec_pumpen_restzeit
                 name: Aktuelle Pumpen-Restzeit
               - entity: input_number.plantinator_bewasserung_exec_aktive_pflanze
                 name: Aktive Pflanze
-              - entity: input_button.plantinator_bewasserung_p1_normalguss_start
-                name: P1 Normalguss Start
               - entity: input_number.plantinator_bewasserung_p1_heute_ml
                 name: P1 heute gesamt
-              - entity: input_button.plantinator_bewasserung_p2_normalguss_start
-                name: P2 Normalguss Start
               - entity: input_number.plantinator_bewasserung_p2_heute_ml
                 name: P2 heute gesamt
-              - entity: input_button.plantinator_bewasserung_p3_normalguss_start
-                name: P3 Normalguss Start
               - entity: input_number.plantinator_bewasserung_p3_heute_ml
                 name: P3 heute gesamt
-              - entity: input_button.plantinator_bewasserung_p4_normalguss_start
-                name: P4 Normalguss Start
               - entity: input_number.plantinator_bewasserung_p4_heute_ml
                 name: P4 heute gesamt
       - type: grid
         cards:
           - type: heading
-            heading: Manueller Normalguss
+            heading: Manueller Einzelguss
             heading_style: title
             icon: mdi:water-plus
           - type: entities
-            title: Normalguss Einstellung
+            title: Einzelguss-Einstellung
             show_header_toggle: false
             entities:
               - entity: input_number.plantinator_bewasserung_manueller_testguss_ml
-                name: Manueller Testguss ml
+                name: Einzelguss-Menge
               - entity: sensor.plantinator_bewasserung_manueller_testguss_sekunden
-                name: Manueller Testguss Sekunden
+                name: Berechnete Laufzeit
               - entity: input_number.plantinator_bewasserung_ventil_vorlauf_sekunden
                 name: Ventil Vorlauf
               - entity: input_number.plantinator_bewasserung_ventil_nachlauf_sekunden

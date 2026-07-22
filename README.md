@@ -76,7 +76,7 @@ Die abgegebene Wassermenge wird zeitbasiert berechnet:
 Pumpenlaufzeit in Sekunden = gewünschte Menge in ml / Pumpenleistung in ml/s
 ```
 
-Ein Durchflussmesser ist nicht erforderlich, aber die Pumpenleistung muss sorgfältig kalibriert werden. Die Pumpenlaufzeit beginnt direkt mit dem Einschaltbefehl und wird daher nicht durch eine verspätete WLAN-Zustandsanzeige verlängert. Innerhalb dieser Laufzeit muss die Pumpe ein frisches `on` melden; andernfalls wird sie ausgeschaltet, es werden 0 ml verbucht und alle Starts werden vorübergehend gesperrt. Beim Öffnen eines Ventils stehen zwei getrennte Schaltversuche zur Verfügung. Jeder `on`- und `off`-Befehl erhält seine eigene einstellbare Aktor-Bestätigungszeit; zwischen den Öffnungsversuchen liegt eine ebenfalls einstellbare Pause. Es kann jedoch keine verstopfte Leitung, gelöste Schlauchverbindung oder tatsächlich geflossene Wassermenge erkennen. Die genaue Reihenfolge steht in der [Sicherheitslogik](SAFETY.md#aktorbestätigung-bei-wlan-schaltern).
+Ein Durchflussmesser ist nicht erforderlich, aber die Pumpenleistung muss sorgfältig kalibriert werden. Vor dem Einschalten wird zuerst der sichere `off`-Zustand der Pumpe bestätigt. Der anschließende Wechsel auf `on` bestätigt dadurch eindeutig den aktuellen Start, ohne vom zusätzlichen Home-Assistant-Zeitstempel `last_updated` abhängig zu sein. Die Pumpenlaufzeit beginnt direkt mit dem Einschaltbefehl und wird nicht durch eine verspätete Zustandsanzeige verlängert. Innerhalb dieser Laufzeit muss die Pumpe `on` melden; andernfalls wird sie ausgeschaltet, es werden 0 ml verbucht und alle Starts werden vorübergehend gesperrt. Beim Öffnen eines Ventils stehen zwei getrennte Schaltversuche zur Verfügung. Jeder `on`- und `off`-Befehl erhält seine eigene einstellbare Aktor-Bestätigungszeit; zwischen den Öffnungsversuchen liegt eine ebenfalls einstellbare Pause. Es kann jedoch keine verstopfte Leitung, gelöste Schlauchverbindung oder tatsächlich geflossene Wassermenge erkennen. Die genaue Reihenfolge steht in der [Sicherheitslogik](SAFETY.md#aktorbestätigung-bei-wlan-schaltern).
 
 ## Screenshots
 
@@ -1129,6 +1129,7 @@ Wichtige kritische Statusgruppen:
 | `aktor_pflanzenventil_unerwartet_offen` | Ein Pflanzenventil ist außerhalb eines EXEC-Laufs offen |
 | `aktor_mehrere_pflanzenventile_offen` | Mehr als ein Pflanzenventil ist gleichzeitig offen |
 | `aktor_*_unverfuegbar_im_lauf` | Ein benötigter Aktor wurde während des Laufs nicht mehr erreichbar |
+| `hardwarefehler_pumpe_aus_vor_start_p*` | Die Pumpe konnte vor dem Start einer Bewässerung nicht sicher als AUS bestätigt werden |
 | `hardwarefehler_*_aus_nicht_bestaetigt` | Ein möglicherweise eingeschalteter Aktor konnte nicht sicher AUS bestätigt werden |
 | `sicher_stop_nicht_bestaetigt` | Der sichere Stopp konnte nicht alle gemappten Aktoren als AUS bestätigen |
 

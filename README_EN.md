@@ -89,11 +89,14 @@ The delivered volume is calculated from pump runtime:
 pump runtime in seconds = requested volume in ml / pump output in ml/s
 ```
 
-A flow meter is not required, so accurate pump calibration is essential. Pump
-runtime starts with the switch-on command and is therefore not extended by a
-delayed Wi-Fi state report. The pump must report a fresh `on` within that
-runtime; otherwise it is switched off, 0 ml are recorded, and all starts are
-temporarily locked. Valve opening uses two separate attempts. Every
+A flow meter is not required, so accurate pump calibration is essential. The
+pump is first confirmed `off`; only then is it switched on. This makes the
+following change to `on` an unambiguous confirmation without relying on the
+entity's `last_updated` timestamp. Pump runtime starts with the switch-on
+command and is therefore not extended by a delayed state report. The pump must
+report `on` within that runtime; otherwise it is switched off, 0 ml are
+recorded, and all starts are temporarily locked. Valve opening uses two
+separate attempts. Every
 `on` and `off` command gets its own configurable confirmation window, with a
 configurable delay between opening attempts. See the [complete safety
 logic](SAFETY_EN.md#confirmation-of-wi-fi-actuators) for the exact sequence. It
@@ -1211,6 +1214,7 @@ Important critical status groups include:
 | `aktor_pflanzenventil_unerwartet_offen` | A plant valve is open outside an EXEC run |
 | `aktor_mehrere_pflanzenventile_offen` | More than one plant valve is open |
 | `aktor_*_unverfuegbar_im_lauf` | A required actuator became unavailable during a run |
+| `hardwarefehler_pumpe_aus_vor_start_p*` | The pump could not be reliably confirmed off before an irrigation run started |
 | `hardwarefehler_*_aus_nicht_bestaetigt` | A possibly active actuator could not be confirmed off |
 | `sicher_stop_nicht_bestaetigt` | Safe Stop could not confirm every mapped actuator off |
 
