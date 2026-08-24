@@ -618,13 +618,584 @@ script:
                 target:
                   entity_id: timer.plantinator_bewasserung_shot_exec_wartezeit
 
-              # Feedback auswerten nur wenn immer noch nicht abgebrochen
+              # Ramp-up und Maintenance muessen den bisherigen Referenz-Peak
+              # wieder erreichen. Entscheidend ist der hoechste SMT100-Wert,
+              # der seit Gussbeginn durch die Feedback-Automation erfasst wurde.
+              # Bleibt er darunter, ist genau ein begrenzter Nachguss erlaubt.
+              - variables:
+                  wetback_aktiv: >
+                    {{ sequenztyp_lauf in ['ramp_up', 'maintenance']
+                       and is_state(
+                         'input_boolean.plantinator_bewasserung_shot_exec_stop_anforderung',
+                         'off'
+                       )
+                       and is_state('input_boolean.plantinator_bewasserung_exec_abort', 'off')
+                       and (
+                         states('counter.plantinator_bewasserung_stop_generation') | int(0)
+                       ) == (run_generation | int(0)) }}
+                  wetback_referenz_roh: >
+                    {{ states(
+                      'input_number.plantinator_bewasserung_crop_p'
+                      ~ p ~ '_letzter_peak_prozent'
+                    ) | float(0) }}
+                  wetback_maximum: >
+                    {{ states('input_number.plantinator_bewasserung_bodenfeuchte_maximum')
+                       | float(100) }}
+                  wetback_referenz: >
+                    {% set fallback = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel')
+                       | float(32) %}
+                    {% set roh = wetback_referenz_roh | float(0) %}
+                    {{ [roh if roh > 0 else fallback, wetback_maximum | float(100)] | min }}
+                  wetback_toleranz: >
+                    {{ states('input_number.plantinator_bewasserung_wetback_peak_toleranz_prozent')
+                       | float(0.5) }}
+                  wetback_ziel: >
+                    {{ (wetback_referenz | float(0)) - (wetback_toleranz | float(0.5)) }}
+                  wetback_obergrenze: >
+                    {{ (wetback_referenz | float(0)) + (wetback_toleranz | float(0.5)) }}
+                  wetback_peak_erste_messung: >
+                    {{ [
+                      states('input_number.plantinator_bewasserung_p' ~ p ~ '_feedback_peak_prozent')
+                        | float(0),
+                      states('sensor.plantinator_bewasserung_p' ~ p ~ '_bodenfeuchte_wert')
+                        | float(0)
+                    ] | max }}
+                  wetback_mlp: >
+                    {{ states('input_number.plantinator_bewasserung_p' ~ p ~ '_gelernt_ml_pro_prozent')
+                       | float(35)
+                       if is_state(
+                         'input_boolean.plantinator_bewasserung_p' ~ p ~ '_lernwert_gueltig',
+                         'on'
+                       )
+                       else states('input_number.plantinator_bewasserung_startwert_ml_pro_prozent')
+                         | float(35) }}
+                  wetback_nachguss_limit: >
+                    {{ states('input_number.plantinator_bewasserung_wetback_nachguss_max_ml')
+                       | float(800) }}
+                  wetback_max_tag: >
+                    {{ states('input_number.plantinator_bewasserung_max_ml_pro_tag') | float(0) }}
+                  wetback_heute: >
+                    {{ states('input_number.plantinator_bewasserung_p' ~ p ~ '_heute_ml') | float(0) }}
+                  wetback_freie_shots: >
+                    {{ [(shot_max_anzahl | int(0)) - (shot_anzahl | int(0)), 0] | max }}
+                  wetback_shot_max: >
+                    {{ [shot_effektiv_max_ml | float(0), shot_max_ml | float(0)] | min }}
+                  wetback_defizit: >
+                    {{ [
+                      (wetback_referenz | float(0))
+                        - (wetback_peak_erste_messung | float(0)),
+                      0
+                    ] | max }}
+                  wetback_benoetigt_ml: >
+                    {% set roh = (
+                      (wetback_defizit | float(0)) * (wetback_mlp | float(35))
+                    ) | round(0, 'ceil') | int %}
+                    {{ [roh, exec_min_ml | int(25)] | max if roh > 0 else 0 }}
+                  wetback_frei_normalguss: >
+                    {{ [
+                      (max_normal | float(0)) - (sequence_summe_ml | float(0)),
+                      0
+                    ] | max if (max_normal | float(0)) > 0
+                       else wetback_nachguss_limit | float(800) }}
+                  wetback_frei_tag: >
+                    {{ [
+                      (wetback_max_tag | float(0)) - (wetback_heute | float(0)),
+                      0
+                    ] | max if (wetback_max_tag | float(0)) > 0
+                       else wetback_nachguss_limit | float(800) }}
+                  wetback_frei_shots_ml: >
+                    {{ (wetback_freie_shots | int(0)) * (wetback_shot_max | float(0)) }}
+                  wetback_verfuegbar_ml: >
+                    {{ [
+                      wetback_nachguss_limit | float(800),
+                      wetback_frei_normalguss | float(0),
+                      wetback_frei_tag | float(0),
+                      wetback_frei_shots_ml | float(0)
+                    ] | min }}
+                  # Ein begrenzter Nachguss ist weiterhin sinnvoll. Wenn zum
+                  # Beispiel rechnerisch 867 ml fehlen, aber nur noch 800 ml
+                  # erlaubt sind, werden genau diese 800 ml ausgegeben.
+                  wetback_nachguss_ml: >
+                    {% set begrenzt = [
+                      wetback_benoetigt_ml | float(0),
+                      wetback_verfuegbar_ml | float(0)
+                    ] | min %}
+                    {{ [begrenzt, 0] | max | round(0, 'floor') | int }}
+                  wetback_nachguss_anzahl: >
+                    {{ (
+                      (wetback_nachguss_ml | float(0)) / (wetback_shot_max | float(1))
+                    ) | round(0, 'ceil') | int
+                       if (wetback_shot_max | float(0)) > 0 else 0 }}
+                  wetback_nachguss_sequence: >
+                    {% set anzahl = wetback_nachguss_anzahl | int(0) %}
+                    {% set gesamt = wetback_nachguss_ml | int(0) %}
+                    {% set ns = namespace(seq=[]) %}
+                    {% if anzahl > 0 %}
+                      {% set basis = (gesamt / anzahl) | round(0, 'floor') | int %}
+                      {% set rest = gesamt - (basis * anzahl) %}
+                      {% for i in range(anzahl) %}
+                        {% set ns.seq = ns.seq + [basis + (1 if i < rest else 0)] %}
+                      {% endfor %}
+                    {% endif %}
+                    {{ ns.seq }}
+
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: >
+                          {{ wetback_aktiv
+                             and (wetback_peak_erste_messung | float(0))
+                                 < (wetback_ziel | float(0))
+                             and (wetback_shot_max | float(0))
+                                 >= (exec_min_ml | float(25))
+                             and (wetback_freie_shots | int(0)) > 0
+                             and (wetback_nachguss_anzahl | int(0)) > 0
+                             and (wetback_nachguss_anzahl | int(0))
+                                 <= (wetback_freie_shots | int(0))
+                             and (wetback_nachguss_ml | float(0))
+                                 >= (exec_min_ml | float(25)) }}
+                    sequence:
+                      - service: input_text.set_value
+                        target:
+                          entity_id: input_text.plantinator_bewasserung_wetback_status
+                        data:
+                          value: >
+                            nachguss_p{{ p }}_{{ wetback_nachguss_ml | int }}ml_{{
+                            wetback_nachguss_anzahl | int }}shots_peak_{{
+                            wetback_peak_erste_messung | round(1) }}_ziel_{{
+                            wetback_ziel | round(1) }}_berechnet_{{
+                            wetback_benoetigt_ml | int }}ml
+
+                      - repeat:
+                          for_each: "{{ wetback_nachguss_sequence }}"
+                          sequence:
+                            # Hat der Sensor bereits nach einem vorherigen
+                            # Nachguss-Shot die Obergrenze ueberschritten, darf
+                            # kein weiterer Shot mehr folgen.
+                            - choose:
+                                - conditions:
+                                    - condition: template
+                                      value_template: >
+                                        {{ (states(
+                                             'input_number.plantinator_bewasserung_p'
+                                             ~ p ~ '_feedback_peak_prozent'
+                                           ) | float(0))
+                                           > (wetback_obergrenze | float(0)) }}
+                                  sequence:
+                                    - service: input_text.set_value
+                                      target:
+                                        entity_id: input_text.plantinator_bewasserung_wetback_status
+                                      data:
+                                        value: >
+                                          warnung_p{{ p }}_peak_zu_hoch_ist_{{
+                                          states(
+                                            'input_number.plantinator_bewasserung_p'
+                                            ~ p ~ '_feedback_peak_prozent'
+                                          ) | float(0) | round(1) }}_max_{{
+                                          wetback_obergrenze | round(1) }}
+                                    - service: script.plantinator_bewasserung_shot_exec_sicher_stop
+                                    - service: script.plantinator_bewasserung_sicherheitsereignis_melden
+                                      data:
+                                        stufe: warnung
+                                        code: "wetback_peak_zu_hoch_p{{ p }}"
+                                        details: >
+                                          Peak {{
+                                          states(
+                                            'input_number.plantinator_bewasserung_p'
+                                            ~ p ~ '_feedback_peak_prozent'
+                                          ) | float(0) | round(1) }} %, Obergrenze
+                                          {{ wetback_obergrenze | round(1) }} %.
+                                          Nachguss sicher beendet; keine globale Verriegelung.
+                                    - stop: "Wetback-Obergrenze während des Nachgusses überschritten; nur Warnung."
+
+                            - choose:
+                                - conditions:
+                                    - condition: template
+                                      value_template: >
+                                        {{ is_state(
+                                             'input_boolean.plantinator_bewasserung_shot_exec_stop_anforderung',
+                                             'on'
+                                           )
+                                           or is_state(
+                                             'input_boolean.plantinator_bewasserung_exec_abort',
+                                             'on'
+                                           )
+                                           or (
+                                             states('counter.plantinator_bewasserung_stop_generation')
+                                               | int(0)
+                                           ) != (run_generation | int(0)) }}
+                                  sequence:
+                                    - service: script.plantinator_bewasserung_shot_exec_sicher_stop
+                                    - stop: "Stop während des Wetback-Nachgusses."
+
+                            - variables:
+                                wetback_current_shot_ml: "{{ repeat.item | float(0) }}"
+
+                            - service: input_text.set_value
+                              target:
+                                entity_id: input_text.plantinator_bewasserung_shot_exec_status
+                              data:
+                                value: >
+                                  p{{ p }}_wetback_nachguss_{{ repeat.index }}von{{
+                                  wetback_nachguss_anzahl | int }}_{{
+                                  wetback_current_shot_ml | round(0) | int }}ml
+
+                            - service: input_text.set_value
+                              target:
+                                entity_id: input_text.plantinator_bewasserung_exec_status
+                              data:
+                                value: >
+                                  shot_plan_angefordert_p{{ p }}_wetback{{ repeat.index }}_{{
+                                  wetback_current_shot_ml | round(0) | int }}ml
+
+                            - service: script.plantinator_bewasserung_exec_guss_ml
+                              continue_on_error: true
+                              data:
+                                pflanze: "{{ p }}"
+                                menge_ml: "{{ wetback_current_shot_ml }}"
+                                vorgang: shot_plan
+                                stop_generation: "{{ run_generation }}"
+
+                            - variables:
+                                wetback_exec_status: >
+                                  {{ states('input_text.plantinator_bewasserung_exec_status') }}
+                                wetback_exec_erfolgreich: >
+                                  {{ states('input_text.plantinator_bewasserung_exec_status').startswith(
+                                    'shot_plan_fertig_p' ~ p ~ '_'
+                                    ~ (wetback_current_shot_ml | round(0) | int) ~ 'ml_'
+                                  ) }}
+                                wetback_exec_kritisch: >
+                                  {% set s = states('input_text.plantinator_bewasserung_exec_status') %}
+                                  {{ is_state('input_boolean.plantinator_bewasserung_alarm_verriegelt', 'on')
+                                     or 'aus_nicht_bestaetigt' in s
+                                     or s.startswith('hardwarefehler_pumpe_aus_') }}
+
+                            - choose:
+                                - conditions:
+                                    - condition: template
+                                      value_template: "{{ not wetback_exec_erfolgreich }}"
+                                  sequence:
+                                    - service: input_text.set_value
+                                      target:
+                                        entity_id: input_text.plantinator_bewasserung_wetback_status
+                                      data:
+                                        value: >
+                                          {{ 'alarm' if (wetback_exec_kritisch | bool) else 'warnung' }}_p{{ p }}_nachguss_exec_fehler_{{
+                                          wetback_exec_status[:170] }}
+                                    - service: script.plantinator_bewasserung_shot_exec_sicher_stop
+                                    - choose:
+                                        - conditions:
+                                            - condition: template
+                                              value_template: "{{ not (wetback_exec_kritisch | bool) }}"
+                                          sequence:
+                                            - service: script.plantinator_bewasserung_sicherheitsereignis_melden
+                                              data:
+                                                stufe: warnung
+                                                code: "wetback_nachguss_nicht_ausgefuehrt_p{{ p }}"
+                                                details: >
+                                                  Technischer Status: {{ wetback_exec_status[:170] }}.
+                                                  Der Nachguss wurde beendet; das Gesamtsystem bleibt unverriegelt.
+                                    - stop: "Wetback-Nachguss wurde technisch nicht erfolgreich beendet."
+
+                            # Nur tatsächlich erfolgreich abgegebene Shots zur
+                            # Feedbackmenge addieren. Bei einem Teilfehler bleibt
+                            # der Diagnosewert dadurch ebenfalls korrekt.
+                            - service: input_number.set_value
+                              target:
+                                entity_id: >
+                                  input_number.plantinator_bewasserung_p{{ p }}_letzter_normalguss_ml
+                              data:
+                                value: >
+                                  {{ (
+                                    states(
+                                      'input_number.plantinator_bewasserung_p'
+                                      ~ p ~ '_letzter_normalguss_ml'
+                                    ) | float(0)
+                                  ) + (wetback_current_shot_ml | float(0)) }}
+
+                            - choose:
+                                - conditions:
+                                    - condition: template
+                                      value_template: >
+                                        {{ repeat.index < (wetback_nachguss_anzahl | int) }}
+                                  sequence:
+                                    - service: timer.start
+                                      target:
+                                        entity_id: timer.plantinator_bewasserung_shot_exec_wartezeit
+                                      data:
+                                        duration: "{{ pause_s | int(0) }}"
+                                    - wait_template: >
+                                        {{ is_state(
+                                             'input_boolean.plantinator_bewasserung_shot_exec_stop_anforderung',
+                                             'on'
+                                           )
+                                           or is_state(
+                                             'input_boolean.plantinator_bewasserung_exec_abort',
+                                             'on'
+                                           )
+                                           or (
+                                             states('counter.plantinator_bewasserung_stop_generation')
+                                               | int(0)
+                                           ) != (run_generation | int(0)) }}
+                                      timeout: "{{ pause_s }}"
+                                      continue_on_timeout: true
+                                    - service: timer.cancel
+                                      target:
+                                        entity_id: timer.plantinator_bewasserung_shot_exec_wartezeit
+
+                      - service: input_text.set_value
+                        target:
+                          entity_id: input_text.plantinator_bewasserung_shot_exec_status
+                        data:
+                          value: "p{{ p }}_warte_wetback_nachguss_{{ feedback_wait }}min"
+
+                      - service: timer.start
+                        target:
+                          entity_id: timer.plantinator_bewasserung_shot_exec_wartezeit
+                        data:
+                          duration: "{{ (feedback_wait | int(0)) * 60 }}"
+
+                      - wait_template: >
+                          {{ is_state(
+                               'input_boolean.plantinator_bewasserung_shot_exec_stop_anforderung',
+                               'on'
+                             )
+                             or is_state(
+                               'input_boolean.plantinator_bewasserung_exec_abort',
+                               'on'
+                             )
+                             or (
+                               states('counter.plantinator_bewasserung_stop_generation')
+                                 | int(0)
+                             ) != (run_generation | int(0)) }}
+                        timeout:
+                          minutes: "{{ feedback_wait }}"
+                        continue_on_timeout: true
+
+                      - service: timer.cancel
+                        target:
+                          entity_id: timer.plantinator_bewasserung_shot_exec_wartezeit
+
+                      - choose:
+                          - conditions:
+                              - condition: template
+                                value_template: >
+                                  {{ is_state(
+                                       'input_boolean.plantinator_bewasserung_shot_exec_stop_anforderung',
+                                       'on'
+                                     )
+                                     or is_state(
+                                       'input_boolean.plantinator_bewasserung_exec_abort',
+                                       'on'
+                                     )
+                                     or (
+                                       states('counter.plantinator_bewasserung_stop_generation')
+                                         | int(0)
+                                     ) != (run_generation | int(0)) }}
+                            sequence:
+                              - service: script.plantinator_bewasserung_shot_exec_sicher_stop
+                              - stop: "Wetback-Nachguss wurde manuell oder durch eine Sperre beendet."
+
+              - variables:
+                  wetback_sensorwert_gueltig: >
+                    {{ is_number(
+                      states('sensor.plantinator_bewasserung_p' ~ p ~ '_bodenfeuchte_wert')
+                    ) }}
+                  wetback_peak_final: >
+                    {{ [
+                      states('input_number.plantinator_bewasserung_p' ~ p ~ '_feedback_peak_prozent')
+                        | float(0),
+                      states('sensor.plantinator_bewasserung_p' ~ p ~ '_bodenfeuchte_wert')
+                        | float(0)
+                    ] | max }}
+                  wetback_peak_zu_niedrig: >
+                    {{ (wetback_peak_final | float(0)) < (wetback_ziel | float(0)) }}
+                  wetback_peak_zu_hoch: >
+                    {{ (wetback_peak_final | float(0)) > (wetback_obergrenze | float(0)) }}
+                  wetback_peak_ok: >
+                    {{ wetback_sensorwert_gueltig
+                       and not (wetback_peak_zu_niedrig | bool)
+                       and not (wetback_peak_zu_hoch | bool) }}
+
+              - choose:
+                  # Ohne gueltigen Sensorwert wird nicht weitergegossen und
+                  # nicht gelernt. Der Lauf wird sicher beendet, aber das
+                  # Gesamtsystem wird deswegen nicht global verriegelt.
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ wetback_aktiv and not wetback_sensorwert_gueltig }}"
+                    sequence:
+                      - service: input_text.set_value
+                        target:
+                          entity_id: input_text.plantinator_bewasserung_wetback_status
+                        data:
+                          value: "warnung_p{{ p }}_peak_sensor_ungueltig"
+                      - service: persistent_notification.create
+                        data:
+                          notification_id: "plantinator_wetback_warnung_p{{ p }}"
+                          title: "Bewässerungswarnung Pflanze {{ p }}"
+                          message: >
+                            Der Wetback-Peak konnte nicht sicher ausgewertet werden,
+                            weil der Feuchtesensor keinen gültigen Wert geliefert hat.
+                            Der Lauf wurde sicher beendet; das Gesamtsystem bleibt
+                            unverriegelt. Bitte Sensor und Verlauf prüfen.
+                      - service: script.plantinator_bewasserung_sicherheitsereignis_melden
+                        data:
+                          stufe: warnung
+                          code: "wetback_sensor_ungueltig_p{{ p }}"
+                          details: >
+                            Wetback-Peak konnte nicht ausgewertet werden. Lauf beendet;
+                            keine globale Verriegelung.
+                      - service: script.plantinator_bewasserung_shot_exec_sicher_stop
+                      - stop: "Wetback-Sensorwert ungueltig; Lauf ohne globale Verriegelung beendet."
+
+                  # Ein zu hoher Peak kann auf Ueberwaesserung hindeuten. Der
+                  # aktuelle Lauf wird sicher beendet und als Warnung gemeldet.
+                  # Liegt der aktuelle Zehn-Minuten-Wert noch unter dem harten
+                  # Maximum, darf das Feedback die ml/% vorsichtig nach unten
+                  # korrigieren. Ein erreichtes Ramp-up bleibt abgeschlossen,
+                  # damit derselbe Ueberguss nicht am gleichen Lichttag erneut
+                  # angefordert wird.
+                  - conditions:
+                      - condition: template
+                        value_template: >
+                          {{ wetback_aktiv and (wetback_peak_zu_hoch | bool) }}
+                    sequence:
+                      - service: input_text.set_value
+                        target:
+                          entity_id: input_text.plantinator_bewasserung_wetback_status
+                        data:
+                          value: >
+                            warnung_p{{ p }}_peak_zu_hoch_ist_{{
+                            wetback_peak_final | round(1) }}_max_{{
+                            wetback_obergrenze | round(1) }}
+                      - choose:
+                          - conditions:
+                              - condition: template
+                                value_template: >
+                                  {{ wetback_sensorwert_gueltig
+                                     and (states(
+                                       'sensor.plantinator_bewasserung_p'
+                                       ~ p ~ '_bodenfeuchte_wert'
+                                     ) | float(101))
+                                       <= (wetback_maximum | float(100)) }}
+                            sequence:
+                              - choose:
+                                  - conditions:
+                                      - condition: template
+                                        value_template: >
+                                          {{ sequenztyp_lauf == 'ramp_up'
+                                             and (states(
+                                               'sensor.plantinator_bewasserung_p'
+                                               ~ p ~ '_bodenfeuchte_wert'
+                                             ) | float(0))
+                                               >= (wetback_referenz | float(0)) }}
+                                    sequence:
+                                      - service: input_boolean.turn_on
+                                        target:
+                                          entity_id: >
+                                            input_boolean.plantinator_bewasserung_crop_p{{ p }}_ramp_up_abgeschlossen
+                              - service: script.plantinator_bewasserung_feedback_nach_guss_auswerten
+                                data:
+                                  pflanze: "{{ p }}"
+                      - service: script.plantinator_bewasserung_shot_exec_sicher_stop
+                      - service: script.plantinator_bewasserung_sicherheitsereignis_melden
+                        data:
+                          stufe: warnung
+                          code: "wetback_peak_zu_hoch_p{{ p }}"
+                          details: >
+                            Peak {{ wetback_peak_final | round(1) }} %,
+                            Obergrenze {{ wetback_obergrenze | round(1) }} %.
+                            Lauf sicher beendet; keine globale Verriegelung.
+                      - stop: "Wetback-Peak liegt oberhalb des zulässigen Fensters; nur Warnung."
+
+                  # Ein zu niedriger Peak wird gemeldet, sperrt aber weder die
+                  # Anlage noch die anderen Pflanzen. Ramp-up bleibt offen und
+                  # es wird aus diesem unvollständigen Ergebnis nicht gelernt.
+                  - conditions:
+                      - condition: template
+                        value_template: >
+                          {{ wetback_aktiv and (wetback_peak_zu_niedrig | bool) }}
+                    sequence:
+                      - service: input_text.set_value
+                        target:
+                          entity_id: input_text.plantinator_bewasserung_wetback_status
+                        data:
+                          value: >
+                            warnung_p{{ p }}_peak_zu_niedrig_ist_{{
+                            wetback_peak_final | round(1) }}_min_{{
+                            wetback_ziel | round(1) }}_nachguss_{{
+                            wetback_nachguss_ml | int }}ml_von_{{
+                            wetback_benoetigt_ml | int }}ml
+                      - service: persistent_notification.create
+                        data:
+                          notification_id: "plantinator_wetback_warnung_p{{ p }}"
+                          title: "Wetback-Ziel für Pflanze {{ p }} nicht erreicht"
+                          message: >
+                            Der gemessene Peak von {{ wetback_peak_final | round(1) }} %
+                            liegt unter der Untergrenze von {{ wetback_ziel | round(1) }} %.
+                            Berechnet waren {{ wetback_benoetigt_ml | int }} ml Nachguss;
+                            innerhalb der Sicherheitslimits wurden höchstens
+                            {{ wetback_nachguss_ml | int }} ml abgegeben.
+                            Die Anlage wurde nicht verriegelt und Ramp-up bleibt offen.
+                      - service: script.plantinator_bewasserung_sicherheitsereignis_melden
+                        data:
+                          stufe: warnung
+                          code: "wetback_peak_zu_niedrig_p{{ p }}"
+                          details: >
+                            Peak {{ wetback_peak_final | round(1) }} %, Untergrenze
+                            {{ wetback_ziel | round(1) }} %. Ramp-up bleibt offen;
+                            keine globale Verriegelung.
+
+                  - conditions:
+                      - condition: template
+                        value_template: >
+                          {{ wetback_aktiv and (wetback_peak_ok | bool) }}
+                    sequence:
+                      # Der Referenz-Peak bleibt fest. Messwerte dürfen innerhalb
+                      # des symmetrischen OK-Fensters schwanken, ohne dass die
+                      # naechste Gießschwelle nach unten oder oben driftet.
+                      - service: input_number.set_value
+                        target:
+                          entity_id: >
+                            input_number.plantinator_bewasserung_crop_p{{ p }}_letzter_peak_prozent
+                        data:
+                          value: "{{ wetback_referenz | round(1) }}"
+
+                      - choose:
+                          - conditions:
+                              - condition: template
+                                value_template: "{{ sequenztyp_lauf == 'ramp_up' }}"
+                            sequence:
+                              - service: input_boolean.turn_on
+                                target:
+                                  entity_id: >
+                                    input_boolean.plantinator_bewasserung_crop_p{{ p }}_ramp_up_abgeschlossen
+
+                      - service: input_text.set_value
+                        target:
+                          entity_id: input_text.plantinator_bewasserung_wetback_status
+                        data:
+                          value: >
+                            ok_p{{ p }}_peak_{{
+                            wetback_peak_final | round(1) }}_referenz_{{
+                            wetback_referenz | round(1) }}_fenster_{{
+                            wetback_ziel | round(1) }}bis{{
+                            wetback_obergrenze | round(1) }}
+
+                      - service: persistent_notification.dismiss
+                        data:
+                          notification_id: "plantinator_wetback_warnung_p{{ p }}"
+
+              # Erst nach erfolgreicher Peak-Pruefung lernt das Feedback aus
+              # der gesamten Wassermenge inklusive eines eventuellen Nachgusses.
               - choose:
                   - conditions:
                       - condition: template
                         value_template: >
                           {{ is_state('input_boolean.plantinator_bewasserung_shot_exec_stop_anforderung', 'off')
                              and is_state('input_boolean.plantinator_bewasserung_exec_abort', 'off')
+                             and (not wetback_aktiv or (wetback_peak_ok | bool))
                              and (states('counter.plantinator_bewasserung_stop_generation') | int(0)) == (run_generation | int(0)) }}
                     sequence:
                       - service: script.plantinator_bewasserung_feedback_nach_guss_auswerten

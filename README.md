@@ -46,6 +46,7 @@ Zum Projekt gehören außerdem:
 - [Automatik im Detail](#automatik-im-detail)
 - [Lernfunktion](#lernfunktion)
 - [Monitoring und Alarmverriegelung](#monitoring-und-alarmverriegelung)
+- [Vollständige Sicherheitslogik](SAFETY.md)
 - [Wartung und Updates](#wartung-und-updates)
 - [Fehlersuche](#fehlersuche)
 - [Bekannte Grenzen](#bekannte-grenzen)
@@ -75,7 +76,7 @@ Die abgegebene Wassermenge wird zeitbasiert berechnet:
 Pumpenlaufzeit in Sekunden = gewünschte Menge in ml / Pumpenleistung in ml/s
 ```
 
-Ein Durchflussmesser ist nicht erforderlich, aber die Pumpenleistung muss sorgfältig kalibriert werden. Die Pumpenlaufzeit beginnt direkt mit dem Einschaltbefehl und wird daher nicht durch eine verspätete WLAN-Zustandsanzeige verlängert. Nach dem Ausschaltbefehl wartet das System bis zur einstellbaren Aktor-Bestätigungszeit auf eine neue `off`-Rückmeldung. Es kann jedoch keine verstopfte Leitung, gelöste Schlauchverbindung oder tatsächlich geflossene Wassermenge erkennen.
+Ein Durchflussmesser ist nicht erforderlich, aber die Pumpenleistung muss sorgfältig kalibriert werden. Vor dem Einschalten wird zuerst der sichere `off`-Zustand der Pumpe bestätigt. Der anschließende Wechsel auf `on` bestätigt dadurch eindeutig den aktuellen Start, ohne vom zusätzlichen Home-Assistant-Zeitstempel `last_updated` abhängig zu sein. Die Pumpenlaufzeit beginnt direkt mit dem Einschaltbefehl und wird nicht durch eine verspätete Zustandsanzeige verlängert. Innerhalb dieser Laufzeit muss die Pumpe `on` melden; andernfalls wird sie ausgeschaltet, es werden 0 ml verbucht und alle Starts werden vorübergehend gesperrt. Beim Öffnen eines Ventils stehen zwei getrennte Schaltversuche zur Verfügung. Jeder `on`- und `off`-Befehl erhält seine eigene einstellbare Aktor-Bestätigungszeit; zwischen den Öffnungsversuchen liegt eine ebenfalls einstellbare Pause. Es kann jedoch keine verstopfte Leitung, gelöste Schlauchverbindung oder tatsächlich geflossene Wassermenge erkennen. Die genaue Reihenfolge steht in der [Sicherheitslogik](SAFETY.md#aktorbestätigung-bei-wlan-schaltern).
 
 ## Screenshots
 
@@ -169,6 +170,8 @@ Die Domain der Quell-Entität ist nicht festgelegt. Möglich sind unter anderem 
 | [`plantinator_bewasserung_debug_logger.yaml`](plantinator_bewasserung_debug_logger.yaml) | Optionaler Diagnose-Logger |
 | [`dashboard.yaml`](dashboard.yaml) | Vollständiges deutsches Lovelace-Dashboard |
 | [`dashboard_en.yaml`](dashboard_en.yaml) | Vollständiges englisches Lovelace-Dashboard mit identischer Logik |
+| [`SAFETY.md`](SAFETY.md) | Fehlerklassen, Aktorbestätigung, Verriegelung und Wiederfreigabe |
+| [`SAFETY_EN.md`](SAFETY_EN.md) | Englische Sicherheitsdokumentation |
 
 Alle `plantinator*.yaml`-Dateien sind voneinander abhängig und sollten gemeinsam installiert werden. Die beiden Dashboard-Dateien sind keine Package-Dateien und dürfen nicht in den Package-Ordner kopiert werden.
 
@@ -501,12 +504,15 @@ Die Schaltflächen **Standardwerte setzen** schreiben die folgenden Startwerte. 
 | Maximale Lernwertänderung je Vorgang | 20 % |
 | Volles Lernvertrauen ab | 5 akzeptierten Lernvorgängen |
 | Diagnosegrenze Peak-Abfall | 3 Feuchte-Prozentpunkte |
+| Wetback-Peak-Toleranz | ±0,5 Feuchte-Prozentpunkte |
+| Maximaler Wetback-Nachguss | 800 ml |
 
 > [!IMPORTANT]
 > Verwende bei einem Update mit bereits angelernten Pflanzen im Dashboard
 > **Neue Schutzwerte setzen (Lernwerte behalten)**. Dieser Button setzt nur
 > Feedback-Wartezeit, Ausreißerschutz, Änderungsgrenze, Vertrauensziel und
-> Peak-Diagnose. **Neuer Topf / Substrat – Lernbasis auf Standard** ist für
+> Peak-Diagnose sowie das Wetback-Peak-Fenster und die maximale
+> Nachgussmenge. **Neuer Topf / Substrat – Lernbasis auf Standard** ist für
 > einen Wechsel von Topf, Topfgröße, Substrat oder einer ähnlich grundlegenden
 > Änderung vorgesehen. Er setzt die Lern- und Feedbackparameter auf die oben
 > genannten Standardwerte, verwirft Lernwerte, Gültigkeitsflags, Zähler,
@@ -549,6 +555,8 @@ Weitere Crop-Standardwerte:
 | Substratprofil | `coco` |
 | Substratvolumen | 10 l |
 | Ramp-up Shot-Faktor | 60 % |
+| Zulässiges Peak-Fenster | Referenz ±0,5 Prozentpunkte |
+| Maximaler einmaliger Nachguss | 800 ml |
 
 `ramp_up` besitzt keine feste Zeitdauer mehr. Jede Pflanze wartet nach ihrer
 frühesten Startzeit auf `gespeicherter Peak − Ramp-up-Dryback`. Danach wird
@@ -727,6 +735,14 @@ Die Tageszähler werden täglich um 00:05 Uhr zurückgesetzt. Wochen- und Monats
 #### Manueller Normalguss
 
 Der manuelle Normalguss verwendet den Wert **Manueller Testguss ml**. Er verwendet nicht automatisch die berechnete Pflanzenempfehlung.
+
+Im Bereich **Manuelle Aktionen** zeigt **Aktuelle Pumpen-Restzeit** die noch
+verbleibende reine Pumpenlaufzeit des laufenden Einzelgusses. Direkt unter den
+vier Starttasten stehen außerdem die Tagesmengen der Pflanzen. Ein erfolgreich
+beendeter manueller Normalguss wird automatisch zur Tages- und Gesamtmenge der
+betroffenen Pflanze addiert. Bei einem Abbruch nach Pumpenstart wird nur die aus
+Pumpenlaufzeit und kalibrierter Förderrate berechnete Teilmenge verbucht; ein
+Abbruch vor Pumpenstart verbucht nichts.
 
 1. Gewünschte Menge einstellen.
 2. Sicherheitsstatus kontrollieren.
@@ -909,11 +925,38 @@ Gesamtmenge = Defizit × gelernte ml pro Prozent
 ```
 
 Der Shot-Plan teilt diese Gesamtmenge in kleinere Ramp-up-Shots und Shot-EXEC
-führt die komplette Liste aus. Erst nach erfolgreichem Feedback wird der
-stabilisierte Messwert als neuer Peak gespeichert und
-`Ramp-up abgeschlossen` gesetzt. Bei Abbruch, Alarm oder Hardwarefehler
-erfolgt dieser Übergang nicht. In Maintenance wird dieselbe Verlustrechnung
-mit normalen Shots und dem kleineren Maintenance-Dryback verwendet.
+führt die komplette Liste aus. Hauptsequenz, Peak-Prüfung und ein eventuell
+nötiger Nachguss sind dabei **ein einziger Ramp-up-Vorgang**. Die automatische
+Peak-Erfassung verwendet den höchsten gültigen SMT100-Wert seit Gussstart.
+Er muss im einstellbaren Fenster liegen:
+
+```text
+untere Grenze = Referenz-Peak − Peak-Toleranz
+obere Grenze  = Referenz-Peak + Peak-Toleranz
+```
+
+Liegt der erste gemessene Peak unter der unteren Grenze, berechnet das System
+aus fehlenden Prozentpunkten und dem pflanzenspezifischen ml/%-Lernwert genau
+einen Nachguss. Die tatsächlich ausgeführte Menge ist das Minimum aus der
+berechneten Menge und der Menge, die durch Nachgussmaximum, Maximalguss,
+Tageslimit, Shot-Maximum und verbleibende Shot-Anzahl noch zulässig ist. Werden
+beispielsweise 867 ml berechnet und sind nur 800 ml erlaubt, gibt das System
+800 ml ab, statt den Vorgang vorzeitig als Fehler zu beenden.
+
+Nach einer zweiten Feedback-Wartezeit wird der Peak erneut geprüft. Ein zu
+niedriger Peak erzeugt eine persistente Warnung und lässt Ramp-up offen, führt
+aber **nicht** zur globalen Alarmverriegelung. Ein zu hoher Peak beendet den
+Lauf sicher und verriegelt die Anlage. Während eines mehrteiligen Nachgusses
+wird die Obergrenze auch vor jedem weiteren Shot geprüft. Ein ungültiger
+Peak-Sensor beendet den Vorgang sicher mit Warnung, ohne die Anlage global zu
+verriegeln. Ein echter technischer EXEC-Fehler bleibt ein kritischer Fehler.
+
+Bei Erfolg bleibt der Referenz-Peak unverändert; Messwerte dürfen innerhalb
+des Fensters fallen oder steigen, ohne die nächste Gießschwelle schleichend zu
+verschieben. Erst dann wird `Ramp-up abgeschlossen` gesetzt. Bei Abbruch, Alarm
+oder Hardwarefehler erfolgt dieser Übergang nicht. In Maintenance wird dieselbe
+Verlustrechnung und Peak-Absicherung mit normalen Shots und dem kleineren
+Maintenance-Dryback verwendet.
 
 Beim nächsten Wechsel auf Licht an werden die Ramp-up-Abschlüsse aller
 Pflanzen genau einmal je Lichttag zurückgesetzt. Ein gespeicherter
@@ -943,7 +986,13 @@ nicht die harte Notfallgrenze.
 
 ### Debug
 
-Die Debug-Seite zeigt die Auto-Entscheidung, Freigaben, Flags und gemappten Aktorzustände. Mit eingerichtetem File-Logger können Testmeldungen, einzelne Snapshots oder periodische Snapshots geschrieben werden.
+Die Debug-Seite zeigt die Auto-Entscheidung, Freigaben, Flags und gemappten
+Aktorzustände. Zusätzlich speichert sie die letzten 20 Warnungen und kritischen
+Fehler dauerhaft mit Zeitpunkt, Stufe, Code und Details; der neueste Eintrag
+steht oben. Die Liste beginnt nach dem ersten vollständigen Neustart mit dieser
+Version und kann im Dashboard geleert werden. Reine Info-Ereignisse werden
+nicht als Fehler gezählt. Mit eingerichtetem File-Logger können Testmeldungen,
+einzelne Snapshots oder periodische Snapshots geschrieben werden.
 
 Der periodische Logger ist standardmäßig aus. Beim Einschalten wird die bestehende Zieldatei geleert und anschließend neu beschrieben.
 
@@ -1065,41 +1114,33 @@ Beachte, dass kapazitive Feuchtesensoren häufig verzögert, positionsabhängig 
 
 ### Kritischer Systemstatus
 
-Der Status ist nur `ok`, wenn:
+Der **Kritische Systemstatus** bildet ausschließlich Gefahren ab, bei denen
+ein Aktor unerwartet läuft, widersprüchliche Rückmeldungen vorliegen oder ein
+sicherer AUS-Zustand nicht mehr bestätigt werden kann. Mapping-, Profil-,
+Sensoralter- und Wasserstandsfehler vor einem Lauf verhindern den Start, lösen
+aber nicht allein eine globale Alarmverriegelung aus.
 
-- Mapping Status `ok` ist,
-- Profil Status `ok` ist,
-- alle aktiven Pflanzen gültige und ausreichend aktuelle Feuchte- und Temperatursensoren haben,
-- der Aktor-Sicherheitsstatus `ok` ist,
-- ein aktivierter Wasserstandssensor gültig ist,
-- der Wasserstand dem ausgewählten sicheren Zustand entspricht.
-
-Mögliche Statusgruppen:
+Wichtige kritische Statusgruppen:
 
 | Status | Bedeutung |
 |---|---|
-| `mapping_fehler` | Mindestens eine erforderliche Zuordnung ist ungültig |
-| `profil_fehler` | Pumpen-, Feuchte- oder Temperaturprofil ist unplausibel |
-| `sensoralter_pX_bodenfeuchte_ungueltig` | Feuchtesensor fehlt oder ist nicht numerisch |
-| `sensoralter_pX_bodentemperatur_ungueltig` | Temperatursensor fehlt oder ist nicht numerisch |
-| `sensoralter_pX_bodenfeuchte_veraltet` | Feuchtesensor ist älter als erlaubt |
-| `sensoralter_pX_bodentemperatur_veraltet` | Temperatursensor ist älter als erlaubt |
 | `aktor_pumpe_unerwartet_an` | Pumpe ist außerhalb eines EXEC-Laufs eingeschaltet |
 | `aktor_pumpe_ohne_pflanzenventil` | Pumpe läuft, ohne dass ein Pflanzenventil offen ist |
 | `aktor_pflanzenventil_unerwartet_offen` | Ein Pflanzenventil ist außerhalb eines EXEC-Laufs offen |
 | `aktor_mehrere_pflanzenventile_offen` | Mehr als ein Pflanzenventil ist gleichzeitig offen |
 | `aktor_*_unverfuegbar_im_lauf` | Ein benötigter Aktor wurde während des Laufs nicht mehr erreichbar |
-| `wasserstand_ungueltig` | Wasserstandsentität fehlt oder liefert keinen gültigen Zustand |
-| `wasserstand_nicht_sicher` | Wasserstand entspricht nicht dem ausgewählten sicheren Zustand |
+| `hardwarefehler_pumpe_aus_vor_start_p*` | Die Pumpe konnte vor dem Start einer Bewässerung nicht sicher als AUS bestätigt werden |
+| `hardwarefehler_*_aus_nicht_bestaetigt` | Ein möglicherweise eingeschalteter Aktor konnte nicht sicher AUS bestätigt werden |
+| `sicher_stop_nicht_bestaetigt` | Der sichere Stopp konnte nicht alle gemappten Aktoren als AUS bestätigen |
 
-Bleibt ein allgemeiner kritischer Fehler zwei Minuten bestehen, wird der Alarm
-verriegelt. Unsicherer Wasserstand während eines Wasserprozesses und
-widersprüchliche Aktorzustände führen bereits nach etwa zwei Sekunden zum
-Alarm und sicheren Stopp. Für verzögert meldende WLAN-Aktoren wartet EXEC
-beim Öffnen eines Ventils und nach dem Abschalten der Pumpe höchstens die
-einstellbare Aktor-Bestätigungszeit. Fehlt danach die erwartete Rückmeldung,
-wird sofort verriegelt. Eine verspätete `on`-Anzeige der Pumpe verlängert die
-berechnete Dosierzeit nicht.
+Unsicherer Wasserstand während eines Wasserprozesses, widersprüchliche
+Aktorzustände und eine fehlende AUS-Bestätigung führen zum sicheren Stopp und
+zur globalen Verriegelung. Schlägt dagegen nur das Öffnen eines
+Pflanzenventils zweimal fehl und wird dessen AUS-Zustand bestätigt, wird nur
+die betroffene Pflanze gesperrt. Nach mindestens 60 Sekunden hebt ein
+Selbsttest diese Einzelsperre automatisch auf, sobald das Ventil wieder
+erreichbar und zuverlässig AUS ist. Alle Fehlerklassen und Wiederfreigaben
+sind in der [vollständigen Sicherheitslogik](SAFETY.md) aufgeführt.
 
 ### Alarmstatus
 
@@ -1109,15 +1150,35 @@ berechnete Dosierzeit nicht.
 | `verriegelt` | Alarm ist gespeichert und alle Pumpenabläufe bleiben blockiert; Entriegeln ist erst nach behobener Ursache möglich |
 | `fehler_nicht_quittierbar` | Die Ursache besteht noch; Quittierung wird abgelehnt |
 
+### Kritische Meldungen auf dem iPhone
+
+Im Dashboard unter **Monitoring → Monitoring Einstellungen** wird bei
+**iPhone Push-Dienst für kritische Alarme** der Notify-Dienst der
+Home-Assistant-Companion-App eingetragen, zum Beispiel:
+
+```text
+notify.mobile_app_matzes_iphone
+```
+
+Den exakten Namen findest du in Home Assistant unter **Entwicklerwerkzeuge →
+Aktionen**, wenn du nach `notify.mobile_app` suchst. Kritische Verriegelungen
+werden mit iOS-Unterbrechungsstufe `critical`, Ton und voller Lautstärke
+gesendet. Dafür müssen kritische Hinweise für die Home-Assistant-App zusätzlich
+in den iPhone-Einstellungen erlaubt sein. Eine reine
+Wetback-Untergrenzenwarnungen und einzelne sicher ausgeschaltete
+Aktorstörungen werden als `time-sensitive`-Warnung gesendet, jedoch bewusst
+nicht als kritischer iPhone-Alarm.
+
 ### Alarm richtig quittieren
 
 1. Hauptschalter aus oder Sperre ein.
 2. Letzten Alarmgrund lesen.
 3. Physische Anlage auf Leck, Trockenlauf, offenen Schlauch und Ventilzustand prüfen.
 4. Mapping, Sensor und Wasserstand korrigieren.
-5. Warten, bis **Kritischer Systemstatus** `ok` zeigt.
-6. **Alarm quittieren** drücken.
-7. Erst danach kontrolliert wieder freigeben.
+5. **Sicher Stop** ausführen und prüfen, dass **Alle Aktoren sicher AUS bestätigt** eingeschaltet ist.
+6. Warten, bis **Kritischer Systemstatus** `ok` zeigt.
+7. **Alarm quittieren** drücken.
+8. Erst danach kontrolliert wieder freigeben.
 
 Der Quittierknopf umgeht keine Sicherheitsbedingung.
 
@@ -1130,7 +1191,10 @@ Der globale sichere Stopp:
 - beendet den Shot-Timer,
 - schaltet Pumpe und Umwälzung aus,
 - schließt Haupt- und Pflanzenventile,
-- setzt Lauf- und Reservierungsflags zurück.
+- prüft alle gemappten Aktoren auf einen gültigen `off`-Zustand,
+- setzt Lauf- und Reservierungsflags zurück,
+- setzt **Alle Aktoren sicher AUS bestätigt** nur bei erfolgreicher Prüfung;
+  andernfalls bleibt beziehungsweise wird die Anlage global verriegelt.
 
 Hauptschalter aus oder Sperre ein löst ebenfalls einen sicheren Stopp aus.
 

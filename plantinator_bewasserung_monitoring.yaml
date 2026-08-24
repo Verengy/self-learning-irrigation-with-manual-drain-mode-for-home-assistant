@@ -23,6 +23,27 @@ input_boolean:
     name: Plantinator Bewasserung Alarm verriegelt
     icon: mdi:alarm-light
 
+  plantinator_bewasserung_p1_aktor_sperre:
+    name: Plantinator Bewasserung P1 Aktor-Sperre
+    icon: mdi:valve-closed
+  plantinator_bewasserung_p2_aktor_sperre:
+    name: Plantinator Bewasserung P2 Aktor-Sperre
+    icon: mdi:valve-closed
+  plantinator_bewasserung_p3_aktor_sperre:
+    name: Plantinator Bewasserung P3 Aktor-Sperre
+    icon: mdi:valve-closed
+  plantinator_bewasserung_p4_aktor_sperre:
+    name: Plantinator Bewasserung P4 Aktor-Sperre
+    icon: mdi:valve-closed
+
+  plantinator_bewasserung_hauptventil_aktor_sperre:
+    name: Plantinator Bewässerung Hauptventil Aktor-Sperre
+    icon: mdi:valve-closed
+
+  plantinator_bewasserung_pumpe_aktor_sperre:
+    name: Plantinator Bewässerung Pumpen Aktor-Sperre
+    icon: mdi:pump-off
+
 input_number:
   plantinator_bewasserung_sensor_max_alter_minuten:
     name: Plantinator Bewasserung Sensor maximaler Wertalter
@@ -202,9 +223,139 @@ input_text:
     icon: mdi:alert-circle
     max: 255
 
+  plantinator_bewasserung_kritischer_push_dienst:
+    name: Plantinator Bewasserung kritischer Push-Dienst
+    icon: mdi:cellphone-message
+    max: 100
+
+  plantinator_bewasserung_letztes_sicherheitsereignis:
+    name: Plantinator Bewasserung letztes Sicherheitsereignis
+    icon: mdi:shield-alert-outline
+    max: 255
+
+  plantinator_bewasserung_sicherheitsstufe:
+    name: Plantinator Bewasserung Sicherheitsstufe
+    icon: mdi:alert-decagram-outline
+    max: 40
+
+  plantinator_bewasserung_p1_aktor_fehler:
+    name: Plantinator Bewasserung P1 Aktor-Fehler
+    icon: mdi:valve
+    max: 255
+  plantinator_bewasserung_p2_aktor_fehler:
+    name: Plantinator Bewasserung P2 Aktor-Fehler
+    icon: mdi:valve
+    max: 255
+  plantinator_bewasserung_p3_aktor_fehler:
+    name: Plantinator Bewasserung P3 Aktor-Fehler
+    icon: mdi:valve
+    max: 255
+  plantinator_bewasserung_p4_aktor_fehler:
+    name: Plantinator Bewasserung P4 Aktor-Fehler
+    icon: mdi:valve
+    max: 255
+
+  plantinator_bewasserung_hauptventil_aktor_fehler:
+    name: Plantinator Bewässerung Hauptventil Aktor-Fehler
+    icon: mdi:valve
+    max: 255
+
+  plantinator_bewasserung_pumpe_aktor_fehler:
+    name: Plantinator Bewässerung Pumpen Aktor-Fehler
+    icon: mdi:pump-off
+    max: 255
+
+  # Persistente Ringhistorie: Platz 01 ist immer der neueste Fehler.
+  # Gespeichert werden Warnungen und kritische Ereignisse, keine Infos.
+  plantinator_bewasserung_fehlerhistorie_01:
+    name: Plantinator Bewässerung Fehlerhistorie 01
+    icon: mdi:alert-circle-outline
+    max: 255
+  plantinator_bewasserung_fehlerhistorie_02:
+    name: Plantinator Bewässerung Fehlerhistorie 02
+    icon: mdi:alert-circle-outline
+    max: 255
+  plantinator_bewasserung_fehlerhistorie_03:
+    name: Plantinator Bewässerung Fehlerhistorie 03
+    icon: mdi:alert-circle-outline
+    max: 255
+  plantinator_bewasserung_fehlerhistorie_04:
+    name: Plantinator Bewässerung Fehlerhistorie 04
+    icon: mdi:alert-circle-outline
+    max: 255
+  plantinator_bewasserung_fehlerhistorie_05:
+    name: Plantinator Bewässerung Fehlerhistorie 05
+    icon: mdi:alert-circle-outline
+    max: 255
+  plantinator_bewasserung_fehlerhistorie_06:
+    name: Plantinator Bewässerung Fehlerhistorie 06
+    icon: mdi:alert-circle-outline
+    max: 255
+  plantinator_bewasserung_fehlerhistorie_07:
+    name: Plantinator Bewässerung Fehlerhistorie 07
+    icon: mdi:alert-circle-outline
+    max: 255
+  plantinator_bewasserung_fehlerhistorie_08:
+    name: Plantinator Bewässerung Fehlerhistorie 08
+    icon: mdi:alert-circle-outline
+    max: 255
+  plantinator_bewasserung_fehlerhistorie_09:
+    name: Plantinator Bewässerung Fehlerhistorie 09
+    icon: mdi:alert-circle-outline
+    max: 255
+  plantinator_bewasserung_fehlerhistorie_10:
+    name: Plantinator Bewässerung Fehlerhistorie 10
+    icon: mdi:alert-circle-outline
+    max: 255
+  plantinator_bewasserung_fehlerhistorie_11:
+    name: Plantinator Bewässerung Fehlerhistorie 11
+    icon: mdi:alert-circle-outline
+    max: 255
+  plantinator_bewasserung_fehlerhistorie_12:
+    name: Plantinator Bewässerung Fehlerhistorie 12
+    icon: mdi:alert-circle-outline
+    max: 255
+  plantinator_bewasserung_fehlerhistorie_13:
+    name: Plantinator Bewässerung Fehlerhistorie 13
+    icon: mdi:alert-circle-outline
+    max: 255
+  plantinator_bewasserung_fehlerhistorie_14:
+    name: Plantinator Bewässerung Fehlerhistorie 14
+    icon: mdi:alert-circle-outline
+    max: 255
+  plantinator_bewasserung_fehlerhistorie_15:
+    name: Plantinator Bewässerung Fehlerhistorie 15
+    icon: mdi:alert-circle-outline
+    max: 255
+  plantinator_bewasserung_fehlerhistorie_16:
+    name: Plantinator Bewässerung Fehlerhistorie 16
+    icon: mdi:alert-circle-outline
+    max: 255
+  plantinator_bewasserung_fehlerhistorie_17:
+    name: Plantinator Bewässerung Fehlerhistorie 17
+    icon: mdi:alert-circle-outline
+    max: 255
+  plantinator_bewasserung_fehlerhistorie_18:
+    name: Plantinator Bewässerung Fehlerhistorie 18
+    icon: mdi:alert-circle-outline
+    max: 255
+  plantinator_bewasserung_fehlerhistorie_19:
+    name: Plantinator Bewässerung Fehlerhistorie 19
+    icon: mdi:alert-circle-outline
+    max: 255
+  plantinator_bewasserung_fehlerhistorie_20:
+    name: Plantinator Bewässerung Fehlerhistorie 20
+    icon: mdi:alert-circle-outline
+    max: 255
+
 input_datetime:
   plantinator_bewasserung_alarm_zeit:
     name: Plantinator Bewasserung Alarm Zeit
+    has_date: true
+    has_time: true
+
+  plantinator_bewasserung_sicherheitsereignis_zeit:
+    name: Plantinator Bewasserung Sicherheitsereignis Zeit
     has_date: true
     has_time: true
 
@@ -549,6 +700,11 @@ template:
         icon: mdi:cloud-percent
         unit_of_measurement: "kPa"
         state_class: measurement
+        availability: >
+          {% set t = states('sensor.plantinator_bewasserung_lufttemperatur') %}
+          {% set h = states('sensor.plantinator_bewasserung_luftfeuchtigkeit') %}
+          {{ is_number(t) and is_number(h)
+             and -20 <= (t | float) <= 60 and 0 <= (h | float) <= 100 }}
         state: >
           {% set traw = states('sensor.plantinator_bewasserung_lufttemperatur') %}
           {% set hraw = states('sensor.plantinator_bewasserung_luftfeuchtigkeit') %}
@@ -559,10 +715,10 @@ template:
               {% set svp = 0.61078 * (e ** ((17.2694 * t) / (t + 237.3))) %}
               {{ (svp * (1 - rh / 100)) | round(2) }}
             {% else %}
-              unknown
+              0
             {% endif %}
           {% else %}
-            unknown
+            0
           {% endif %}
         attributes:
           lufttemperatur: "{{ states('sensor.plantinator_bewasserung_lufttemperatur') }}"
@@ -574,6 +730,9 @@ template:
         icon: mdi:weather-sunny
         unit_of_measurement: "mol/m²/d"
         state_class: measurement
+        availability: >
+          {{ is_number(states('sensor.plantinator_bewasserung_ppfd_stundenintegral'))
+             and is_number(states('input_number.plantinator_bewasserung_ppfd_integral_lichtstart')) }}
         state: >
           {% set integral = states('sensor.plantinator_bewasserung_ppfd_stundenintegral') %}
           {% set start = states('input_number.plantinator_bewasserung_ppfd_integral_lichtstart') %}
@@ -581,7 +740,7 @@ template:
             {% set differenz = [0, (integral | float) - (start | float)] | max %}
             {{ (differenz * 0.0036) | round(2) }}
           {% else %}
-            unknown
+            0
           {% endif %}
         attributes:
           ppfd_aktuell: "{{ states('sensor.plantinator_bewasserung_ppfd') }}"
@@ -756,9 +915,10 @@ template:
         icon: mdi:chart-line-variant
         unit_of_measurement: "%"
         state_class: measurement
+        availability: "{{ is_number(states('sensor.plantinator_bewasserung_p1_feuchte_aenderung_1h')) }}"
         state: >
           {% set raw = states('sensor.plantinator_bewasserung_p1_feuchte_aenderung_1h') %}
-          {{ ([0, -(raw | float)] | max | round(2)) if is_number(raw) else 'unknown' }}
+          {{ [0, -(raw | float(0))] | max | round(2) }}
         attributes:
           feuchte_aenderung_1h: "{{ states('sensor.plantinator_bewasserung_p1_feuchte_aenderung_1h') }}"
           verwendung: nur_protokollierung
@@ -768,9 +928,10 @@ template:
         icon: mdi:chart-line-variant
         unit_of_measurement: "%"
         state_class: measurement
+        availability: "{{ is_number(states('sensor.plantinator_bewasserung_p2_feuchte_aenderung_1h')) }}"
         state: >
           {% set raw = states('sensor.plantinator_bewasserung_p2_feuchte_aenderung_1h') %}
-          {{ ([0, -(raw | float)] | max | round(2)) if is_number(raw) else 'unknown' }}
+          {{ [0, -(raw | float(0))] | max | round(2) }}
         attributes:
           feuchte_aenderung_1h: "{{ states('sensor.plantinator_bewasserung_p2_feuchte_aenderung_1h') }}"
           verwendung: nur_protokollierung
@@ -780,9 +941,10 @@ template:
         icon: mdi:chart-line-variant
         unit_of_measurement: "%"
         state_class: measurement
+        availability: "{{ is_number(states('sensor.plantinator_bewasserung_p3_feuchte_aenderung_1h')) }}"
         state: >
           {% set raw = states('sensor.plantinator_bewasserung_p3_feuchte_aenderung_1h') %}
-          {{ ([0, -(raw | float)] | max | round(2)) if is_number(raw) else 'unknown' }}
+          {{ [0, -(raw | float(0))] | max | round(2) }}
         attributes:
           feuchte_aenderung_1h: "{{ states('sensor.plantinator_bewasserung_p3_feuchte_aenderung_1h') }}"
           verwendung: nur_protokollierung
@@ -792,9 +954,10 @@ template:
         icon: mdi:chart-line-variant
         unit_of_measurement: "%"
         state_class: measurement
+        availability: "{{ is_number(states('sensor.plantinator_bewasserung_p4_feuchte_aenderung_1h')) }}"
         state: >
           {% set raw = states('sensor.plantinator_bewasserung_p4_feuchte_aenderung_1h') %}
-          {{ ([0, -(raw | float)] | max | round(2)) if is_number(raw) else 'unknown' }}
+          {{ [0, -(raw | float(0))] | max | round(2) }}
         attributes:
           feuchte_aenderung_1h: "{{ states('sensor.plantinator_bewasserung_p4_feuchte_aenderung_1h') }}"
           verwendung: nur_protokollierung
@@ -880,25 +1043,26 @@ template:
           {% set umwaelzung = states('input_text.plantinator_bewasserung_tank_umwalzung_entity') | trim %}
           {% set anzahl = states('input_number.plantinator_bewasserung_anzahl_pflanzen') | int(4) %}
           {% set exec_aktiv = is_state('input_boolean.plantinator_bewasserung_exec_laeuft', 'on') %}
-          {% set ns = namespace(offen=0, ventil_unverfuegbar=false) %}
+          {% set pumpe_soll = is_state('input_boolean.plantinator_bewasserung_pumpe_soll_laufen', 'on') %}
+          {% set aktive_pflanze = states('input_number.plantinator_bewasserung_exec_aktive_pflanze') | int(0) %}
+          {% set aktives_ventil = states('input_text.plantinator_bewasserung_p' ~ aktive_pflanze ~ '_ventil_entity') | trim
+             if aktive_pflanze in [1, 2, 3, 4] else '' %}
+          {% set ns = namespace(offen=0) %}
           {% for p in range(1, 5) %}
             {% set ventil = states('input_text.plantinator_bewasserung_p' ~ p ~ '_ventil_entity') | trim %}
             {% if ventil.startswith('switch.') and is_state(ventil, 'on') %}
               {% set ns.offen = ns.offen + 1 %}
             {% endif %}
-            {% if p <= anzahl
-                  and is_state('input_boolean.plantinator_bewasserung_p' ~ p ~ '_aktiv', 'on') %}
-              {% if ventil.startswith('switch.') and not has_value(ventil) %}
-                {% set ns.ventil_unverfuegbar = true %}
-              {% endif %}
-            {% endif %}
           {% endfor %}
-          {% if exec_aktiv and (not pumpe.startswith('switch.') or not has_value(pumpe)) %}
+          {% if pumpe_soll and (not pumpe.startswith('switch.') or not has_value(pumpe)) %}
             pumpe_unverfuegbar_im_lauf
-          {% elif exec_aktiv and hauptventil.startswith('switch.') and not has_value(hauptventil) %}
+          {% elif pumpe_soll and hauptventil.startswith('switch.') and not has_value(hauptventil) %}
             hauptventil_unverfuegbar_im_lauf
-          {% elif exec_aktiv and ns.ventil_unverfuegbar %}
-            ventil_unverfuegbar_im_lauf
+          {% elif pumpe_soll and (aktive_pflanze not in [1, 2, 3, 4]
+                or not aktives_ventil.startswith('switch.') or not has_value(aktives_ventil)) %}
+            aktives_ventil_unverfuegbar_im_lauf
+          {% elif pumpe_soll and not is_state(aktives_ventil, 'on') %}
+            aktives_ventil_nicht_offen
           {% elif is_state('input_boolean.plantinator_bewasserung_tank_umwalzung_laeuft', 'on')
                 and (not umwaelzung.startswith('switch.') or not has_value(umwaelzung)) %}
             umwaelzung_unverfuegbar_im_lauf
@@ -929,29 +1093,24 @@ template:
           ventil_p4: "{{ states('sensor.plantinator_bewasserung_p4_ventil_status_gemappt') }}"
           umwaelzung: "{{ states('sensor.plantinator_bewasserung_tank_umwalzung_status_gemappt') }}"
           exec_laeuft: "{{ states('input_boolean.plantinator_bewasserung_exec_laeuft') }}"
+          pumpe_soll_laufen: "{{ states('input_boolean.plantinator_bewasserung_pumpe_soll_laufen') }}"
+          aktive_pflanze: "{{ states('input_number.plantinator_bewasserung_exec_aktive_pflanze') }}"
+          aktives_ventil: >
+            {% set p = states('input_number.plantinator_bewasserung_exec_aktive_pflanze') | int(0) %}
+            {{ states('input_text.plantinator_bewasserung_p' ~ p ~ '_ventil_entity') | trim
+               if p in [1, 2, 3, 4] else 'keines' }}
           umwaelzung_laeuft: "{{ states('input_boolean.plantinator_bewasserung_tank_umwalzung_laeuft') }}"
 
       - name: Plantinator Bewasserung Kritischer Systemstatus
         unique_id: plantinator_bewasserung_kritischer_systemstatus
         icon: mdi:shield-alert
         state: >
-          {% set went = states('input_text.plantinator_bewasserung_wasserstand_entity') | trim %}
-          {% set wsicher = states('input_select.plantinator_bewasserung_wasserstand_sicherer_zustand') %}
-          {% if states('sensor.plantinator_bewasserung_mapping_status') != 'ok' %}
-            mapping_fehler
-          {% elif states('sensor.plantinator_bewasserung_profil_status') != 'ok' %}
-            profil_fehler
-          {% elif states('sensor.plantinator_bewasserung_sensoralter_status') != 'ok' %}
-            sensoralter_{{ states('sensor.plantinator_bewasserung_sensoralter_status') }}
-          {% elif states('sensor.plantinator_bewasserung_aktor_sicherheitsstatus') != 'ok' %}
+          {# Mapping-, Profil-, Sensoralter- und Wasserstandsfehler sperren
+             Starts. Global verriegelt wird nur bei unmittelbar unsicherer
+             Hardware; ein unsicherer Wasserstand IM Lauf wird separat
+             sofort verriegelt. #}
+          {% if states('sensor.plantinator_bewasserung_aktor_sicherheitsstatus') != 'ok' %}
             aktor_{{ states('sensor.plantinator_bewasserung_aktor_sicherheitsstatus') }}
-          {% elif is_state('input_boolean.plantinator_bewasserung_wasserstand_verwenden', 'on')
-                and (not (went.startswith('binary_sensor.') or went.startswith('input_boolean.'))
-                     or not has_value(went)) %}
-            wasserstand_ungueltig
-          {% elif is_state('input_boolean.plantinator_bewasserung_wasserstand_verwenden', 'on')
-                and states(went) != wsicher %}
-            wasserstand_nicht_sicher
           {% else %}
             ok
           {% endif %}
@@ -978,9 +1137,28 @@ template:
           alarm_grund: "{{ states('input_text.plantinator_bewasserung_alarm_grund') }}"
           alarm_zeit: "{{ states('input_datetime.plantinator_bewasserung_alarm_zeit') }}"
           aktueller_systemstatus: "{{ states('sensor.plantinator_bewasserung_kritischer_systemstatus') }}"
+          kritischer_push_dienst: >
+            {{ states('input_text.plantinator_bewasserung_kritischer_push_dienst') }}
           quittierbar: >
             {{ is_state('input_boolean.plantinator_bewasserung_alarm_verriegelt', 'on')
+               and is_state('input_boolean.plantinator_bewasserung_hardware_sicher_aus', 'on')
                and is_state('sensor.plantinator_bewasserung_kritischer_systemstatus', 'ok') }}
+
+      - name: Plantinator Bewasserung Push Status
+        unique_id: plantinator_bewasserung_push_status
+        icon: mdi:cellphone-message
+        state: >
+          {% set dienst = states('input_text.plantinator_bewasserung_kritischer_push_dienst') | trim %}
+          {% if dienst.startswith('notify.mobile_app_') %}
+            konfiguriert
+          {% elif dienst in ['', 'unknown', 'unavailable', 'none'] %}
+            nicht_konfiguriert
+          {% else %}
+            ungueltiger_dienst
+          {% endif %}
+        attributes:
+          dienst: "{{ states('input_text.plantinator_bewasserung_kritischer_push_dienst') }}"
+          erwartet: notify.mobile_app_iphone_name
 
 script:
   plantinator_bewasserung_monitoring_standardwerte_setzen:
@@ -1052,6 +1230,263 @@ script:
                 data:
                   value: "{{ states('sensor.plantinator_bewasserung_ppfd_stundenintegral') | float(0) }}"
 
+  plantinator_bewasserung_fehlerhistorie_eintrag_speichern:
+    alias: Plantinator Bewässerung Fehlerhistorie Eintrag speichern
+    icon: mdi:history
+    mode: queued
+    max: 50
+    fields:
+      zeit:
+        name: Zeitpunkt
+        required: true
+        selector:
+          text:
+      stufe:
+        name: Fehlerstufe
+        required: true
+        selector:
+          text:
+      code:
+        name: Fehlercode
+        required: true
+        selector:
+          text:
+      details:
+        name: Details
+        required: false
+        selector:
+          text:
+    sequence:
+      - variables:
+          neuer_eintrag: >
+            {{ (zeit | string ~ ' | ' ~ stufe | upper ~ ' | ' ~ code | string ~
+                (' – ' ~ details | string if details | default('') | string | trim else ''))[:255] }}
+
+      # Von hinten nach vorne verschieben, damit kein Eintrag überschrieben
+      # wird, bevor er in den nächsten Platz kopiert wurde.
+      - repeat:
+          for_each:
+            - 20
+            - 19
+            - 18
+            - 17
+            - 16
+            - 15
+            - 14
+            - 13
+            - 12
+            - 11
+            - 10
+            - 9
+            - 8
+            - 7
+            - 6
+            - 5
+            - 4
+            - 3
+            - 2
+          sequence:
+            - variables:
+                ziel: >
+                  input_text.plantinator_bewasserung_fehlerhistorie_{{ '%02d' | format(repeat.item) }}
+                quelle: >
+                  input_text.plantinator_bewasserung_fehlerhistorie_{{ '%02d' | format(repeat.item - 1) }}
+            - service: input_text.set_value
+              target:
+                entity_id: "{{ ziel }}"
+              data:
+                value: >
+                  {% set alt = states(quelle) %}
+                  {{ alt if alt not in ['unknown', 'unavailable', 'none', ''] else 'leer' }}
+
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_fehlerhistorie_01
+        data:
+          value: "{{ neuer_eintrag }}"
+
+  plantinator_bewasserung_fehlerhistorie_leeren:
+    alias: Plantinator Bewässerung Fehlerhistorie leeren
+    icon: mdi:delete-sweep-outline
+    mode: single
+    sequence:
+      - repeat:
+          for_each:
+            - 1
+            - 2
+            - 3
+            - 4
+            - 5
+            - 6
+            - 7
+            - 8
+            - 9
+            - 10
+            - 11
+            - 12
+            - 13
+            - 14
+            - 15
+            - 16
+            - 17
+            - 18
+            - 19
+            - 20
+          sequence:
+            - service: input_text.set_value
+              target:
+                entity_id: >
+                  input_text.plantinator_bewasserung_fehlerhistorie_{{ '%02d' | format(repeat.item) }}
+              data:
+                value: leer
+
+  plantinator_bewasserung_push_test:
+    alias: Plantinator Bewässerung iPhone Push testen
+    icon: mdi:cellphone-arrow-down
+    mode: single
+    sequence:
+      - variables:
+          push_dienst: "{{ states('input_text.plantinator_bewasserung_kritischer_push_dienst') | trim }}"
+      - condition: template
+        value_template: "{{ push_dienst.startswith('notify.mobile_app_') }}"
+      - service: "{{ push_dienst }}"
+        continue_on_error: true
+        data:
+          title: "KRITISCHER Push-Test: Bewässerung"
+          message: Testnachricht ohne Alarmverriegelung.
+          data:
+            push:
+              interruption-level: critical
+              sound:
+                name: default
+                critical: 1
+                volume: 1.0
+
+  plantinator_bewasserung_sicherheitsereignis_melden:
+    alias: Plantinator Bewässerung Sicherheitsereignis melden
+    icon: mdi:shield-alert-outline
+    mode: queued
+    max: 20
+    fields:
+      stufe:
+        name: Sicherheitsstufe
+        required: true
+        selector:
+          select:
+            options:
+              - info
+              - warnung
+              - kritisch
+      code:
+        name: Ereigniscode
+        required: true
+        selector:
+          text:
+      details:
+        name: Details
+        required: false
+        selector:
+          text:
+    sequence:
+      - variables:
+          ereignisstufe: "{{ stufe | default('warnung') | lower | string }}"
+          ereigniscode: "{{ code | default('unbekannt') | string }}"
+          ereignisdetails: "{{ details | default('') | string }}"
+          push_dienst: "{{ states('input_text.plantinator_bewasserung_kritischer_push_dienst') | trim }}"
+
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_letztes_sicherheitsereignis
+        data:
+          value: "{{ (ereigniscode ~ (' – ' ~ ereignisdetails if ereignisdetails else ''))[:255] }}"
+
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_sicherheitsstufe
+        data:
+          value: "{{ ereignisstufe[:40] }}"
+
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.plantinator_bewasserung_sicherheitsereignis_zeit
+        data:
+          datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+
+      # Nicht blockierend speichern: Das Archiv darf eine Sicherheitsreaktion
+      # niemals verzögern oder bei einem eigenen Fehler abbrechen.
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ ereignisstufe in ['warnung', 'kritisch'] }}"
+            sequence:
+              - service: script.turn_on
+                continue_on_error: true
+                target:
+                  entity_id: script.plantinator_bewasserung_fehlerhistorie_eintrag_speichern
+                data:
+                  variables:
+                    zeit: "{{ now().strftime('%d.%m.%Y %H:%M:%S') }}"
+                    stufe: "{{ ereignisstufe }}"
+                    code: "{{ ereigniscode }}"
+                    details: "{{ ereignisdetails }}"
+
+      # Das Logbuch ist die dauerhafte, zeitlich sortierte Fehlerhistorie.
+      - service: logbook.log
+        data:
+          name: Bewässerung Sicherheit
+          entity_id: sensor.plantinator_bewasserung_alarm_status
+          message: >
+            [{{ ereignisstufe | upper }}] {{ ereigniscode }}{% if ereignisdetails %}: {{ ereignisdetails }}{% endif %}
+
+      - service: persistent_notification.create
+        data:
+          notification_id: plantinator_bewasserung_sicherheit
+          title: >
+            {{ 'KRITISCH' if ereignisstufe == 'kritisch' else
+               ('Warnung' if ereignisstufe == 'warnung' else 'Information') }}:
+            Bewässerung
+          message: >
+            **{{ ereigniscode }}**{% if ereignisdetails %}
+
+            {{ ereignisdetails }}{% endif %}
+
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ push_dienst.startswith('notify.mobile_app_')
+                     and ereignisstufe == 'kritisch' }}
+            sequence:
+              - service: "{{ push_dienst }}"
+                continue_on_error: true
+                data:
+                  title: "KRITISCH: Bewässerung verriegelt"
+                  message: >
+                    {{ ereigniscode }}{% if ereignisdetails %}: {{ ereignisdetails }}{% endif %}
+                  data:
+                    push:
+                      interruption-level: critical
+                      sound:
+                        name: default
+                        critical: 1
+                        volume: 1.0
+
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ push_dienst.startswith('notify.mobile_app_')
+                     and ereignisstufe == 'warnung' }}
+            sequence:
+              - service: "{{ push_dienst }}"
+                continue_on_error: true
+                data:
+                  title: "Warnung: Bewässerung eingeschränkt"
+                  message: >
+                    {{ ereigniscode }}{% if ereignisdetails %}: {{ ereignisdetails }}{% endif %}
+                  data:
+                    push:
+                      interruption-level: time-sensitive
+
   plantinator_bewasserung_alarm_ausloesen:
     alias: Plantinator Bewasserung Alarm auslösen
     icon: mdi:alarm-light
@@ -1078,14 +1513,13 @@ script:
         data:
           datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
 
-      - service: persistent_notification.create
+      - service: script.plantinator_bewasserung_sicherheitsereignis_melden
         data:
-          notification_id: plantinator_bewasserung_alarm
-          title: Plantinator Bewässerung verriegelt
-          message: >
-            Kritischer Fehler: {{ alarmgrund }}.
-            Alle Pumpenabläufe wurden sicher gestoppt.
-            Erst Ursache beheben, danach im Dashboard quittieren.
+          stufe: kritisch
+          code: "{{ alarmgrund }}"
+          details: >
+            Sicherer Stopp wurde angefordert. Ursache beheben, den bestätigten
+            AUS-Zustand prüfen und den Alarm anschließend im Dashboard quittieren.
 
       - service: input_boolean.turn_on
         target:
@@ -1098,8 +1532,20 @@ script:
     sequence:
       - choose:
           - conditions:
+              - condition: state
+                entity_id: input_boolean.plantinator_bewasserung_hardware_sicher_aus
+                state: "off"
+            sequence:
+              - service: script.plantinator_bewasserung_sicher_stop
+              - delay:
+                  seconds: 1
+
+      - choose:
+          - conditions:
               - condition: template
-                value_template: "{{ states('sensor.plantinator_bewasserung_kritischer_systemstatus') == 'ok' }}"
+                value_template: >
+                  {{ states('sensor.plantinator_bewasserung_kritischer_systemstatus') == 'ok'
+                     and is_state('input_boolean.plantinator_bewasserung_hardware_sicher_aus', 'on') }}
             sequence:
               - service: input_boolean.turn_off
                 target:
@@ -1108,6 +1554,14 @@ script:
               - service: persistent_notification.dismiss
                 data:
                   notification_id: plantinator_bewasserung_alarm
+              - service: persistent_notification.dismiss
+                data:
+                  notification_id: plantinator_bewasserung_sicherheit
+              - service: script.plantinator_bewasserung_sicherheitsereignis_melden
+                data:
+                  stufe: info
+                  code: alarm_quittiert
+                  details: Hardware ist bestätigt AUS; globale Verriegelung wurde aufgehoben.
         default:
           - service: persistent_notification.create
             data:
@@ -1116,6 +1570,8 @@ script:
               message: >
                 Quittierung abgelehnt. Aktueller Fehler:
                 {{ states('sensor.plantinator_bewasserung_kritischer_systemstatus') }}.
+                Hardware sicher AUS:
+                {{ states('input_boolean.plantinator_bewasserung_hardware_sicher_aus') }}.
 
 automation:
   - id: plantinator_bewasserung_dli_lichtstart_nullpunkt
@@ -1197,6 +1653,171 @@ automation:
         data:
           grund: "{{ states('sensor.plantinator_bewasserung_kritischer_systemstatus') }}"
 
+  - id: plantinator_bewasserung_pflanzenaktor_nicht_erreichbar_sperren
+    alias: Plantinator Bewässerung - nicht erreichbare Pflanzenaktoren einzeln sperren
+    mode: queued
+    max: 10
+    trigger:
+      - platform: time_pattern
+        minutes: "/5"
+    action:
+      - repeat:
+          for_each: [1, 2, 3, 4]
+          sequence:
+            - variables:
+                p: "{{ repeat.item | int }}"
+                ventil: "{{ states('input_text.plantinator_bewasserung_p' ~ repeat.item ~ '_ventil_entity') | trim }}"
+                sperre: "input_boolean.plantinator_bewasserung_p{{ repeat.item }}_aktor_sperre"
+                fehlertext: "input_text.plantinator_bewasserung_p{{ repeat.item }}_aktor_fehler"
+            - choose:
+                - conditions:
+                    - condition: template
+                      value_template: >
+                        {{ is_state('input_boolean.plantinator_bewasserung_p' ~ p ~ '_aktiv', 'on')
+                           and ventil.startswith('switch.') and not has_value(ventil)
+                           and is_state(sperre, 'off') }}
+                  sequence:
+                    - service: input_boolean.turn_on
+                      target:
+                        entity_id: "{{ sperre }}"
+                    - service: input_text.set_value
+                      target:
+                        entity_id: "{{ fehlertext }}"
+                      data:
+                        value: ventil_nicht_erreichbar
+                    - service: script.plantinator_bewasserung_sicherheitsereignis_melden
+                      data:
+                        stufe: warnung
+                        code: "aktor_nicht_erreichbar_p{{ p }}"
+                        details: >
+                          Pflanze {{ p }} wurde einzeln gesperrt. Die übrigen
+                          Pflanzen bleiben verfügbar, sofern ihre Aktoren bereit sind.
+
+      - variables:
+          hauptventil: "{{ states('input_text.plantinator_bewasserung_hauptventil_entity') | trim }}"
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ hauptventil.startswith('switch.') and not has_value(hauptventil)
+                     and is_state('input_boolean.plantinator_bewasserung_hauptventil_aktor_sperre', 'off') }}
+            sequence:
+              - service: input_boolean.turn_on
+                target:
+                  entity_id: input_boolean.plantinator_bewasserung_hauptventil_aktor_sperre
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.plantinator_bewasserung_hauptventil_aktor_fehler
+                data:
+                  value: hauptventil_nicht_erreichbar
+              - service: script.plantinator_bewasserung_sicherheitsereignis_melden
+                data:
+                  stufe: warnung
+                  code: hauptventil_nicht_erreichbar
+                  details: Alle neuen Bewässerungsstarts wurden vorübergehend gesperrt.
+
+  - id: plantinator_bewasserung_aktorsperren_selbsttest
+    alias: Plantinator Bewässerung - Aktorsperren nach sicherem AUS selbst lösen
+    mode: queued
+    max: 10
+    trigger:
+      - platform: time_pattern
+        minutes: "/1"
+    action:
+      - repeat:
+          for_each: [1, 2, 3, 4]
+          sequence:
+            - variables:
+                p: "{{ repeat.item | int }}"
+                ventil: "{{ states('input_text.plantinator_bewasserung_p' ~ repeat.item ~ '_ventil_entity') | trim }}"
+                sperre: "input_boolean.plantinator_bewasserung_p{{ repeat.item }}_aktor_sperre"
+                fehlertext: "input_text.plantinator_bewasserung_p{{ repeat.item }}_aktor_fehler"
+                sperrzeit: >
+                  {{ as_timestamp(now()) - as_timestamp(states[sperre].last_changed, as_timestamp(now())) }}
+            - choose:
+                - conditions:
+                    - condition: template
+                      value_template: >
+                        {{ is_state(sperre, 'on') and (sperrzeit | float(0)) >= 60
+                           and ventil.startswith('switch.') and has_value(ventil)
+                           and is_state(ventil, 'off') }}
+                  sequence:
+                    - service: input_boolean.turn_off
+                      target:
+                        entity_id: "{{ sperre }}"
+                    - service: input_text.set_value
+                      target:
+                        entity_id: "{{ fehlertext }}"
+                      data:
+                        value: bereit
+                    - service: script.plantinator_bewasserung_sicherheitsereignis_melden
+                      data:
+                        stufe: info
+                        code: "aktor_wieder_bereit_p{{ p }}"
+                        details: >
+                          Ventil meldet wieder zuverlässig AUS. Die Einzelsperre
+                          für Pflanze {{ p }} wurde automatisch aufgehoben.
+
+      - variables:
+          hauptventil: "{{ states('input_text.plantinator_bewasserung_hauptventil_entity') | trim }}"
+          haupt_sperrzeit: >
+            {{ as_timestamp(now()) -
+               as_timestamp(states.input_boolean.plantinator_bewasserung_hauptventil_aktor_sperre.last_changed,
+                            as_timestamp(now())) }}
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ is_state('input_boolean.plantinator_bewasserung_hauptventil_aktor_sperre', 'on')
+                     and (haupt_sperrzeit | float(0)) >= 60
+                     and hauptventil.startswith('switch.') and has_value(hauptventil)
+                     and is_state(hauptventil, 'off') }}
+            sequence:
+              - service: input_boolean.turn_off
+                target:
+                  entity_id: input_boolean.plantinator_bewasserung_hauptventil_aktor_sperre
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.plantinator_bewasserung_hauptventil_aktor_fehler
+                data:
+                  value: bereit
+              - service: script.plantinator_bewasserung_sicherheitsereignis_melden
+                data:
+                  stufe: info
+                  code: hauptventil_wieder_bereit
+                  details: Hauptventil meldet wieder sicher AUS; Starts sind wieder freigegeben.
+
+      - variables:
+          pumpe: "{{ states('input_text.plantinator_bewasserung_pumpe_entity') | trim }}"
+          pumpen_sperrzeit: >
+            {{ as_timestamp(now()) -
+               as_timestamp(states.input_boolean.plantinator_bewasserung_pumpe_aktor_sperre.last_changed,
+                            as_timestamp(now())) }}
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ is_state('input_boolean.plantinator_bewasserung_pumpe_aktor_sperre', 'on')
+                     and (pumpen_sperrzeit | float(0)) >= 60
+                     and pumpe.startswith('switch.') and has_value(pumpe)
+                     and is_state(pumpe, 'off') }}
+            sequence:
+              - service: input_boolean.turn_off
+                target:
+                  entity_id: input_boolean.plantinator_bewasserung_pumpe_aktor_sperre
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.plantinator_bewasserung_pumpe_aktor_fehler
+                data:
+                  value: bereit
+              - service: script.plantinator_bewasserung_sicherheitsereignis_melden
+                data:
+                  stufe: info
+                  code: pumpe_wieder_bereit
+                  details: >
+                    Pumpe ist wieder erreichbar und meldet sicher AUS;
+                    neue Bewässerungsstarts sind wieder freigegeben.
+
   - id: plantinator_bewasserung_wasserstand_lauf_sofort_verriegeln
     alias: Plantinator Bewasserung - unsicherer Wasserstand im Lauf
     mode: single
@@ -1222,6 +1843,46 @@ automation:
       - service: script.plantinator_bewasserung_alarm_ausloesen
         data:
           grund: wasserstand_im_lauf_nicht_sicher
+
+  - id: plantinator_bewasserung_wasserstand_wieder_sicher_freigeben
+    alias: Plantinator Bewasserung - sicheren Wasserstand wieder freigeben
+    description: >
+      Hebt ausschließlich eine durch den Gießwassersensor verursachte
+      Verriegelung auf, nachdem der konfigurierte sichere Zustand stabil
+      zurückgekehrt und die Hardware bestätigt AUS ist.
+    mode: single
+    trigger:
+      - platform: template
+        value_template: >
+          {% set ent = states('input_text.plantinator_bewasserung_wasserstand_entity') | trim %}
+          {% set sicher = states('input_select.plantinator_bewasserung_wasserstand_sicherer_zustand') %}
+          {{ is_state('input_boolean.plantinator_bewasserung_wasserstand_verwenden', 'on')
+             and (ent.startswith('binary_sensor.') or ent.startswith('input_boolean.'))
+             and has_value(ent)
+             and states(ent) == sicher }}
+        for: "00:00:10"
+      - platform: time_pattern
+        minutes: "/1"
+    condition:
+      - condition: state
+        entity_id: input_boolean.plantinator_bewasserung_alarm_verriegelt
+        state: "on"
+      - condition: state
+        entity_id: input_text.plantinator_bewasserung_alarm_grund
+        state: wasserstand_im_lauf_nicht_sicher
+      - condition: state
+        entity_id: input_boolean.plantinator_bewasserung_hardware_sicher_aus
+        state: "on"
+      - condition: state
+        entity_id: sensor.plantinator_bewasserung_kritischer_systemstatus
+        state: "ok"
+    action:
+      - service: script.plantinator_bewasserung_alarm_quittieren
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_alarm_grund
+        data:
+          value: kein_alarm
 
   - id: plantinator_bewasserung_aktorfehler_sofort_verriegeln
     alias: Plantinator Bewässerung - Aktorfehler sofort verriegeln

@@ -91,6 +91,24 @@ input_number:
     mode: box
     unit_of_measurement: "ml/%"
 
+  plantinator_bewasserung_wetback_peak_toleranz_prozent:
+    name: Plantinator Bewasserung Wetback Peak-Toleranz
+    icon: mdi:target
+    min: 0.1
+    max: 3
+    step: 0.1
+    mode: box
+    unit_of_measurement: "%"
+
+  plantinator_bewasserung_wetback_nachguss_max_ml:
+    name: Plantinator Bewasserung Wetback Nachguss Maximum
+    icon: mdi:water-plus
+    min: 50
+    max: 2000
+    step: 50
+    mode: box
+    unit_of_measurement: "ml"
+
   plantinator_bewasserung_feedback_ausreisser_pruefung_ab_anzahl:
     name: Plantinator Bewasserung Ausreißerprüfung ab Lernvorgängen
     icon: mdi:counter
@@ -388,6 +406,11 @@ input_text:
   plantinator_bewasserung_feedback_status:
     name: Plantinator Bewasserung Feedback Status
     icon: mdi:information-outline
+    max: 255
+
+  plantinator_bewasserung_wetback_status:
+    name: Plantinator Bewasserung Wetback Status
+    icon: mdi:target-variant
     max: 255
 
   plantinator_bewasserung_p1_letztes_lernergebnis:
@@ -790,6 +813,18 @@ script:
 
       - service: input_number.set_value
         target:
+          entity_id: input_number.plantinator_bewasserung_wetback_peak_toleranz_prozent
+        data:
+          value: 0.5
+
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_wetback_nachguss_max_ml
+        data:
+          value: 800
+
+      - service: input_number.set_value
+        target:
           entity_id:
             - input_number.plantinator_bewasserung_p1_gelernt_ml_pro_prozent
             - input_number.plantinator_bewasserung_p2_gelernt_ml_pro_prozent
@@ -895,6 +930,12 @@ script:
         data:
           value: neuer_topf_substrat_standardwerte_gesetzt
 
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_wetback_status
+        data:
+          value: bereit
+
   plantinator_bewasserung_feedback_schutzwerte_setzen:
     alias: Plantinator Bewasserung Feedback Schutzwerte setzen
     icon: mdi:shield-refresh-outline
@@ -936,11 +977,29 @@ script:
         data:
           value: 3
 
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_wetback_peak_toleranz_prozent
+        data:
+          value: 0.5
+
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.plantinator_bewasserung_wetback_nachguss_max_ml
+        data:
+          value: 800
+
       - service: input_text.set_value
         target:
           entity_id: input_text.plantinator_bewasserung_feedback_status
         data:
           value: schutzwerte_gesetzt_lernwerte_behalten
+
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_wetback_status
+        data:
+          value: bereit
 
   plantinator_bewasserung_feedback_vor_guss_speichern:
     alias: Plantinator Bewasserung Feedback vor Guss speichern
@@ -1664,47 +1723,6 @@ script:
                   entity_id: input_datetime.plantinator_bewasserung_p4_letzter_feedback_zeitpunkt
                 data:
                   datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
-
-      # Den stabilisierten Wert nur für automatisch gestartete Crop-Sequenzen
-      # mit messbarer Feuchtereaktion als neuen Peak übernehmen. Ein gültiger
-      # Sensorwert allein reicht nicht: Ohne Mindestanstieg bleibt Ramp-up
-      # offen und wird nicht fälschlich als erfolgreich abgeschlossen.
-      - choose:
-          - conditions:
-              - condition: template
-                value_template: >
-                  {{ states('input_text.plantinator_bewasserung_crop_p' ~ p ~ '_letzter_sequenztyp')
-                     in ['ramp_up', 'maintenance']
-                     and (
-                       (feuchte | float(0))
-                       - (
-                         states(
-                           'input_number.plantinator_bewasserung_p'
-                           ~ p ~ '_feuchte_vor_guss'
-                         ) | float(0)
-                       )
-                     ) >= (min_anstieg | float(0))
-                     and (
-                       states(
-                         'input_number.plantinator_bewasserung_p'
-                         ~ p ~ '_letzter_normalguss_ml'
-                       ) | float(0)
-                     ) > 0 }}
-            sequence:
-              - service: input_number.set_value
-                target:
-                  entity_id: "input_number.plantinator_bewasserung_crop_p{{ p }}_letzter_peak_prozent"
-                data:
-                  value: "{{ feuchte | round(1) }}"
-              - choose:
-                  - conditions:
-                      - condition: template
-                        value_template: >
-                          {{ is_state('input_text.plantinator_bewasserung_crop_p' ~ p ~ '_letzter_sequenztyp', 'ramp_up') }}
-                    sequence:
-                      - service: input_boolean.turn_on
-                        target:
-                          entity_id: "input_boolean.plantinator_bewasserung_crop_p{{ p }}_ramp_up_abgeschlossen"
 
       - service: input_text.set_value
         target:
