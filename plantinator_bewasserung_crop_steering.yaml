@@ -1768,34 +1768,6 @@ template:
             Tageslimit, Max-Gussmenge und Hauptschalter.
 
 automation:
-  - id: plantinator_bewasserung_crop_referenz_aus_sollwert_synchronisieren
-    alias: Plantinator Bewasserung Crop Referenz aus Sollwert synchronisieren
-    description: >
-      Haelt die internen pflanzenspezifischen Wetback-Referenzen deckungsgleich
-      mit der sichtbaren Bodenfeuchte-Zieleinstellung. Min/Soll/Max bleiben
-      damit die alleinigen Bedienvorgaben; Pflanzenfeedback lernt nur ml/%.
-    mode: restart
-    trigger:
-      - platform: state
-        entity_id: input_number.plantinator_bewasserung_bodenfeuchte_ziel
-      - platform: homeassistant
-        event: start
-    condition:
-      - condition: template
-        value_template: >
-          {{ is_number(states('input_number.plantinator_bewasserung_bodenfeuchte_ziel')) }}
-    action:
-      - service: input_number.set_value
-        target:
-          entity_id:
-            - input_number.plantinator_bewasserung_crop_p1_letzter_peak_prozent
-            - input_number.plantinator_bewasserung_crop_p2_letzter_peak_prozent
-            - input_number.plantinator_bewasserung_crop_p3_letzter_peak_prozent
-            - input_number.plantinator_bewasserung_crop_p4_letzter_peak_prozent
-        data:
-          value: >
-            {{ states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(32) }}
-
   - id: plantinator_bewasserung_crop_neuer_lichttag
     alias: Plantinator Bewasserung Crop neuer Lichttag
     mode: single

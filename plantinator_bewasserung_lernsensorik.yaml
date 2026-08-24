@@ -154,8 +154,7 @@ template:
             {% if f < 0 %}
               0
             {% else %}
-              {% set ziel = state_attr('sensor.plantinator_bewasserung_crop_p1_phase', 'letzter_peak_prozent')
-                   | float(states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(42)) %}
+              {% set ziel = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(42) %}
               {% set mlp_gelernt = states('input_number.plantinator_bewasserung_p1_gelernt_ml_pro_prozent') | float(0) %}
               {% set mlp_start = states('input_number.plantinator_bewasserung_startwert_ml_pro_prozent') | float(100) %}
               {% set mlp = mlp_gelernt if is_state('input_boolean.plantinator_bewasserung_p1_lernwert_gueltig', 'on') else mlp_start %}
@@ -172,9 +171,9 @@ template:
             {% endif %}
           {% endif %}
         attributes:
-          berechnung: "max(0, gespeicherter Peak - Feuchte) * gelernte ml pro Prozent, begrenzt durch Max-Normalguss"
+          berechnung: "max(0, Feuchteziel - Feuchte) * gelernte ml pro Prozent, begrenzt durch Max-Normalguss"
           feuchte: "{{ states('sensor.plantinator_bewasserung_p1_bodenfeuchte_wert') }}"
-          ziel: "{{ state_attr('sensor.plantinator_bewasserung_crop_p1_phase', 'letzter_peak_prozent') }}"
+          ziel: "{{ states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') }}"
           ml_pro_prozent_genutzt: >
             {% set gelernt = states('input_number.plantinator_bewasserung_p1_gelernt_ml_pro_prozent') | float(0) %}
             {% set start = states('input_number.plantinator_bewasserung_startwert_ml_pro_prozent') | float(100) %}
@@ -308,8 +307,7 @@ template:
             {% if f < 0 %}
               0
             {% else %}
-              {% set ziel = state_attr('sensor.plantinator_bewasserung_crop_p2_phase', 'letzter_peak_prozent')
-                   | float(states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(42)) %}
+              {% set ziel = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(42) %}
               {% set mlp_gelernt = states('input_number.plantinator_bewasserung_p2_gelernt_ml_pro_prozent') | float(0) %}
               {% set mlp_start = states('input_number.plantinator_bewasserung_startwert_ml_pro_prozent') | float(100) %}
               {% set mlp = mlp_gelernt if is_state('input_boolean.plantinator_bewasserung_p2_lernwert_gueltig', 'on') else mlp_start %}
@@ -326,9 +324,9 @@ template:
             {% endif %}
           {% endif %}
         attributes:
-          berechnung: "max(0, gespeicherter Peak - Feuchte) * gelernte ml pro Prozent, begrenzt durch Max-Normalguss"
+          berechnung: "max(0, Feuchteziel - Feuchte) * gelernte ml pro Prozent, begrenzt durch Max-Normalguss"
           feuchte: "{{ states('sensor.plantinator_bewasserung_p2_bodenfeuchte_wert') }}"
-          ziel: "{{ state_attr('sensor.plantinator_bewasserung_crop_p2_phase', 'letzter_peak_prozent') }}"
+          ziel: "{{ states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') }}"
           ml_pro_prozent_genutzt: >
             {% set gelernt = states('input_number.plantinator_bewasserung_p2_gelernt_ml_pro_prozent') | float(0) %}
             {% set start = states('input_number.plantinator_bewasserung_startwert_ml_pro_prozent') | float(100) %}
@@ -462,8 +460,7 @@ template:
             {% if f < 0 %}
               0
             {% else %}
-              {% set ziel = state_attr('sensor.plantinator_bewasserung_crop_p3_phase', 'letzter_peak_prozent')
-                   | float(states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(42)) %}
+              {% set ziel = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(42) %}
               {% set mlp_gelernt = states('input_number.plantinator_bewasserung_p3_gelernt_ml_pro_prozent') | float(0) %}
               {% set mlp_start = states('input_number.plantinator_bewasserung_startwert_ml_pro_prozent') | float(100) %}
               {% set mlp = mlp_gelernt if is_state('input_boolean.plantinator_bewasserung_p3_lernwert_gueltig', 'on') else mlp_start %}
@@ -480,9 +477,9 @@ template:
             {% endif %}
           {% endif %}
         attributes:
-          berechnung: "max(0, gespeicherter Peak - Feuchte) * gelernte ml pro Prozent, begrenzt durch Max-Normalguss"
+          berechnung: "max(0, Feuchteziel - Feuchte) * gelernte ml pro Prozent, begrenzt durch Max-Normalguss"
           feuchte: "{{ states('sensor.plantinator_bewasserung_p3_bodenfeuchte_wert') }}"
-          ziel: "{{ state_attr('sensor.plantinator_bewasserung_crop_p3_phase', 'letzter_peak_prozent') }}"
+          ziel: "{{ states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') }}"
           ml_pro_prozent_genutzt: >
             {% set gelernt = states('input_number.plantinator_bewasserung_p3_gelernt_ml_pro_prozent') | float(0) %}
             {% set start = states('input_number.plantinator_bewasserung_startwert_ml_pro_prozent') | float(100) %}
@@ -616,8 +613,7 @@ template:
             {% if f < 0 %}
               0
             {% else %}
-              {% set ziel = state_attr('sensor.plantinator_bewasserung_crop_p4_phase', 'letzter_peak_prozent')
-                   | float(states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(42)) %}
+              {% set ziel = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(42) %}
               {% set mlp_gelernt = states('input_number.plantinator_bewasserung_p4_gelernt_ml_pro_prozent') | float(0) %}
               {% set mlp_start = states('input_number.plantinator_bewasserung_startwert_ml_pro_prozent') | float(100) %}
               {% set mlp = mlp_gelernt if is_state('input_boolean.plantinator_bewasserung_p4_lernwert_gueltig', 'on') else mlp_start %}
@@ -634,9 +630,9 @@ template:
             {% endif %}
           {% endif %}
         attributes:
-          berechnung: "max(0, gespeicherter Peak - Feuchte) * gelernte ml pro Prozent, begrenzt durch Max-Normalguss"
+          berechnung: "max(0, Feuchteziel - Feuchte) * gelernte ml pro Prozent, begrenzt durch Max-Normalguss"
           feuchte: "{{ states('sensor.plantinator_bewasserung_p4_bodenfeuchte_wert') }}"
-          ziel: "{{ state_attr('sensor.plantinator_bewasserung_crop_p4_phase', 'letzter_peak_prozent') }}"
+          ziel: "{{ states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') }}"
           ml_pro_prozent_genutzt: >
             {% set gelernt = states('input_number.plantinator_bewasserung_p4_gelernt_ml_pro_prozent') | float(0) %}
             {% set start = states('input_number.plantinator_bewasserung_startwert_ml_pro_prozent') | float(100) %}

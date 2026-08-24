@@ -633,19 +633,13 @@ script:
                        and (
                          states('counter.plantinator_bewasserung_stop_generation') | int(0)
                        ) == (run_generation | int(0)) }}
-                  wetback_referenz_roh: >
-                    {{ states(
-                      'input_number.plantinator_bewasserung_crop_p'
-                      ~ p ~ '_letzter_peak_prozent'
-                    ) | float(0) }}
                   wetback_maximum: >
                     {{ states('input_number.plantinator_bewasserung_bodenfeuchte_maximum')
                        | float(100) }}
                   wetback_referenz: >
-                    {% set fallback = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel')
+                    {% set ziel = states('input_number.plantinator_bewasserung_bodenfeuchte_ziel')
                        | float(32) %}
-                    {% set roh = wetback_referenz_roh | float(0) %}
-                    {{ [roh if roh > 0 else fallback, wetback_maximum | float(100)] | min }}
+                    {{ [ziel, wetback_maximum | float(100)] | min }}
                   wetback_toleranz: >
                     {{ states('input_number.plantinator_bewasserung_wetback_peak_toleranz_prozent')
                        | float(0.5) }}
@@ -1018,6 +1012,20 @@ script:
                        and not (wetback_peak_zu_hoch | bool) }}
 
               - choose:
+                  # Jeder gueltige Zehn-Minuten-Peak wird als Messwert der
+                  # jeweiligen Pflanze gespeichert. Er ist kein Regelziel.
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ wetback_aktiv and wetback_sensorwert_gueltig }}"
+                    sequence:
+                      - service: input_number.set_value
+                        target:
+                          entity_id: >
+                            input_number.plantinator_bewasserung_crop_p{{ p }}_letzter_peak_prozent
+                        data:
+                          value: "{{ wetback_peak_final | round(1) }}"
+
+              - choose:
                   # Ohne gueltigen Sensorwert wird nicht weitergegossen und
                   # nicht gelernt. Der Lauf wird sicher beendet, aber das
                   # Gesamtsystem wird deswegen nicht global verriegelt.
@@ -1152,16 +1160,6 @@ script:
                         value_template: >
                           {{ wetback_aktiv and (wetback_peak_ok | bool) }}
                     sequence:
-                      # Der Referenz-Peak bleibt fest. Messwerte dürfen innerhalb
-                      # des symmetrischen OK-Fensters schwanken, ohne dass die
-                      # naechste Gießschwelle nach unten oder oben driftet.
-                      - service: input_number.set_value
-                        target:
-                          entity_id: >
-                            input_number.plantinator_bewasserung_crop_p{{ p }}_letzter_peak_prozent
-                        data:
-                          value: "{{ wetback_referenz | round(1) }}"
-
                       - choose:
                           - conditions:
                               - condition: template

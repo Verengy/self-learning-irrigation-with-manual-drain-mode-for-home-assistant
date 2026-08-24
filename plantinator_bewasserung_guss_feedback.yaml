@@ -868,8 +868,7 @@ script:
             - input_boolean.plantinator_bewasserung_p3_feedback_ausstehend
             - input_boolean.plantinator_bewasserung_p4_feedback_ausstehend
 
-      # Ein neuer Topf besitzt noch keinen belastbaren Crop-Peak. Als sichere
-      # Startreferenz dient deshalb das konfigurierte Feuchteziel.
+      # Ein neuer Topf besitzt noch keinen gemessenen Peak.
       - service: input_number.set_value
         target:
           entity_id:
@@ -878,7 +877,7 @@ script:
             - input_number.plantinator_bewasserung_crop_p3_letzter_peak_prozent
             - input_number.plantinator_bewasserung_crop_p4_letzter_peak_prozent
         data:
-          value: "{{ states('input_number.plantinator_bewasserung_bodenfeuchte_ziel') | float(32) }}"
+          value: 0
 
       - service: input_boolean.turn_off
         target:
