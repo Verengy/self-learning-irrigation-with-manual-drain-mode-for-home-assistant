@@ -787,23 +787,26 @@ script:
                                         entity_id: input_text.plantinator_bewasserung_wetback_status
                                       data:
                                         value: >
-                                          alarm_p{{ p }}_peak_zu_hoch_ist_{{
+                                          warnung_p{{ p }}_peak_zu_hoch_ist_{{
                                           states(
                                             'input_number.plantinator_bewasserung_p'
                                             ~ p ~ '_feedback_peak_prozent'
                                           ) | float(0) | round(1) }}_max_{{
                                           wetback_obergrenze | round(1) }}
                                     - service: script.plantinator_bewasserung_shot_exec_sicher_stop
-                                    - service: script.plantinator_bewasserung_alarm_ausloesen
+                                    - service: script.plantinator_bewasserung_sicherheitsereignis_melden
                                       data:
-                                        grund: >
-                                          wetback_peak_zu_hoch_p{{ p }}_ist_{{
+                                        stufe: warnung
+                                        code: "wetback_peak_zu_hoch_p{{ p }}"
+                                        details: >
+                                          Peak {{
                                           states(
                                             'input_number.plantinator_bewasserung_p'
                                             ~ p ~ '_feedback_peak_prozent'
-                                          ) | float(0) | round(1) }}_max_{{
-                                          wetback_obergrenze | round(1) }}
-                                    - stop: "Wetback-Obergrenze waehrend des Nachgusses ueberschritten."
+                                          ) | float(0) | round(1) }} %, Obergrenze
+                                          {{ wetback_obergrenze | round(1) }} %.
+                                          Nachguss sicher beendet; keine globale Verriegelung.
+                                    - stop: "Wetback-Obergrenze während des Nachgusses überschritten; nur Warnung."
 
                             - choose:
                                 - conditions:
@@ -1046,8 +1049,13 @@ script:
                       - service: script.plantinator_bewasserung_shot_exec_sicher_stop
                       - stop: "Wetback-Sensorwert ungueltig; Lauf ohne globale Verriegelung beendet."
 
-                  # Ein zu hoher Peak kann auf Ueberwaesserung hindeuten. Hier
-                  # bleiben sicherer Stop und globale Verriegelung erhalten.
+                  # Ein zu hoher Peak kann auf Ueberwaesserung hindeuten. Der
+                  # aktuelle Lauf wird sicher beendet und als Warnung gemeldet.
+                  # Liegt der aktuelle Zehn-Minuten-Wert noch unter dem harten
+                  # Maximum, darf das Feedback die ml/% vorsichtig nach unten
+                  # korrigieren. Ein erreichtes Ramp-up bleibt abgeschlossen,
+                  # damit derselbe Ueberguss nicht am gleichen Lichttag erneut
+                  # angefordert wird.
                   - conditions:
                       - condition: template
                         value_template: >
@@ -1058,17 +1066,48 @@ script:
                           entity_id: input_text.plantinator_bewasserung_wetback_status
                         data:
                           value: >
-                            alarm_p{{ p }}_peak_zu_hoch_ist_{{
+                            warnung_p{{ p }}_peak_zu_hoch_ist_{{
                             wetback_peak_final | round(1) }}_max_{{
                             wetback_obergrenze | round(1) }}
+                      - choose:
+                          - conditions:
+                              - condition: template
+                                value_template: >
+                                  {{ wetback_sensorwert_gueltig
+                                     and (states(
+                                       'sensor.plantinator_bewasserung_p'
+                                       ~ p ~ '_bodenfeuchte_wert'
+                                     ) | float(101))
+                                       <= (wetback_maximum | float(100)) }}
+                            sequence:
+                              - choose:
+                                  - conditions:
+                                      - condition: template
+                                        value_template: >
+                                          {{ sequenztyp_lauf == 'ramp_up'
+                                             and (states(
+                                               'sensor.plantinator_bewasserung_p'
+                                               ~ p ~ '_bodenfeuchte_wert'
+                                             ) | float(0))
+                                               >= (wetback_referenz | float(0)) }}
+                                    sequence:
+                                      - service: input_boolean.turn_on
+                                        target:
+                                          entity_id: >
+                                            input_boolean.plantinator_bewasserung_crop_p{{ p }}_ramp_up_abgeschlossen
+                              - service: script.plantinator_bewasserung_feedback_nach_guss_auswerten
+                                data:
+                                  pflanze: "{{ p }}"
                       - service: script.plantinator_bewasserung_shot_exec_sicher_stop
-                      - service: script.plantinator_bewasserung_alarm_ausloesen
+                      - service: script.plantinator_bewasserung_sicherheitsereignis_melden
                         data:
-                          grund: >
-                            wetback_peak_zu_hoch_p{{ p }}_ist_{{
-                            wetback_peak_final | round(1) }}_max_{{
-                            wetback_obergrenze | round(1) }}
-                      - stop: "Wetback-Peak liegt oberhalb des zulässigen Fensters."
+                          stufe: warnung
+                          code: "wetback_peak_zu_hoch_p{{ p }}"
+                          details: >
+                            Peak {{ wetback_peak_final | round(1) }} %,
+                            Obergrenze {{ wetback_obergrenze | round(1) }} %.
+                            Lauf sicher beendet; keine globale Verriegelung.
+                      - stop: "Wetback-Peak liegt oberhalb des zulässigen Fensters; nur Warnung."
 
                   # Ein zu niedriger Peak wird gemeldet, sperrt aber weder die
                   # Anlage noch die anderen Pflanzen. Ramp-up bleibt offen und

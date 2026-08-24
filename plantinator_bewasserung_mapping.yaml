@@ -379,10 +379,12 @@ template:
         icon: mdi:white-balance-sunny
         unit_of_measurement: "µmol/m²/s"
         state_class: measurement
+        availability: >
+          {% set ent = states('input_text.plantinator_bewasserung_ppfd_entity') | trim %}
+          {{ ent.startswith('sensor.') and has_value(ent) and is_number(states(ent)) }}
         state: >
           {% set ent = states('input_text.plantinator_bewasserung_ppfd_entity') | trim %}
-          {% set val = states(ent) if ent.startswith('sensor.') and has_value(ent) else 'unknown' %}
-          {{ (val | float | round(1)) if is_number(val) else 'unknown' }}
+          {{ states(ent) | float | round(1) }}
         attributes:
           source_entity: "{{ states('input_text.plantinator_bewasserung_ppfd_entity') | trim }}"
           verwendung: protokollierung_und_optional_umweltfaktor

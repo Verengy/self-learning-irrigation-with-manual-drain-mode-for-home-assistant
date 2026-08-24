@@ -2390,7 +2390,11 @@ views:
               - entity: input_number.plantinator_bewasserung_sensor_max_alter_minuten
                 name: Maximalalter
               - entity: input_text.plantinator_bewasserung_kritischer_push_dienst
-                name: iPhone Push-Dienst für kritische Alarme
+                name: iPhone Push-Dienst für Alarme / Warnungen
+              - entity: sensor.plantinator_bewasserung_push_status
+                name: iPhone Push Status
+              - entity: script.plantinator_bewasserung_push_test
+                name: iPhone Push testen
               - entity: input_number.plantinator_bewasserung_klima_einfluss_prozent
                 name: Klima Einfluss (Diagnose)
               - entity: input_number.plantinator_bewasserung_licht_einfluss_prozent

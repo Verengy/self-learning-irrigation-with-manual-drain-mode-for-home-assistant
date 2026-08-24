@@ -700,6 +700,11 @@ template:
         icon: mdi:cloud-percent
         unit_of_measurement: "kPa"
         state_class: measurement
+        availability: >
+          {% set t = states('sensor.plantinator_bewasserung_lufttemperatur') %}
+          {% set h = states('sensor.plantinator_bewasserung_luftfeuchtigkeit') %}
+          {{ is_number(t) and is_number(h)
+             and -20 <= (t | float) <= 60 and 0 <= (h | float) <= 100 }}
         state: >
           {% set traw = states('sensor.plantinator_bewasserung_lufttemperatur') %}
           {% set hraw = states('sensor.plantinator_bewasserung_luftfeuchtigkeit') %}
@@ -710,10 +715,10 @@ template:
               {% set svp = 0.61078 * (e ** ((17.2694 * t) / (t + 237.3))) %}
               {{ (svp * (1 - rh / 100)) | round(2) }}
             {% else %}
-              unknown
+              0
             {% endif %}
           {% else %}
-            unknown
+            0
           {% endif %}
         attributes:
           lufttemperatur: "{{ states('sensor.plantinator_bewasserung_lufttemperatur') }}"
@@ -725,6 +730,9 @@ template:
         icon: mdi:weather-sunny
         unit_of_measurement: "mol/m²/d"
         state_class: measurement
+        availability: >
+          {{ is_number(states('sensor.plantinator_bewasserung_ppfd_stundenintegral'))
+             and is_number(states('input_number.plantinator_bewasserung_ppfd_integral_lichtstart')) }}
         state: >
           {% set integral = states('sensor.plantinator_bewasserung_ppfd_stundenintegral') %}
           {% set start = states('input_number.plantinator_bewasserung_ppfd_integral_lichtstart') %}
@@ -732,7 +740,7 @@ template:
             {% set differenz = [0, (integral | float) - (start | float)] | max %}
             {{ (differenz * 0.0036) | round(2) }}
           {% else %}
-            unknown
+            0
           {% endif %}
         attributes:
           ppfd_aktuell: "{{ states('sensor.plantinator_bewasserung_ppfd') }}"
@@ -907,9 +915,10 @@ template:
         icon: mdi:chart-line-variant
         unit_of_measurement: "%"
         state_class: measurement
+        availability: "{{ is_number(states('sensor.plantinator_bewasserung_p1_feuchte_aenderung_1h')) }}"
         state: >
           {% set raw = states('sensor.plantinator_bewasserung_p1_feuchte_aenderung_1h') %}
-          {{ ([0, -(raw | float)] | max | round(2)) if is_number(raw) else 'unknown' }}
+          {{ [0, -(raw | float(0))] | max | round(2) }}
         attributes:
           feuchte_aenderung_1h: "{{ states('sensor.plantinator_bewasserung_p1_feuchte_aenderung_1h') }}"
           verwendung: nur_protokollierung
@@ -919,9 +928,10 @@ template:
         icon: mdi:chart-line-variant
         unit_of_measurement: "%"
         state_class: measurement
+        availability: "{{ is_number(states('sensor.plantinator_bewasserung_p2_feuchte_aenderung_1h')) }}"
         state: >
           {% set raw = states('sensor.plantinator_bewasserung_p2_feuchte_aenderung_1h') %}
-          {{ ([0, -(raw | float)] | max | round(2)) if is_number(raw) else 'unknown' }}
+          {{ [0, -(raw | float(0))] | max | round(2) }}
         attributes:
           feuchte_aenderung_1h: "{{ states('sensor.plantinator_bewasserung_p2_feuchte_aenderung_1h') }}"
           verwendung: nur_protokollierung
@@ -931,9 +941,10 @@ template:
         icon: mdi:chart-line-variant
         unit_of_measurement: "%"
         state_class: measurement
+        availability: "{{ is_number(states('sensor.plantinator_bewasserung_p3_feuchte_aenderung_1h')) }}"
         state: >
           {% set raw = states('sensor.plantinator_bewasserung_p3_feuchte_aenderung_1h') %}
-          {{ ([0, -(raw | float)] | max | round(2)) if is_number(raw) else 'unknown' }}
+          {{ [0, -(raw | float(0))] | max | round(2) }}
         attributes:
           feuchte_aenderung_1h: "{{ states('sensor.plantinator_bewasserung_p3_feuchte_aenderung_1h') }}"
           verwendung: nur_protokollierung
@@ -943,9 +954,10 @@ template:
         icon: mdi:chart-line-variant
         unit_of_measurement: "%"
         state_class: measurement
+        availability: "{{ is_number(states('sensor.plantinator_bewasserung_p4_feuchte_aenderung_1h')) }}"
         state: >
           {% set raw = states('sensor.plantinator_bewasserung_p4_feuchte_aenderung_1h') %}
-          {{ ([0, -(raw | float)] | max | round(2)) if is_number(raw) else 'unknown' }}
+          {{ [0, -(raw | float(0))] | max | round(2) }}
         attributes:
           feuchte_aenderung_1h: "{{ states('sensor.plantinator_bewasserung_p4_feuchte_aenderung_1h') }}"
           verwendung: nur_protokollierung
@@ -1132,6 +1144,22 @@ template:
                and is_state('input_boolean.plantinator_bewasserung_hardware_sicher_aus', 'on')
                and is_state('sensor.plantinator_bewasserung_kritischer_systemstatus', 'ok') }}
 
+      - name: Plantinator Bewasserung Push Status
+        unique_id: plantinator_bewasserung_push_status
+        icon: mdi:cellphone-message
+        state: >
+          {% set dienst = states('input_text.plantinator_bewasserung_kritischer_push_dienst') | trim %}
+          {% if dienst.startswith('notify.mobile_app_') %}
+            konfiguriert
+          {% elif dienst in ['', 'unknown', 'unavailable', 'none'] %}
+            nicht_konfiguriert
+          {% else %}
+            ungueltiger_dienst
+          {% endif %}
+        attributes:
+          dienst: "{{ states('input_text.plantinator_bewasserung_kritischer_push_dienst') }}"
+          erwartet: notify.mobile_app_iphone_name
+
 script:
   plantinator_bewasserung_monitoring_standardwerte_setzen:
     alias: Plantinator Bewasserung Monitoring Standardwerte setzen
@@ -1311,6 +1339,28 @@ script:
                   input_text.plantinator_bewasserung_fehlerhistorie_{{ '%02d' | format(repeat.item) }}
               data:
                 value: leer
+
+  plantinator_bewasserung_push_test:
+    alias: Plantinator Bewässerung iPhone Push testen
+    icon: mdi:cellphone-arrow-down
+    mode: single
+    sequence:
+      - variables:
+          push_dienst: "{{ states('input_text.plantinator_bewasserung_kritischer_push_dienst') | trim }}"
+      - condition: template
+        value_template: "{{ push_dienst.startswith('notify.mobile_app_') }}"
+      - service: "{{ push_dienst }}"
+        continue_on_error: true
+        data:
+          title: "KRITISCHER Push-Test: Bewässerung"
+          message: Testnachricht ohne Alarmverriegelung.
+          data:
+            push:
+              interruption-level: critical
+              sound:
+                name: default
+                critical: 1
+                volume: 1.0
 
   plantinator_bewasserung_sicherheitsereignis_melden:
     alias: Plantinator Bewässerung Sicherheitsereignis melden
@@ -1793,6 +1843,46 @@ automation:
       - service: script.plantinator_bewasserung_alarm_ausloesen
         data:
           grund: wasserstand_im_lauf_nicht_sicher
+
+  - id: plantinator_bewasserung_wasserstand_wieder_sicher_freigeben
+    alias: Plantinator Bewasserung - sicheren Wasserstand wieder freigeben
+    description: >
+      Hebt ausschließlich eine durch den Gießwassersensor verursachte
+      Verriegelung auf, nachdem der konfigurierte sichere Zustand stabil
+      zurückgekehrt und die Hardware bestätigt AUS ist.
+    mode: single
+    trigger:
+      - platform: template
+        value_template: >
+          {% set ent = states('input_text.plantinator_bewasserung_wasserstand_entity') | trim %}
+          {% set sicher = states('input_select.plantinator_bewasserung_wasserstand_sicherer_zustand') %}
+          {{ is_state('input_boolean.plantinator_bewasserung_wasserstand_verwenden', 'on')
+             and (ent.startswith('binary_sensor.') or ent.startswith('input_boolean.'))
+             and has_value(ent)
+             and states(ent) == sicher }}
+        for: "00:00:10"
+      - platform: time_pattern
+        minutes: "/1"
+    condition:
+      - condition: state
+        entity_id: input_boolean.plantinator_bewasserung_alarm_verriegelt
+        state: "on"
+      - condition: state
+        entity_id: input_text.plantinator_bewasserung_alarm_grund
+        state: wasserstand_im_lauf_nicht_sicher
+      - condition: state
+        entity_id: input_boolean.plantinator_bewasserung_hardware_sicher_aus
+        state: "on"
+      - condition: state
+        entity_id: sensor.plantinator_bewasserung_kritischer_systemstatus
+        state: "ok"
+    action:
+      - service: script.plantinator_bewasserung_alarm_quittieren
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.plantinator_bewasserung_alarm_grund
+        data:
+          value: kein_alarm
 
   - id: plantinator_bewasserung_aktorfehler_sofort_verriegeln
     alias: Plantinator Bewässerung - Aktorfehler sofort verriegeln
