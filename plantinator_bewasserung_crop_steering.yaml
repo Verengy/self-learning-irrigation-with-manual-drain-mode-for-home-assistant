@@ -1668,16 +1668,13 @@ template:
       - name: Plantinator Bewasserung Minuten seit Licht an
         unique_id: plantinator_bewasserung_minuten_seit_licht_an
         icon: mdi:timer-play-outline
-        unit_of_measurement: "min"
-        availability: >
-          {{ is_state('sensor.plantinator_bewasserung_lichtstatus', 'tag')
-             and states('sensor.plantinator_bewasserung_licht_an_roh')
-               not in ['unknown', 'unavailable', 'none', ''] }}
         state: >
           {% set licht = states('sensor.plantinator_bewasserung_lichtstatus') %}
           {% set on_raw = states('sensor.plantinator_bewasserung_licht_an_roh') %}
-          {% if licht != 'tag' or on_raw in ['unknown', 'unavailable', 'none', ''] %}
-            0
+          {% if licht != 'tag' %}
+            Nacht
+          {% elif on_raw in ['unknown', 'unavailable', 'none', ''] %}
+            Unbekannt
           {% else %}
             {% set on_p = on_raw.split(':') %}
             {% set on_m = (on_p[0] | int(0)) * 60 + (on_p[1] | int(0)) %}
@@ -1688,16 +1685,13 @@ template:
       - name: Plantinator Bewasserung Minuten bis Licht aus
         unique_id: plantinator_bewasserung_minuten_bis_licht_aus
         icon: mdi:timer-stop-outline
-        unit_of_measurement: "min"
-        availability: >
-          {{ is_state('sensor.plantinator_bewasserung_lichtstatus', 'tag')
-             and states('sensor.plantinator_bewasserung_licht_aus_roh')
-               not in ['unknown', 'unavailable', 'none', ''] }}
         state: >
           {% set licht = states('sensor.plantinator_bewasserung_lichtstatus') %}
           {% set off_raw = states('sensor.plantinator_bewasserung_licht_aus_roh') %}
-          {% if licht != 'tag' or off_raw in ['unknown', 'unavailable', 'none', ''] %}
-            0
+          {% if licht != 'tag' %}
+            Nacht
+          {% elif off_raw in ['unknown', 'unavailable', 'none', ''] %}
+            Unbekannt
           {% else %}
             {% set off_p = off_raw.split(':') %}
             {% set off_m = (off_p[0] | int(0)) * 60 + (off_p[1] | int(0)) %}
