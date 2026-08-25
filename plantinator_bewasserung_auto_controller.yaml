@@ -746,11 +746,6 @@ script:
               - condition: template
                 value_template: "{{ p == 1 }}"
             sequence:
-              - service: input_datetime.set_datetime
-                target:
-                  entity_id: input_datetime.plantinator_bewasserung_auto_p1_letzter_start
-                data:
-                  datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
               # FIRE AND FORGET (echt): script.turn_on kehrt sofort zurueck
               - service: script.turn_on
                 target:
@@ -763,11 +758,6 @@ script:
               - condition: template
                 value_template: "{{ p == 2 }}"
             sequence:
-              - service: input_datetime.set_datetime
-                target:
-                  entity_id: input_datetime.plantinator_bewasserung_auto_p2_letzter_start
-                data:
-                  datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
               - service: script.turn_on
                 target:
                   entity_id: script.plantinator_bewasserung_p2_shot_plan_ausfuehren
@@ -779,11 +769,6 @@ script:
               - condition: template
                 value_template: "{{ p == 3 }}"
             sequence:
-              - service: input_datetime.set_datetime
-                target:
-                  entity_id: input_datetime.plantinator_bewasserung_auto_p3_letzter_start
-                data:
-                  datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
               - service: script.turn_on
                 target:
                   entity_id: script.plantinator_bewasserung_p3_shot_plan_ausfuehren
@@ -795,11 +780,6 @@ script:
               - condition: template
                 value_template: "{{ p == 4 }}"
             sequence:
-              - service: input_datetime.set_datetime
-                target:
-                  entity_id: input_datetime.plantinator_bewasserung_auto_p4_letzter_start
-                data:
-                  datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
               - service: script.turn_on
                 target:
                   entity_id: script.plantinator_bewasserung_p4_shot_plan_ausfuehren
@@ -897,7 +877,9 @@ automation:
         value_template: >
           {{ is_state('input_boolean.plantinator_bewasserung_shot_exec_laeuft', 'off')
              and is_state('input_boolean.plantinator_bewasserung_exec_laeuft', 'off')
-             and is_state('input_boolean.plantinator_bewasserung_shot_exec_reserviert', 'off') }}
+             and is_state('input_boolean.plantinator_bewasserung_shot_exec_reserviert', 'off')
+             and is_state('input_boolean.plantinator_bewasserung_tank_umwalzung_laeuft', 'off')
+             and is_state('script.plantinator_bewasserung_tank_umwalzung_lauf', 'off') }}
       - condition: template
         value_template: >
           {% set intervall = states('input_number.plantinator_bewasserung_auto_check_intervall_minuten') | int(5) %}
@@ -906,6 +888,18 @@ automation:
           {{ letzter in ['unknown', 'unavailable', 'none', '']
              or (as_timestamp(now()) - as_timestamp(letzter)) >= (intervall * 60) }}
     action:
+      # Gleichzeitige Minuten-/Fuenf-Minuten-Trigger duerfen nicht sowohl
+      # Tankumwaelzung als auch Pflanzenstart durch dieselbe Momentaufnahme
+      # freigeben. Nach kurzer Entprellung werden alle Gates erneut gelesen.
+      - delay:
+          seconds: 2
+      - condition: template
+        value_template: >
+          {{ is_state('input_boolean.plantinator_bewasserung_shot_exec_laeuft', 'off')
+             and is_state('input_boolean.plantinator_bewasserung_exec_laeuft', 'off')
+             and is_state('input_boolean.plantinator_bewasserung_shot_exec_reserviert', 'off')
+             and is_state('input_boolean.plantinator_bewasserung_tank_umwalzung_laeuft', 'off')
+             and is_state('script.plantinator_bewasserung_tank_umwalzung_lauf', 'off') }}
       - service: script.plantinator_bewasserung_auto_check
 
   - id: plantinator_bewasserung_auto_gussbedarf_check
@@ -926,7 +920,9 @@ automation:
         value_template: >
           {{ is_state('input_boolean.plantinator_bewasserung_shot_exec_laeuft', 'off')
              and is_state('input_boolean.plantinator_bewasserung_exec_laeuft', 'off')
-             and is_state('input_boolean.plantinator_bewasserung_shot_exec_reserviert', 'off') }}
+             and is_state('input_boolean.plantinator_bewasserung_shot_exec_reserviert', 'off')
+             and is_state('input_boolean.plantinator_bewasserung_tank_umwalzung_laeuft', 'off')
+             and is_state('script.plantinator_bewasserung_tank_umwalzung_lauf', 'off') }}
     action:
       - delay:
           seconds: 15
@@ -935,7 +931,9 @@ automation:
         value_template: >
           {{ is_state('input_boolean.plantinator_bewasserung_shot_exec_laeuft', 'off')
              and is_state('input_boolean.plantinator_bewasserung_exec_laeuft', 'off')
-             and is_state('input_boolean.plantinator_bewasserung_shot_exec_reserviert', 'off') }}
+             and is_state('input_boolean.plantinator_bewasserung_shot_exec_reserviert', 'off')
+             and is_state('input_boolean.plantinator_bewasserung_tank_umwalzung_laeuft', 'off')
+             and is_state('script.plantinator_bewasserung_tank_umwalzung_lauf', 'off') }}
       - service: script.plantinator_bewasserung_auto_check
 
   # Trigger nach Ende eines Gusses - direkter Check ob naechste Pflanze dran ist

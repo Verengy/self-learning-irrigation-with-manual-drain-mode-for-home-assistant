@@ -402,12 +402,16 @@ script:
               - service: script.plantinator_bewasserung_tank_umwalzung_aus
                 continue_on_error: true
               - wait_template: >
-                  {{ is_state('input_boolean.plantinator_bewasserung_tank_umwalzung_laeuft', 'off')
+                  {{ (is_state('input_boolean.plantinator_bewasserung_tank_umwalzung_laeuft', 'off')
+                      and is_state('script.plantinator_bewasserung_tank_umwalzung_lauf', 'off'))
                      or is_state('input_boolean.plantinator_bewasserung_shot_exec_stop_anforderung', 'on')
                      or is_state('input_boolean.plantinator_bewasserung_exec_abort', 'on')
                      or (states('counter.plantinator_bewasserung_stop_generation') | int(0)) != (run_generation | int(0)) }}
                 timeout: "00:00:05"
                 continue_on_timeout: true
+
+              - delay:
+                  seconds: 1
 
       - choose:
           - conditions:
@@ -452,6 +456,21 @@ script:
       - service: input_boolean.turn_on
         target:
           entity_id: input_boolean.plantinator_bewasserung_shot_exec_laeuft
+
+      # Die Auto-Mindestpause beginnt erst nach erfolgreicher Pre-Guss-
+      # Pruefung. Vor dem ersten Shot abgebrochene Versuche zaehlen nicht.
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ sequenztyp_lauf in ['ramp_up', 'maintenance', 'notguss'] }}
+            sequence:
+              - service: input_datetime.set_datetime
+                target:
+                  entity_id: >
+                    input_datetime.plantinator_bewasserung_auto_p{{ p }}_letzter_start
+                data:
+                  datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
 
       # reserviert wird jetzt nicht mehr gebraucht - shot_exec_laeuft deckt
       # den Rest der Laufzeit ab
